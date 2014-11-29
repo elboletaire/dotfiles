@@ -61,4 +61,3 @@ let g:airline#extensions#tabline#enabled = 1
 
 " Set colorscheme
 set t_Co=256
-colorscheme Tomorrow-Night

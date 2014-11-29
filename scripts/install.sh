@@ -2,7 +2,7 @@
 
 declare -r dotfiles=~/.dotfiles
 declare -r oldfiles=~/old_dotfiles
-declare -r exclude=("README.md" "LICENSE" ".git" "scripts")
+declare -r exclude=("README.md" "LICENSE" "scripts")
 
 backup_dotfile() {
 	if [ ! -d $oldfiles ]; then
@@ -40,3 +40,6 @@ symlink
 
 # Run Vundle.vim :PluginInstall cmd
 vim -c 'PluginInstall' -c 'q!' -c 'q!'
+
+# Define the colorscheme after we actually installed it
+echo "colorscheme Tomorrow-Night" >> ~/.vimrc
