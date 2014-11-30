@@ -15,6 +15,7 @@ Plugin 'majutsushi/tagbar'
 Plugin 'airblade/vim-gitgutter'
 Plugin 'mhinz/vim-signify'
 Plugin 'flazz/vim-colorschemes'
+Plugin 'scrooloose/nerdtree'
 
 " The following are examples of different formats supported.
 " Keep Plugin commands between vundle#begin/end.
@@ -59,5 +60,19 @@ set laststatus=2       " always show vim airline
 " Smarter tab line
 let g:airline#extensions#tabline#enabled = 1
 
-" Set colorscheme
+" Set 256 color mode 
 set t_Co=256
+if v:version >= 700
+  try
+    " Colorscheme is inside a plugin
+    colorscheme Tomorrow-Night
+
+    " Open NERDTree if we open vim without any file loaded
+    autocmd StdinReadPre * let s:std_in=1
+    autocmd VimEnter * if argc() == 0 && !exists("s:std_in") | NERDTree | endif
+    " Set Ctrl+n to toggle NERDTree
+    map <C-n> :NERDTreeToggle<CR>
+  catch
+  endtry
+endif
+

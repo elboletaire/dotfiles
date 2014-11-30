@@ -41,5 +41,4 @@ symlink
 # Run Vundle.vim :PluginInstall cmd
 vim -c 'PluginInstall' -c 'q!' -c 'q!'
 
-# Define the colorscheme after we actually installed it
-echo "colorscheme Tomorrow-Night" >> ~/.vimrc
+echo "dotfiles installation was successful" && exit
