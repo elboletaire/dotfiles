@@ -61,6 +61,9 @@ set laststatus=2       " always show vim airline
 " Smarter tab line
 let g:airline#extensions#tabline#enabled = 1
 
+" Enable syntax color highlighting
+set syntax on
+
 " Set 256 color mode 
 set t_Co=256
 if v:version >= 700
