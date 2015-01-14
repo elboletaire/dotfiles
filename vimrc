@@ -62,7 +62,7 @@ set laststatus=2       " always show vim airline
 let g:airline#extensions#tabline#enabled = 1
 
 " Enable syntax color highlighting
-set syntax on
+syntax on
 
 " Set 256 color mode 
 set t_Co=256
