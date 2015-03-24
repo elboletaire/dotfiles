@@ -39,6 +39,6 @@ git submodule update --init --recursive
 symlink
 
 # Run Vundle.vim :PluginInstall cmd
-vim -c 'PluginInstall' -c 'q!' -c 'q!'
+vim -c 'PluginInstall' -c 'qa!'
 
 echo "dotfiles installation was successful" && exit
