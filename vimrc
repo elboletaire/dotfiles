@@ -17,6 +17,8 @@ Plugin 'mhinz/vim-signify'
 Plugin 'flazz/vim-colorschemes'
 Plugin 'scrooloose/nerdtree'
 Plugin 'groenewege/vim-less'
+Plugin 'godlygeek/tabular'
+Plugin 'plasticboy/vim-markdown'
 
 " The following are examples of different formats supported.
 " Keep Plugin commands between vundle#begin/end.
@@ -82,6 +84,8 @@ if v:version >= 700
     autocmd VimEnter * if argc() == 0 && !exists("s:std_in") | NERDTree | endif
     " Set Ctrl+n to toggle NERDTree
     map <C-n> :NERDTreeToggle<CR>
+    " Disable markdown folding
+    let g:vim_markdown_folding_disabled=1
   catch
   endtry
 endif
