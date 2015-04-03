@@ -61,6 +61,12 @@ set laststatus=2       " always show vim airline
 " Smarter tab line
 let g:airline#extensions#tabline#enabled = 1
 
+" Persistent undo
+" tell it to use an undo file
+set undofile
+" set a directory to store the undo history
+set undodir=~/.vimundo/
+
 " Enable syntax color highlighting
 syntax on
 
