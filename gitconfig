@@ -3,6 +3,7 @@
     email = elboletaire@underave.net
 [core]
     editor = vim
+    autocrlf = false
 [push]
     default = current
 [branch]
