@@ -1,3 +1,5 @@
+export PATH=/bin:/c/Program\ Files\ \(x86\)/Git/bin/:/c/httpd/php55:/c/Program\ Files/Sublime\ Text\ 3
+
 #
 # Executes commands at login pre-zshrc.
 #

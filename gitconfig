@@ -11,6 +11,12 @@
     tool = sublimerge
 [diff]
     tool = vimdiff
+[color]
+    ui = always
+    status = always
+    branch = always
+    diff = always
+    interactive = always
 
 [mergetool "sublimerge"]
     cmd = subl -n --wait \"$REMOTE\" \"$BASE\" \"$LOCAL\" \"$MERGED\" --command \"sublimerge_diff_views\"
