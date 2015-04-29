@@ -2,7 +2,7 @@
 
 declare -r dotfiles=~/.dotfiles
 declare -r oldfiles=~/old_dotfiles
-declare -r exclude=("README.md" "LICENSE" "scripts")
+declare -r exclude=("README.md" "LICENSE" "scripts" "git-templates")
 
 backup_dotfile() {
 	if [ ! -d $oldfiles ]; then

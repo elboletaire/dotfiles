@@ -1,3 +1,5 @@
+[init]
+    templatedir = ~/.dotfiles/git-templates
 [user]
     name = Òscar Casajuana
     email = elboletaire@underave.net
