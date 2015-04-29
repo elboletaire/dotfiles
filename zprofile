@@ -1,4 +1,4 @@
-export PATH=/bin:/c/httpd/php55:/c/Program\ Files/Sublime\ Text\ 3
+export PATH=/bin:/usr/local/bin:/c/Program\ Files/Sublime\ Text\ 3:/c/ProgramData/ComposerSetup/bin
 
 #
 # Executes commands at login pre-zshrc.

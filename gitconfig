@@ -4,6 +4,7 @@
 [core]
     editor = vim
     autocrlf = false
+    filemode = false
 [push]
     default = current
 [branch]
