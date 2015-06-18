@@ -19,6 +19,7 @@ Plugin 'scrooloose/nerdtree'
 Plugin 'groenewege/vim-less'
 Plugin 'godlygeek/tabular'
 Plugin 'plasticboy/vim-markdown'
+Plugin 'editorconfig/editorconfig-vim'
 
 " The following are examples of different formats supported.
 " Keep Plugin commands between vundle#begin/end.
