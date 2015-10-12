@@ -72,6 +72,9 @@ set undodir=~/.vimundo/
 " Enable syntax color highlighting
 syntax on
 
+" Set backspace behavior
+set backspace=2
+
 " Set 256 color mode 
 set t_Co=256
 if v:version >= 700
