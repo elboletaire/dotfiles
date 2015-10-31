@@ -1,0 +1,51 @@
+secrets: secrets.yml
+templates:
+  global:
+    transmission: 
+      host: localhost
+      port: 9091
+      username: '{{ secrets.transmission.usr }}'
+      password: '{{ secrets.transmission.pwd }}'
+    # Make there's 10GB free before adding more downloads
+    free_space:
+      path: /home/elboletaire/Incoming
+      space: 10000
+    # Make sure all filenames are Windows safe (for samba)
+    pathscrub: windows
+    regexp:
+      reject:
+        - \bWEBSCR\b: {from: title}
+        - \bscreener\b: {from: title} 
+        - \bTS\b: {from: title}
+        - \bCam\b: {from: title}
+        - \bRAW\b: {from: title}
+    content_filter:
+      require:
+        -'*.avi'
+        -'*.mkv'
+        -'*.mp4'
+    domain_delay:
+      elitetorrent.net: 30 seconds
+      divxtotal.com: 10 seconds
+    urlrewrite:
+      divxtotal.com:
+        regexp: 'https?:\/\/(?:www.)?divxtotal.com\/series\/torrent\/([0-9]+)\/.+'
+        format: 'http://www.divxtotal.com/download.php?id=$1'
+    exists_series:
+      - '/media/tera/Series'
+      - '/media/tera3/Series'
+      - '/media/tera4/Series'
+      - '/media/terapart/Series'
+      - '/home/elboletaire/Incoming'
+
+  tv-es:
+    include: [ series-es.yml ]
+    inputs:
+      - rss: http://www.divxtotal.com/rss.php
+
+tasks:
+  Series_Espanyoles:
+    template: tv-es
+
+
+    

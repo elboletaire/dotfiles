@@ -1,0 +1,6 @@
+series:
+  include: [ series-settings.yml ]
+  average:
+    - Gotham
+    - Padre de familia
+

@@ -1,1 +1,7 @@
 vim/bundle/*
+
+# flexget related
+flexget/secrets.yml
+flexget/crash_report.*
+flexget/db-config.sqlite
+flexget/log-config.json

@@ -1,0 +1,96 @@
+2015-10-31 20:44 VERBOSE  manager                       Creating new database /home/elboletaire/.flexget/db-config.sqlite ...
+2015-10-31 20:45 CRITICAL manager                       [/templates/tv-es/inputs/0/rss] `url` is a required property
+2015-10-31 20:45 CRITICAL manager                       [/templates/tv-es/inputs/0/rss] The key `http://www.divxtotal.com/rss.php` is not valid here.
+2015-10-31 20:45 CRITICAL manager                       [/templates/global/regexp] The key `rejext` is not valid here.
+2015-10-31 20:45 CRITICAL manager                       Failed to load config file: Did not pass schema validation.
+2015-10-31 20:47 CRITICAL manager                       [/templates/global/regexp] The key `rejext` is not valid here.
+2015-10-31 20:47 CRITICAL manager                       Failed to load config file: Did not pass schema validation.
+2015-10-31 20:48 VERBOSE  task_queue                    There are 1 tasks to execute. Shutdown will commence when they have completed.
+2015-10-31 20:48 CRITICAL task          Series_Espanyoles BUG: Unhandled error in plugin include: [Errno 2] No such file or directory: u'/home/elboletaire/.flexget/flexget/series-es.yml'
+2015-10-31 20:48 CRITICAL manager       Series_Espanyoles An unexpected crash has occurred. Writing crash report to /home/elboletaire/.flexget/crash_report.2015.10.31.204818245147.log
+2015-10-31 20:48 WARNING  task          Series_Espanyoles Aborting task (plugin: include)
+2015-10-31 20:48 VERBOSE  task_queue                    There are 1 tasks to execute. Shutdown will commence when they have completed.
+2015-10-31 20:48 ERROR    include       Series_Espanyoles Included file /home/elboletaire/.flexget/series-es.yml has invalid config:
+2015-10-31 20:48 ERROR    include       Series_Espanyoles [/series/settings/include] Got `[u'series-settings.yml']`, expected: dict
+2015-10-31 20:48 WARNING  task          Series_Espanyoles Aborting task (plugin: include)
+2015-10-31 20:49 VERBOSE  task_queue                    There are 1 tasks to execute. Shutdown will commence when they have completed.
+2015-10-31 20:49 ERROR    include       Series_Espanyoles Included file /home/elboletaire/.flexget/series-es.yml has invalid config:
+2015-10-31 20:49 ERROR    include       Series_Espanyoles [/series/settings/include] Got `[u'series-settings.yml']`, expected: dict
+2015-10-31 20:49 WARNING  task          Series_Espanyoles Aborting task (plugin: include)
+2015-10-31 20:50 VERBOSE  task_queue                    There are 1 tasks to execute. Shutdown will commence when they have completed.
+2015-10-31 20:50 ERROR    include       Series_Espanyoles Included file /home/elboletaire/.flexget/series-es.yml has invalid config:
+2015-10-31 20:50 ERROR    include       Series_Espanyoles [/series/settings/include] Got `series-settings.yml`, expected: dict
+2015-10-31 20:50 WARNING  task          Series_Espanyoles Aborting task (plugin: include)
+2015-10-31 20:50 VERBOSE  task_queue                    There are 1 tasks to execute. Shutdown will commence when they have completed.
+2015-10-31 20:50 ERROR    include       Series_Espanyoles Included file /home/elboletaire/.flexget/series-es.yml has invalid config:
+2015-10-31 20:50 ERROR    include       Series_Espanyoles [/series/settings/include] Got `[u'series-settings.yml']`, expected: dict
+2015-10-31 20:50 WARNING  task          Series_Espanyoles Aborting task (plugin: include)
+2015-10-31 20:51 VERBOSE  task_queue                    There are 1 tasks to execute. Shutdown will commence when they have completed.
+2015-10-31 20:51 CRITICAL transmission  Series_Espanyoles Transmissionrpc module version 0.11 or higher required.
+2015-10-31 20:51 WARNING  task          Series_Espanyoles Aborting task (plugin: transmission)
+2015-10-31 21:04 VERBOSE  task_queue                    There are 1 tasks to execute. Shutdown will commence when they have completed.
+2015-10-31 21:04 VERBOSE  rss           Series_Espanyoles Bozo error <class 'xml.sax._exceptions.SAXParseException'> while parsing feed, but entries were produced, ignoring the error.
+2015-10-31 21:04 VERBOSE  details       Series_Espanyoles Produced 30 entries.
+2015-10-31 21:04 VERBOSE  details       Series_Espanyoles Summary - Accepted: 0 (Rejected: 0 Undecided: 30 Failed: 0)
+2015-10-31 21:06 VERBOSE  task_queue                    There are 1 tasks to execute. Shutdown will commence when they have completed.
+2015-10-31 21:06 VERBOSE  rss           Series_Espanyoles Bozo error <class 'xml.sax._exceptions.SAXParseException'> while parsing feed, but entries were produced, ignoring the error.
+2015-10-31 21:06 VERBOSE  details       Series_Espanyoles Produced 30 entries.
+2015-10-31 21:06 VERBOSE  series        Series_Espanyoles identified by is currently on `auto` for Padre de familia. Multiple id types may be accepted until it locks in on the appropriate type.
+2015-10-31 21:06 VERBOSE  task          Series_Espanyoles ACCEPTED: `Padre De Familia 13x13` by series plugin because choosing best available quality
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles `Doctor Who (Especial nadal 2010) (6x00) CanÃ§Ã³Þde%20nadal%20-%20A%20ChristmasÊCarol%20(BDrip+DVB-XviD-AC3ÊcatalÃ -english)%20per%20PIZARRIN%20(TotsRucs.cat).avi` appears to be an episode pack
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de familia` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre.De.Familia.Blue.Harvest.DVD.XviD.MP3._5Bwww.DivxTotaL.com_5D.avi` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1001 Diez negritos (I).avi` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1014 Tiegs para dos.avi` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1007 Camino del Polo Norte.avi` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1009 Y yo soy Joyce Kinney.avi` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1011 El aleman.avi` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1010 Amigos de Peter G.avi` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1012 La mano que mece la silla de ruedas.avi` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1006 Brian escribe un Bestseller.avi` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1003 Infidelidad del padre de Loise.avi` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1015 Hermanos y hermanas.avi` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1005 Nena, me dejas KO.avi` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1016 La teoria del Big Bang.avi` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1013 Cambio de sitio.avi` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1008 Nuevo rinyon en la ciudad.avi` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1004 Halloween en la calle Spooner.avi` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1001 Diez negritos (II).avi` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1002 Sobresaliente en comunicacion .avi` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1018 Es Una Trampa.avi` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1017 Asuntos exteriories.avi` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1214 Fresh Heir.mp4` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1217 The Most Interesting Man in the World.mp4` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1216 Herpe, the Love Sore.mp4` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1202 Vestigial Peter.mp4` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1215 Secondhand Spoke.mp4` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1219 Meg Stinks!.mp4` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1208 Christmas Guy.mp4` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1207 Into Harmony's Way.mp4` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1204 A Fistful of Meg.mp4` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1218 Baby Got Black.mp4` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1209 Peter Problems.mp4` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1206 Life of Brian.mp4` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1211 Brian's a Bad Father.mp4` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1203 Quagmire's Quagmire.mp4` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1221 Chap Stewie.mp4` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1212 Mom's the Word.mp4` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1201 Finders Keepers.mp4` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1205 Boopa-dee Bappa-dee.mp4` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1210 Grimm Job.mp4` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles Title `Padre de Familia - 1220 He's Bla-ack.mp4` looks like series `Padre de familia` but cannot find any series numbering.
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles `01x005-L'explosió del tren d'alta velocitat.mkv` appears to be an episode pack
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles `01x007-L'amenaça del regal mensual.mkv` appears to be an episode pack
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles `01x004-El peix brillant.mkv` appears to be an episode pack
+2015-10-31 21:06 INFO     parser_internal Series_Espanyoles `01x001-El detectiu més famós d'aquest segle.mkv` appears to be an episode pack
+2015-10-31 21:06 INFO     urlrewriter   Series_Espanyoles Entry 'Padre De Familia 13x13' URL rewritten to http://www.divxtotal.com/download.php?id=$1 (with urlrewrite)
+2015-10-31 21:07 INFO     download      Series_Espanyoles Downloading: Padre De Familia 13x13
+2015-10-31 21:07 ERROR    entry         Series_Espanyoles Failed Padre De Familia 13x13 (File /tmp/elboletaire/tmptPy5YH/6b9cc24adff777db69fe6dc5ca837e20 is 0 bytes in size)
+2015-10-31 21:07 INFO     task          Series_Espanyoles Plugin transmission has requested task to be ran again after execution has completed.
+2015-10-31 21:07 VERBOSE  task          Series_Espanyoles FAILED: `Padre De Familia 13x13` by transmission plugin because file /tmp/elboletaire/tmptPy5YH/6b9cc24adff777db69fe6dc5ca837e20 is 0 bytes in size
+2015-10-31 21:07 VERBOSE  details       Series_Espanyoles Summary - Accepted: 0 (Rejected: 0 Undecided: 29 Failed: 1)
+2015-10-31 21:07 INFO     task          Series_Espanyoles Rerunning the task in case better resolution can be achieved.
+2015-10-31 21:07 VERBOSE  input_cache   Series_Espanyoles Restored 30 entries from cache
+2015-10-31 21:07 VERBOSE  details       Series_Espanyoles Produced 30 entries.
+2015-10-31 21:07 VERBOSE  task          Series_Espanyoles REJECTED: `Padre De Familia 13x13` by retry_failed plugin because waiting before retrying entry which has failed in the past. (failure reason: File /tmp/elboletaire/tmptPy5YH/6b9cc24adff777db69fe6dc5ca837e20 is 0 bytes in size)
+2015-10-31 21:07 VERBOSE  details       Series_Espanyoles Summary - Accepted: 0 (Rejected: 1 Undecided: 29 Failed: 0)
