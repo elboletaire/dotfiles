@@ -50,6 +50,7 @@ templates:
 
   tv-es:
     include: [ series-es.yml ]
+    thetvdb_lookup: yes
     inputs:
       - rss: http://www.divxtotal.com/rss.php
 
