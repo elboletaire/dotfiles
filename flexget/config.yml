@@ -6,7 +6,10 @@ templates:
       port: 9091
       username: '{{ secrets.transmission.usr }}'
       password: '{{ secrets.transmission.pwd }}'
-    # Make there's 10GB free before adding more downloads
+      # set does not work on series on current flexget version, see http://flexget.com/ticket/2270#comment:2
+      path: "/home/elboletaire/Vídeos/Series/{{ series_name }}/{{ series_season }}a Temporada/"
+
+    # Make sure there's 10GB free before adding more downloads
     free_space:
       path: /home/elboletaire/Incoming
       space: 10000
