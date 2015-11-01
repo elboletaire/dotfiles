@@ -43,7 +43,7 @@ templates:
       - '/home/elboletaire/Incoming'
     filesystem:
       path:
-        - '/home/elboletaire/Vídeos'
+        - '/home/elboletaire/Vídeos/Series'
         - '/home/elboletaire/Incoming'
       regexp: '.*\.(avi|mkv|mp4|m4v)$'
       recursive: yes
