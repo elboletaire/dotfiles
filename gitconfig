@@ -34,5 +34,14 @@
 
 [alias]
     pull-up = "!f() { git pull && git submodule update --init --recursive && git submodule status; }; f"
+    lol = log --graph --decorate --pretty=oneline --abbrev-commit
+    lola = log --graph --decorate --pretty=oneline --abbrev-commit --all
+    rc = !git reset $1 && git checkout $1
+    rcs = !git reset $1 && git checkout $1 && git status
     d = difftool
     m = mergetool
+[color]
+    branch = auto
+    diff = auto
+    interactive = auto
+    status = auto
