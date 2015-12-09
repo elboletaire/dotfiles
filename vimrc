@@ -70,6 +70,8 @@ set number             " enable line numbers
 set laststatus=2       " always show vim airline
 " Smarter tab line
 let g:airline#extensions#tabline#enabled = 1
+" Enable line highlighting
+set cursorline
 
 " Persistent undo
 " tell it to use an undo file

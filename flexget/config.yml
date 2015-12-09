@@ -1,0 +1,62 @@
+secrets: secrets.yml
+templates:
+  global:
+    transmission: 
+      host: localhost
+      port: 9091
+      username: '{{ secrets.transmission.usr }}'
+      password: '{{ secrets.transmission.pwd }}'
+      # set does not work on series on current flexget version, see http://flexget.com/ticket/2270#comment:2
+      path: "/home/elboletaire/Vídeos/Series/{{ series_name }}/{{ series_season }}a Temporada/"
+
+    # Make sure there's 10GB free before adding more downloads
+    free_space:
+      path: /home/elboletaire/Incoming
+      space: 10000
+    # Make sure all filenames are Windows safe (for samba)
+    pathscrub: windows
+    regexp:
+      reject:
+        - \bWEBSCR\b: {from: title}
+        - \bscreener\b: {from: title} 
+        - \bTS\b: {from: title}
+        - \bCam\b: {from: title}
+        - \bRAW\b: {from: title}
+    content_filter:
+      require:
+        - '*.avi'
+        - '*.mkv'
+        - '*.mp4'
+        - '*.m4v'
+    domain_delay:
+      elitetorrent.net: 30 seconds
+      divxtotal.com: 10 seconds
+    urlrewrite:
+      divxtotal.com:
+        regexp: 'https?:\/\/(?:www.)?divxtotal.com\/series\/torrent\/(?P<torrent>[0-9]+)\/.+'
+        format: 'http://www.divxtotal.com/download.php?id=\g<torrent>'
+    exists_series:
+      - '/media/tera/Series'
+      - '/media/tera3/Series'
+      - '/media/tera4/Series'
+      - '/media/terapart/Series'
+      - '/home/elboletaire/Incoming'
+    filesystem:
+      path:
+        - '/home/elboletaire/Vídeos/Series'
+        - '/home/elboletaire/Incoming'
+      regexp: '.*\.(avi|mkv|mp4|m4v)$'
+      recursive: yes
+
+  tv-es:
+    include: [ series-es.yml ]
+    thetvdb_lookup: yes
+    inputs:
+      - rss: http://www.divxtotal.com/rss.php
+
+tasks:
+  Series_Espanyoles:
+    template: tv-es
+
+
+    

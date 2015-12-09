@@ -1,0 +1,45 @@
+settings:
+  best:
+    quality: hdtv+ <=720p !10bit
+    target: 720p
+    timeframe: 6 hours
+    propers: 12 hours
+  better:
+    quality: hdtv+ <=720p !10bit
+    target: <720p
+    timeframe: 6 hours
+    propers: 12 hours
+  average:
+    quality: hdtv+ <=720p !10bit
+    target: <720p
+    timeframe: 6 hours
+    propers: 12 hours
+    # set does currently work on flexget, see http://flexget.com/ticket/2270
+    # set:
+    #   path: "/home/elboletaire/Vídeos/Series/{{ series_name }}/{{ series_season }}a Temporada/"
+    #   # content_filename in combination with path does not work with non-ascii chars
+    #   # content_filename: "{{ tvdb_series_name }} - {{ series_id }} {{ tvdb_ep_name | default('Unknown ep. name') }}"
+    #   rename_like_files: yes
+    #   main_file_only: yes
+    #   include_subs: yes
+    #   skip_files:
+    #     - '*.nfo'
+    #     - '*.sfv'
+    #     - '*[sS]ample*'
+    #     - '*.txt'
+  documentaries:
+    quality: hdtv+ <=720p !10bit
+    target: <720p
+    timeframe: 6 hours
+    propers: 12 hours
+  anime:
+    quality: hdtv+ <=720p !10bit
+    target: <720p
+    timeframe: 6 hours
+    propers: 12 hours
+  japanime:
+    quality: hdtv+ <=720p !10bit
+    target: <720p
+    timeframe: 6 hours
+    propers: 12 hours
+
