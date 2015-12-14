@@ -1,4 +1,5 @@
-vim/bundle/*
+vim/bundle/
+vimundo/
 
 # flexget related
 flexget/secrets.yml

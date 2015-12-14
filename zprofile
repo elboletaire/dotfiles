@@ -5,6 +5,8 @@
 #   Sorin Ionescu <sorin.ionescu@gmail.com>
 #
 
+PATH=$PATH:$HOME/.composer/vendor/bin
+
 #
 # Browser
 #
