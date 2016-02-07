@@ -7,7 +7,18 @@ templates:
       username: '{{ secrets.transmission.usr }}'
       password: '{{ secrets.transmission.pwd }}'
       # set does not work on series on current flexget version, see http://flexget.com/ticket/2270#comment:2
-      path: "/home/elboletaire/Vídeos/Series/{{ series_name }}/{{ series_season }}a Temporada/"
+      # path: "/home/elboletaire/Vídeos/Series/{{ series_name }}/{{ series_season }}a Temporada/"
+      main_file_only: yes
+      include_subs: yes
+      # content_filename: "{{ tvdb_series_name }} - {{ series_id }} {{ tvdb_ep_name | default('Unknown ep. name') }}"
+      rename_like_files: yes
+      main_file_only: yes
+      include_subs: yes
+      skip_files:
+        - '*.nfo'
+        - '*.sfv'
+        - '*[sS]ample*'
+        - '*.txt'
 
     # Make sure there's 10GB free before adding more downloads
     free_space:
@@ -29,7 +40,7 @@ templates:
         - '*.mp4'
         - '*.m4v'
     domain_delay:
-      elitetorrent.net: 30 seconds
+      elitetorrent.net: 20 seconds
       divxtotal.com: 10 seconds
     urlrewrite:
       divxtotal.com:
@@ -43,7 +54,10 @@ templates:
       - '/home/elboletaire/Incoming'
     filesystem:
       path:
-        - '/home/elboletaire/Vídeos/Series'
+        - '/media/tera/Series'
+        - '/media/tera3/Series'
+        - '/media/tera4/Series'
+        - '/media/terapart/Series'
         - '/home/elboletaire/Incoming'
       regexp: '.*\.(avi|mkv|mp4|m4v)$'
       recursive: yes
@@ -53,10 +67,26 @@ templates:
     thetvdb_lookup: yes
     inputs:
       - rss: http://www.divxtotal.com/rss.php
+     # - rss: http://www.newpct.com/feed/
+
+  tv-en:
+    include: [ series-en.yml ]
+    thetvdb_lookup: yes
+    inputs:
+      - rss: "{{ secrets.feeds.ipt.series }}"
+      # - rss: "{{ secrets.feeds.sca.series }}"
+  anime:
+    include: [ anime.yml ]
+    thetvdb_lookup: yes
+    inputs:
+      - rss: http://feeds.feedburner.com/bittorrent
 
 tasks:
-  Series_Espanyoles:
+  Sèries Espanyoles:
     template: tv-es
-
+  Sèries Angleses:
+    template: tv-en
+  Anime:
+    template: anime
 
     

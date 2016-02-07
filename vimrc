@@ -1,6 +1,8 @@
 set nocompatible              " be iMproved, required
 filetype off                  " required
 
+let $PATH=$PATH . ':' . expand('~/.composer/vendor/bin')
+
 " set the runtime path to include Vundle and initialize
 set rtp+=~/.vim/bundle/Vundle.vim
 call vundle#begin()
@@ -20,6 +22,11 @@ Plugin 'groenewege/vim-less'
 Plugin 'godlygeek/tabular'
 Plugin 'plasticboy/vim-markdown'
 Plugin 'editorconfig/editorconfig-vim'
+Plugin 'mkusher/padawan.vim'
+Plugin 'Valloric/YouCompleteMe'
+
+" Configure composer command
+let g:padawan#composer_command = "composer"
 
 " The following are examples of different formats supported.
 " Keep Plugin commands between vundle#begin/end.

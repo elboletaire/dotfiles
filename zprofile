@@ -11,6 +11,8 @@ export PATH="$PATH:/C/Program Files/nodejs:/C/Users/elboletaire/AppData/Roaming/
 #   Sorin Ionescu <sorin.ionescu@gmail.com>
 #
 
+PATH=$PATH:$HOME/.composer/vendor/bin
+
 #
 # Browser
 #

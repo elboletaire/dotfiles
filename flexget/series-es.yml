@@ -1,6 +1,10 @@
 series:
   include: [ series-settings.yml ]
-  average:
+  best:
+    - Vikingos
+  better:
     - Gotham
-    - Padre de familia
+    - The big bang theory
+    - Bones
+    - Silicon Valley
 
