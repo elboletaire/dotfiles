@@ -1,4 +1,6 @@
-export PATH=/bin:/usr/local/bin:/c/Program\ Files/Sublime\ Text\ 3:/c/ProgramData/ComposerSetup/bin
+export PATH=/bin:/usr/local/bin:/C/Program\ Files/Sublime\ Text\ 3:/C/ProgramData/ComposerSetup/bin:/C/Users/elboletaire/AppData/Roaming/Composer/vendor/bin
+
+export PATH="$PATH:/C/Program Files/nodejs:/C/Users/elboletaire/AppData/Roaming/npm"
 
 export PATH="$PATH:/C/Program Files/nodejs:/C/Users/elboletaire/AppData/Roaming/npm"
 
