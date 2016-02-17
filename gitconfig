@@ -33,7 +33,23 @@
     d = difftool
     m = mergetool
 [color]
+    ui = always
     branch = auto
     diff = auto
     interactive = auto
     status = auto
+[color "diff"]
+    meta = yellow bold
+    commit = green
+    frag = magenta bold
+    old = red
+    new = green
+    whitespace = red reverse
+[pager]
+	diff = diff-so-fancy | less --tabs=1,5 -RFX
+	show = diff-so-fancy | less --tabs=1,5 -RFX
+[color "diff-highlight"]
+	oldNormal = red bold
+	oldHighlight = red bold 52
+	newNormal = green bold
+	newHighlight = green bold 22
