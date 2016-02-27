@@ -1,16 +1,21 @@
 [init]
     templatedir = ~/.dotfiles/git-templates
+
 [user]
     name = Òscar Casajuana
     email = elboletaire@underave.net
+
 [core]
     editor = vim
+
 [push]
     default = current
+
 [branch]
     autosetuprebase = always
 [merge]
     tool = sublimerge
+
 [diff]
     tool = vimdiff
 
@@ -32,12 +37,14 @@
     rcs = !git reset $1 && git checkout $1 && git status
     d = difftool
     m = mergetool
+
 [color]
     ui = always
-    branch = auto
-    diff = auto
-    interactive = auto
-    status = auto
+    branch = always
+    diff = always
+    interactive = always
+    status = always
+
 [color "diff"]
     meta = yellow bold
     commit = green
@@ -45,9 +52,11 @@
     old = red
     new = green
     whitespace = red reverse
+
 [pager]
 	diff = diff-so-fancy | less --tabs=1,5 -RFX
 	show = diff-so-fancy | less --tabs=1,5 -RFX
+
 [color "diff-highlight"]
 	oldNormal = red bold
 	oldHighlight = red bold 52
