@@ -1,8 +1,10 @@
 [init]
     templatedir = ~/.dotfiles/git-templates
+
 [user]
     name = Òscar Casajuana
     email = elboletaire@underave.net
+
 [core]
     editor = vim
     autocrlf = false
@@ -10,18 +12,15 @@
 
 [push]
     default = current
+
 [branch]
     autosetuprebase = always
+
 [merge]
     tool = sublimerge
+
 [diff]
     tool = vimdiff
-[color]
-    ui = always
-    status = always
-    branch = always
-    diff = always
-    interactive = always
 
 [mergetool "sublimerge"]
     cmd = subl -n --wait \"$REMOTE\" \"$BASE\" \"$LOCAL\" \"$MERGED\" --command \"sublimerge_diff_views\"
@@ -42,3 +41,27 @@
     d = difftool
     m = mergetool
 
+[color]
+    ui = always
+    branch = always
+    diff = always
+    interactive = always
+    status = always
+
+[color "diff"]
+    meta = yellow bold
+    commit = green
+    frag = magenta bold
+    old = red
+    new = green
+    whitespace = red reverse
+
+[pager]
+	diff = diff-so-fancy | less --tabs=1,5 -RFX
+	show = diff-so-fancy | less --tabs=1,5 -RFX
+
+[color "diff-highlight"]
+	oldNormal = red bold
+	oldHighlight = red bold 52
+	newNormal = green bold
+	newHighlight = green bold 22
