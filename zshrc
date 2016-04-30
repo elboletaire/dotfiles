@@ -12,3 +12,5 @@ fi
 
 # Customize to your needs...
 alias sudo='sudo -E'
+
+export PATH="$PATH:$HOME/.rvm/bin" # Add RVM to PATH for scripting
