@@ -62,9 +62,9 @@ filetype plugin indent on    " required
 
 " Tab/Indent stuff
 set smartindent        " automatically insert one extra level of indentation
-set tabstop=4          " tab spacing
-set softtabstop=4
-set shiftwidth=4       " indent/outdent by 4 columns
+set tabstop=2          " tab spacing
+set softtabstop=2
+set shiftwidth=2       " indent/outdent by 4 columns
 set expandtab          " use spaces instead of tabs
 set smarttab           " use tabs at the start of a line, spaces elsewhere
 set number             " enable line numbers
