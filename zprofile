@@ -27,6 +27,8 @@ export PAGER='less'
 # Language
 #
 
+export LC_ALL="ca_ES.utf8"
+
 if [[ -z "$LANG" ]]; then
   export LANG='en_US.UTF-8'
 fi
