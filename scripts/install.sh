@@ -85,4 +85,9 @@ if ! youCompleteMe; then
   echo "YouCompleteMe dependencies installation failed. ${aborting}" && exit 1
 fi
 
+# Install required npm packages
+if ! npm install -g diff-so-fancy; then
+  echo "Couldn't install npm dependencies. ${aborting}" && exit 1
+fi
+
 echo "dotfiles installation was successful" && exit 0
