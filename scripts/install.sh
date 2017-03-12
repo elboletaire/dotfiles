@@ -3,6 +3,7 @@
 declare -r dotfiles=~/.dotfiles
 declare -r oldfiles=~/old_dotfiles
 declare -r exclude=("README.md" "LICENSE" "scripts" "git-templates")
+declare -r aborting="Aborting dotfiles installation..."
 
 backup_dotfile() {
 	if [ ! -d $oldfiles ]; then
@@ -32,10 +33,15 @@ symlink() {
 	done
 }
 
+# Update apt packages
+if ! sudo apt update; then
+	echo "Cannot update apt. ${aborting}" && exit 1
+fi
+
 # Install common required packages. We don't install git, as it's the way to
 # install the dotfiles.
-if ! sudo apt install -y build-essential curl zsh; then
-	echo "Packages installation unsuccessful. Aborting dotfiles installation" && exit 1
+if ! sudo apt install -y build-essential curl zsh vim; then
+	echo "Packages installation unsuccessful. ${aborting}" && exit 1
 fi
 
 # Install NVM (it uses master branch; it could break the installation process)
