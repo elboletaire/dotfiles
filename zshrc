@@ -15,6 +15,13 @@ alias sudo='sudo -E'
 
 export PATH="$PATH:$HOME/.rvm/bin" # Add RVM to PATH for scripting
 
+# Add android studio required vars..
+if [ -d "${HOME}/.Android" ]; then
+    export ANDROID_HOME=${HOME}/.Android/Sdk
+    export PATH=${PATH}:${ANDROID_HOME}/tools
+    export PATH=${PATH}:${ANDROID_HOME}/platform-tools
+fi
+
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
 
