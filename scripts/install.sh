@@ -34,7 +34,9 @@ symlink() {
 
 # Install common required packages. We don't install git, as it's the way to
 # install the dotfiles.
-sudo apt install -y build-essential curl zsh
+if ! sudo apt install -y build-essential curl zsh; then
+	echo "Packages installation unsuccessful. Aborting dotfiles installation" && exit 1
+fi
 
 # Install NVM (it uses master branch; it could break the installation process)
 curl -o- https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
