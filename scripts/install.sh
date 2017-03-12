@@ -33,6 +33,11 @@ symlink() {
   done
 }
 
+youCompleteMe() {
+  return npm install --prefix ~/.vim/bundle/YouCompleteMe/third_party/ycmd/third_party/tern_runtime --production && \
+    ~/.vim/bundle/YouCompleteMe/install.py --clang-completer --tern-completer
+}
+
 # Update apt packages
 if ! sudo apt update; then
   echo "Cannot update apt. ${aborting}" && exit 1
@@ -40,7 +45,7 @@ fi
 
 # Install common required packages. We don't install git, as it's the way to
 # install the dotfiles.
-if ! sudo apt install -y build-essential curl zsh vim; then
+if ! sudo apt install -y build-essential curl zsh vim cmake python-dev python3-dev; then
   echo "Packages installation unsuccessful. ${aborting}" && exit 1
 fi
 
@@ -57,7 +62,7 @@ symlink
 chsh ${USERNAME} --shell $(which zsh)
 
 # Run Vundle.vim :PluginInstall cmd
-vim -c 'PluginInstall' -c 'qa!'
+mkdir ~/.vimundo && vim -c 'PluginInstall' -c 'qa!'
 
 # Source .zshrc to load NVM configuration
 source ~/.zshrc
@@ -68,5 +73,8 @@ fi
 
 # Install latest available LTS node version using NVM
 nvm install --lts
+
+# Install/Compile YouCompleteMe dependencies
+youCompleteMe
 
 echo "dotfiles installation was successful" && exit
