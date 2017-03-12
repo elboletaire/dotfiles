@@ -32,13 +32,32 @@ symlink() {
 	done
 }
 
+# Install common required packages (we don't install git, as it's the way to install the dotfiles)
+sudo apt install build-essentials curl zsh
+
+# Install NVM (it uses master branch; it could break the installation process)
+curl -o- https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
+
 # Git init submodules
 git submodule update --init --recursive
 
 # Make symbolic links
 symlink
 
+# Change the shell of the current user to zsh
+chsh ${USERNAME} --shell $(which zsh)
+
 # Run Vundle.vim :PluginInstall cmd
 vim -c 'PluginInstall' -c 'qa!'
+
+# Source .zshrc to load NVM configuration
+source ~/.zshrc
+
+if [[ $(command -v nvm) != 'nvm' ]]; then
+	echo "NVM not detected" && exit 1
+fi
+
+# Install latest available LTS node version using NVM
+nvm install node
 
 echo "dotfiles installation was successful" && exit
