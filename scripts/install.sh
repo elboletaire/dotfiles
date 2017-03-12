@@ -65,8 +65,10 @@ symlink
 # Change the shell of the current user to zsh
 chsh ${USERNAME} --shell $(which zsh)
 
+mkdir ~/.vimundo
+
 # Run Vundle.vim :PluginInstall cmd
-mkdir ~/.vimundo && vim -c 'PluginInstall' -c 'qa!'
+vim -c 'PluginInstall' -c 'qa!'
 
 # Source .zshrc to load NVM configuration
 source ~/.zshrc
