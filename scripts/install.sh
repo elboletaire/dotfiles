@@ -32,8 +32,9 @@ symlink() {
 	done
 }
 
-# Install common required packages (we don't install git, as it's the way to install the dotfiles)
-sudo apt install build-essentials curl zsh
+# Install common required packages. We don't install git, as it's the way to
+# install the dotfiles. The `sudo` package is here for debian installations.
+sudo apt install -y sudo build-essential curl zsh
 
 # Install NVM (it uses master branch; it could break the installation process)
 curl -o- https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
