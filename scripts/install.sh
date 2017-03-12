@@ -36,9 +36,9 @@ symlink() {
 youCompleteMe() {
   if npm install --prefix ~/.vim/bundle/YouCompleteMe/third_party/ycmd/third_party/tern_runtime --production && \
     ~/.vim/bundle/YouCompleteMe/install.py --clang-completer --tern-completer; then
-    return 1
-  else
     return 0
+  else
+    return 1
   fi
 }
 
