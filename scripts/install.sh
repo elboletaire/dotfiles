@@ -73,7 +73,7 @@ vim -c 'PluginInstall' -c 'qa!'
 # Source .zshrc to load NVM configuration
 source ~/.zshrc
 
-if [[ $(command -v nvm) != 'nvm' ]]; then
+if [ $(command -v nvm) != 'nvm' ]; then
   echo "NVM not detected" && exit 1
 fi
 
