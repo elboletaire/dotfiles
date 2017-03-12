@@ -58,6 +58,6 @@ if [[ $(command -v nvm) != 'nvm' ]]; then
 fi
 
 # Install latest available LTS node version using NVM
-nvm install node
+nvm install --lts
 
 echo "dotfiles installation was successful" && exit
