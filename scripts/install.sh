@@ -34,8 +34,12 @@ symlink() {
 }
 
 youCompleteMe() {
-  return npm install --prefix ~/.vim/bundle/YouCompleteMe/third_party/ycmd/third_party/tern_runtime --production && \
-    ~/.vim/bundle/YouCompleteMe/install.py --clang-completer --tern-completer
+  if npm install --prefix ~/.vim/bundle/YouCompleteMe/third_party/ycmd/third_party/tern_runtime --production && \
+    ~/.vim/bundle/YouCompleteMe/install.py --clang-completer --tern-completer; then
+    return 1
+  else
+    return 0
+  fi
 }
 
 # Update apt packages
@@ -75,6 +79,8 @@ fi
 nvm install --lts
 
 # Install/Compile YouCompleteMe dependencies
-youCompleteMe
+if ! youCompleteMe; then
+  echo "YouCompleteMe dependencies installation failed. ${aborting}" && exit 1
+fi
 
-echo "dotfiles installation was successful" && exit
+echo "dotfiles installation was successful" && exit 0
