@@ -65,8 +65,6 @@ symlink
 # Change the shell of the current user to zsh
 chsh ${USERNAME} --shell $(which zsh)
 
-mkdir ~/.vimundo
-
 # Run Vundle.vim :PluginInstall cmd
 vim -c 'PluginInstall' -c 'qa!'
 
