@@ -25,8 +25,7 @@ fi
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
 
-# Load bash completions
-autoload -Uz compinit && compinit -i
-
-# Load custom completions
+# Define completions
 fpath=(~/.dotfiles/completion $fpath)
+# Load completions
+autoload -Uz compinit && compinit -i
