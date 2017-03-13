@@ -30,4 +30,3 @@ autoload -Uz compinit && compinit -i
 
 # Load custom completions
 fpath=(~/.dotfiles/completion $fpath)
-
