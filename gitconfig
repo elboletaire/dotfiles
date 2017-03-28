@@ -53,9 +53,12 @@
     meta = yellow bold
     commit = green
     frag = magenta bold
-    old = red
+    old = red bold
     new = green
     whitespace = red reverse
+
+[color "branch"]
+    remote = red bold
 
 [pager]
 	diff = diff-so-fancy | less --tabs=1,5 -RFX
