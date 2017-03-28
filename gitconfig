@@ -46,6 +46,9 @@
     interactive = always
     status = always
 
+[color "status"]
+    untracked = red bold
+
 [color "diff"]
     meta = yellow bold
     commit = green
