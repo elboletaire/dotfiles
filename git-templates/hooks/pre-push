@@ -8,7 +8,7 @@ if [[ -x ./vendor/bin/phpunit ]]; then
   fi
 fi
 
-if [[ -d ./node_modules/.bin && -f ./package.json ]]; then
+if [[ -d ./node_modules/.bin && -d ./test && -f ./package.json ]]; then
   CI=true npm test
   rc=$?
   if [[ $rc != 0 ]]; then
