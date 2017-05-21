@@ -5,7 +5,14 @@
 #   Sorin Ionescu <sorin.ionescu@gmail.com>
 #
 
-PATH=$PATH:$HOME/.composer/vendor/bin
+if [ -d $HOME/.composer ]; then
+  PATH=$PATH:$HOME/.composer/vendor/bin
+fi
+
+if [ -d $HOME/.config/composer ]; then
+  PATH=$PATH:$HOME/.config/composer/vendor/bin
+fi
+
 
 #
 # Browser
