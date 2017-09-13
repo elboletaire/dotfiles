@@ -48,7 +48,7 @@
 
 [color "status"]
     untracked = red bold
-    modified = red bold
+    changed = red bold
 
 [color "diff"]
     meta = yellow bold
