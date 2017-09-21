@@ -13,6 +13,17 @@ fi
 # Customize to your needs...
 alias sudo='sudo -E'
 
+# transfer.sh
+transfer() {
+    # write to output to tmpfile because of progress bar
+    tmpfile=$( mktemp -t transferXXX )
+    curl --progress-bar --upload-file $1 https://transfer.sh/$(basename $1) >> $tmpfile;
+    cat $tmpfile;
+    rm -f $tmpfile;
+}
+
+alias transfer=transfer
+
 export PATH="$PATH:$HOME/.rvm/bin" # Add RVM to PATH for scripting
 
 # Add android studio required vars..
