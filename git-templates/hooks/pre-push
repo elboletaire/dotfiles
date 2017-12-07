@@ -8,8 +8,8 @@ if [[ -x ./vendor/bin/phpunit ]]; then
   fi
 fi
 
-if [[ -d ./node_modules/.bin && -d ./test && -f ./package.json ]]; then
-  CI=true npm test
+if [[ -d ./node_modules/.bin && -f ./package.json ]] && grep '"test"' ./package.json > /dev/null; then
+  CI=true yarn test
   rc=$?
   if [[ $rc != 0 ]]; then
     exit $rc
