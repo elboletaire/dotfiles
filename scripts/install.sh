@@ -56,14 +56,4 @@ chsh ${USERNAME} --shell $(which zsh)
 # Run Vundle.vim :PluginInstall cmd
 vim -c 'PluginInstall' -c 'qa!'
 
-# Source .zshrc to load NVM configuration
-source ~/.zshrc
-
-if [ $(command -v nvm) != 'nvm' ]; then
-  echo "NVM not detected" && exit 1
-fi
-
-# Install latest available LTS node version using NVM
-nvm install --lts
-
 echo "dotfiles installation was successful" && exit 0
