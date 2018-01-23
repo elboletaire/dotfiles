@@ -18,12 +18,9 @@ Plugin 'airblade/vim-gitgutter'
 Plugin 'mhinz/vim-signify'
 Plugin 'flazz/vim-colorschemes'
 Plugin 'scrooloose/nerdtree'
-Plugin 'groenewege/vim-less'
 Plugin 'godlygeek/tabular'
-Plugin 'plasticboy/vim-markdown'
 Plugin 'editorconfig/editorconfig-vim'
 Plugin 'mkusher/padawan.vim'
-Plugin 'Valloric/YouCompleteMe'
 Plugin 'mbbill/undotree'
 
 " Configure composer command
@@ -83,7 +80,7 @@ set undodir=~/.vimundo/
 " Enable syntax color highlighting
 syntax on
 
-" Set 256 color mode 
+" Set 256 color mode
 set t_Co=256
 if v:version >= 700
   try

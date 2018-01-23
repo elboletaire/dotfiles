@@ -33,15 +33,6 @@ symlink() {
   done
 }
 
-youCompleteMe() {
-  if npm install --prefix ~/.vim/bundle/YouCompleteMe/third_party/ycmd/third_party/tern_runtime --production && \
-    ~/.vim/bundle/YouCompleteMe/install.py --clang-completer --tern-completer; then
-    return 0
-  else
-    return 1
-  fi
-}
-
 # Update apt packages
 if ! sudo apt update; then
   echo "Cannot update apt. ${aborting}" && exit 1
@@ -49,17 +40,9 @@ fi
 
 # Install common required packages. We don't install git, as it's the way to
 # install the dotfiles.
-if ! sudo apt install -y build-essential curl zsh vim cmake python-dev python3-dev php-cli; then
+if ! sudo apt install -y curl zsh vim; then
   echo "Packages installation unsuccessful. ${aborting}" && exit 1
 fi
-
-# Install composer
-php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-php composer-setup.php -- --install-dir=/usr/local/bin --filename=composer
-rm -fv composer-setup.php
-
-# Install NVM (it uses master branch; it could break the installation process)
-curl -o- https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
 
 # Git init submodules
 git submodule update --init --recursive
@@ -82,15 +65,5 @@ fi
 
 # Install latest available LTS node version using NVM
 nvm install --lts
-
-# Install/Compile YouCompleteMe dependencies
-if ! youCompleteMe; then
-  echo "YouCompleteMe dependencies installation failed. ${aborting}" && exit 1
-fi
-
-# Install required npm packages
-if ! npm install -g diff-so-fancy; then
-  echo "Couldn't install npm dependencies. ${aborting}" && exit 1
-fi
 
 echo "dotfiles installation was successful" && exit 0
