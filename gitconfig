@@ -4,6 +4,7 @@
 [user]
     name = Òscar Casajuana
     email = elboletaire@underave.net
+    signingkey = 332B2135995302F1
 
 [core]
     editor = vim
@@ -33,6 +34,8 @@
     pull-up = "!f() { git pull && git submodule update --init --recursive && git submodule status; }; f"
     lol = log --graph --decorate --pretty=oneline --abbrev-commit
     lola = log --graph --decorate --pretty=oneline --abbrev-commit --all
+    c = commit -S
+    co = commit -S
     rc = !git reset $1 && git checkout $1
     rcs = !git reset $1 && git checkout $1 && git status
     recent = "!r() { cur=$(git rev-parse --abbrev-ref HEAD); git for-each-ref --sort=-committerdate refs/heads/ --format='%(color:yellow)%(refname:short)|%(color:green)%(committerdate:relative)|%(color:blue)%(subject)|%(color:magenta)%(authorname)%(color:reset)' | sed \"s@m${cur}|@m* ${cur}|@\" | column -ts'|'; }; r"
