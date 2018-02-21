@@ -10,8 +10,15 @@ if [[ -s "${ZDOTDIR:-$HOME}/.zprezto/init.zsh" ]]; then
   source "${ZDOTDIR:-$HOME}/.zprezto/init.zsh"
 fi
 
+_composer() {
+  location=$(pwd -P)
+  user=$(id -u):$(id -g)
+  docker run --rm -it --user $user --volume $location:/app --volume /tmp:/tmp/$(whoami) composer:latest $1
+}
+
 # Customize to your needs...
 alias sudo='sudo -E'
+alias composer=_composer
 
 # transfer.sh
 transfer() {
