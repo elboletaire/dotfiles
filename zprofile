@@ -11,7 +11,14 @@ export PATH="$PATH:/C/Program Files/nodejs:/C/Users/elboletaire/AppData/Roaming/
 #   Sorin Ionescu <sorin.ionescu@gmail.com>
 #
 
-PATH=$PATH:$HOME/.composer/vendor/bin
+if [ -d $HOME/.composer ]; then
+  PATH=$PATH:$HOME/.composer/vendor/bin
+fi
+
+if [ -d $HOME/.config/composer ]; then
+  PATH=$PATH:$HOME/.config/composer/vendor/bin
+fi
+
 
 #
 # Browser
@@ -32,6 +39,8 @@ export PAGER='less'
 #
 # Language
 #
+
+export LC_ALL="ca_ES.utf8"
 
 if [[ -z "$LANG" ]]; then
   export LANG='en_US.UTF-8'
@@ -75,7 +84,7 @@ fi
 #
 
 if [[ ! -d "$TMPDIR" ]]; then
-  export TMPDIR="/tmp/$USER"
+  export TMPDIR="/tmp/$LOGNAME"
   mkdir -p -m 700 "$TMPDIR"
 fi
 

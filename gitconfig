@@ -9,6 +9,7 @@
     editor = vim
     autocrlf = false
     filemode = false
+    signingkey = 332B2135995302F1
 
 [push]
     default = current
@@ -22,10 +23,6 @@
 [diff]
     tool = vimdiff
 
-[mergetool "sublimerge"]
-    cmd = subl -n --wait \"$REMOTE\" \"$BASE\" \"$LOCAL\" \"$MERGED\" --command \"sublimerge_diff_views\"
-    trustExitCode = false
-
 [mergetool]
     prompt = false
 
@@ -36,8 +33,11 @@
     pull-up = "!f() { git pull && git submodule update --init --recursive && git submodule status; }; f"
     lol = log --graph --decorate --pretty=oneline --abbrev-commit
     lola = log --graph --decorate --pretty=oneline --abbrev-commit --all
+    c = commit -S
+    co = commit -S
     rc = !git reset $1 && git checkout $1
     rcs = !git reset $1 && git checkout $1 && git status
+    recent = "!r() { cur=$(git rev-parse --abbrev-ref HEAD); git for-each-ref --sort=-committerdate refs/heads/ --format='%(color:yellow)%(refname:short)|%(color:green)%(committerdate:relative)|%(color:blue)%(subject)|%(color:magenta)%(authorname)%(color:reset)' | sed \"s@m${cur}|@m* ${cur}|@\" | column -ts'|'; }; r"
     d = difftool
     m = mergetool
 
@@ -48,6 +48,10 @@
     interactive = always
     status = always
 
+[color "status"]
+    untracked = red bold
+    changed = red bold
+
 [color "diff"]
     meta = yellow bold
     commit = green
@@ -56,12 +60,22 @@
     new = green
     whitespace = red reverse
 
-[pager]
-	diff = diff-so-fancy | less --tabs=1,5 -RFX
-	show = diff-so-fancy | less --tabs=1,5 -RFX
+#[pager]
+#	diff = diff-so-fancy | less --tabs=1,5 -RFX
+#	show = diff-so-fancy | less --tabs=1,5 -RFX
 
 [color "diff-highlight"]
 	oldNormal = red bold
 	oldHighlight = red bold 52
 	newNormal = green bold
 	newHighlight = green bold 22
+    old = red bold
+    new = green
+    whitespace = red reverse
+
+[color "branch"]
+    remote = red bold
+
+[interactive]
+    diffFilter = "diff-so-fancy"
+

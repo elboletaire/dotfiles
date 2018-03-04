@@ -21,3 +21,4 @@ if (( $+commands[fortune] )); then
     print
   fi
 fi
+
