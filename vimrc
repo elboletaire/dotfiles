@@ -23,7 +23,6 @@ Plugin 'godlygeek/tabular'
 Plugin 'plasticboy/vim-markdown'
 Plugin 'editorconfig/editorconfig-vim'
 Plugin 'mkusher/padawan.vim'
-Plugin 'Valloric/YouCompleteMe'
 Plugin 'mbbill/undotree'
 
 " Configure composer command
