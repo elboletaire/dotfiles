@@ -13,7 +13,7 @@ fi
 _composer() {
   location=$(pwd -P)
   user=$(id -u):$(id -g)
-  docker run --rm -it --user $user --volume $location:/app --volume /tmp:/tmp/$(whoami) composer:latest $1
+  docker run --rm -it --user $user --volume $location:/app --volume /tmp:/tmp/$(whoami) composer:latest $1 --ignore-platform-reqs --no-scripts
 }
 
 # Customize to your needs...
