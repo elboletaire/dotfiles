@@ -3,8 +3,11 @@
 
 [user]
     name = Òscar Casajuana
-    email = elboletaire@underave.net
-    signingkey = 332B2135995302F1
+    email = elboletaire@gmail.com
+    signingkey = 3D8D55409254C7C6
+
+[commit]
+    gpgsign = true
 
 [core]
     editor = vim
@@ -76,3 +79,4 @@
     oldHighlight = red bold 52
     newNormal = green bold
     newHighlight = green bold 22
+
