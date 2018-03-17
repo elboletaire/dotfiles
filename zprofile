@@ -5,15 +5,6 @@
 #   Sorin Ionescu <sorin.ionescu@gmail.com>
 #
 
-if [ -d $HOME/.composer ]; then
-  PATH=$PATH:$HOME/.composer/vendor/bin
-fi
-
-if [ -d $HOME/.config/composer ]; then
-  PATH=$PATH:$HOME/.config/composer/vendor/bin
-fi
-
-
 #
 # Browser
 #
@@ -37,7 +28,7 @@ export PAGER='less'
 export LC_ALL="ca_ES.utf8"
 
 if [[ -z "$LANG" ]]; then
-  export LANG='en_US.UTF-8'
+  export LANG='ca_ES.UTF-8'
 fi
 
 #
