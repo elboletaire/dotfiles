@@ -49,14 +49,9 @@ fi
 
 # Install common required packages. We don't install git, as it's the way to
 # install the dotfiles.
-if ! sudo apt install -y build-essential curl zsh vim cmake python-dev python3-dev php-cli; then
+if ! sudo apt install -y build-essential curl zsh vim cmake python-dev python3-dev; then
   echo "Packages installation unsuccessful. ${aborting}" && exit 1
 fi
-
-# Install composer
-php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-php composer-setup.php -- --install-dir=/usr/local/bin --filename=composer
-rm -fv composer-setup.php
 
 # Install NVM (it uses master branch; it could break the installation process)
 curl -o- https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
