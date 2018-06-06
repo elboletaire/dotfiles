@@ -11,14 +11,13 @@ if [[ -s "${ZDOTDIR:-$HOME}/.zprezto/init.zsh" ]]; then
 fi
 
 _composer() {
-  location=$(pwd -P)
-  user=$(id -u):$(id -g)
-  docker run --rm -it --user $user --volume $SSH_AUTH_SOCK:/ssh-auth.sock --env SSH_AUTH_SOCK=/ssh-auth.sock --volume $location:/app --volume /tmp:/tmp/$(whoami) --volume /etc/passwd:/etc/passwd:ro --volume /etc/group:/etc/group:ro composer:latest "$@" --ignore-platform-reqs --no-scripts
+  local location=$(pwd -P)
+  local user=$(id -u):$(id -g)
+  local username=$(whoami)
+  docker run --rm -it --user $user --volume $SSH_AUTH_SOCK:/ssh-auth.sock --env SSH_AUTH_SOCK=/ssh-auth.sock --volume $location:/app --volume /tmp:/tmp/$username --volume /etc/passwd:/etc/passwd:ro --volume /etc/group:/etc/group:ro composer:latest "$@" --ignore-platform-reqs --no-scripts
 }
 
-# Customize to your needs...
 alias sudo='sudo -E'
-alias composer=_composer
 
 # transfer.sh
 transfer() {
@@ -33,6 +32,8 @@ transfer() {
 alias transfer=transfer
 
 export PATH="$PATH:$HOME/.rvm/bin" # Add RVM to PATH for scripting
+export GOPATH="$HOME/src/golang"
+export PATH="$PATH:$GOPATH/bin" # Add RVM to PATH for scripting
 
 # Add android studio required vars..
 if [ -d "${HOME}/.Android" ]; then
