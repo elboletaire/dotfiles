@@ -17,10 +17,14 @@ _composer() {
   docker run --rm -it --user $user --volume $SSH_AUTH_SOCK:/ssh-auth.sock --env SSH_AUTH_SOCK=/ssh-auth.sock --volume $location:/app --volume /tmp:/tmp/$username --volume /etc/passwd:/etc/passwd:ro --volume /etc/group:/etc/group:ro composer:latest "$@" --ignore-platform-reqs --no-scripts
 }
 
+if [ -x /usr/bin/bat ]; then
+  alias cat='bat'
+fi
+
 alias sudo='sudo -E'
 
 # transfer.sh
-transfer() {
+_transfer() {
     # write to output to tmpfile because of progress bar
     tmpfile=$( mktemp -t transferXXX )
     curl --progress-bar --upload-file $1 https://transfer.sh/$(basename $1) >> $tmpfile
@@ -29,7 +33,7 @@ transfer() {
     rm -f $tmpfile
 }
 
-alias transfer=transfer
+alias transfer=_transfer
 
 export PATH="$PATH:$HOME/.rvm/bin" # Add RVM to PATH for scripting
 export GOPATH="$HOME/src/golang"
