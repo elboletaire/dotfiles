@@ -7,3 +7,4 @@ flexget/crash_report.*
 flexget/db-config.sqlite
 flexget/log-config.json
 flexget/*.log
+git-semver

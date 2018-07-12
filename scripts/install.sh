@@ -59,6 +59,13 @@ curl -o- https://raw.githubusercontent.com/creationix/nvm/master/install.sh | ba
 # Git init submodules
 git submodule update --init --recursive
 
+# Install git semver
+(git clone git@github.com:markchalloner/git-semver.git && \
+cd git-semver && git checkout $(
+    git tag | grep '^[0-9]\+\.[0-9]\+\.[0-9]\+$' | \
+    sort -t. -k 1,1n -k 2,2n -k 3,3n | tail -n 1
+) && sudo ./install.sh)
+
 # Make symbolic links
 symlink
 
