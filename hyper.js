@@ -135,7 +135,9 @@ module.exports = {
     "hyper-monokai-extended",
     "hyper-savetext",
     "hypercwd",
-    "hyper-dark-scrollbar"
+    "hyper-dark-scrollbar",
+    "hyper-tab-icons",
+    "hyper-tabs-enhanced"
   ],
 
   // in development, you can create a directory under
