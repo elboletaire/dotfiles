@@ -136,7 +136,6 @@ module.exports = {
     "hyper-savetext",
     "hypercwd",
     "hyper-dark-scrollbar",
-    "hyper-tab-icons",
     "hyper-tabs-enhanced"
   ],
 
@@ -148,5 +147,8 @@ module.exports = {
   keymaps: {
     // Example
     // 'window:devtools': 'cmd+alt+o',
+  },
+  hyperTabs: {
+    trafficButtons: true,
   },
 };
