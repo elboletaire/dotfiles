@@ -132,11 +132,11 @@ module.exports = {
   //   `@company/project`
   //   `project#1.0.1`
   plugins: [
-    "hyper-monokai-extended",
     "hyper-savetext",
     "hypercwd",
     "hyper-dark-scrollbar",
-    "hyper-tabs-enhanced"
+    "hyper-tabs-enhanced",
+    "hyper-material-theme"
   ],
 
   // in development, you can create a directory under
@@ -150,5 +150,7 @@ module.exports = {
   },
   hyperTabs: {
     trafficButtons: true,
+    tabIconsColored: true,
+    activityColor: 'salmon',
   },
 };
