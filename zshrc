@@ -35,9 +35,15 @@ _transfer() {
 
 alias transfer=_transfer
 
-export PATH="$PATH:$HOME/.rvm/bin" # Add RVM to PATH for scripting
-export GOPATH="$HOME/src/golang"
-export PATH="$PATH:$GOPATH/bin" # Add RVM to PATH for scripting
+if [ -d "${HOME}/.rvm/bin" ]; then
+  export PATH="$PATH:$HOME/.rvm/bin" # Add RVM to PATH for scripting
+fi
+
+if [ -d "${HOME}/src/golang" ]; then
+  export PATH="$PATH:/usr/local/go/bin"
+  export GOPATH="$HOME/src/golang"
+  export PATH="$PATH:$GOPATH/bin"
+fi
 
 # Add android studio required vars..
 if [ -d "${HOME}/.Android" ]; then
