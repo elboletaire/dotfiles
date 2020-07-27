@@ -23,21 +23,14 @@ fi
 
 alias sudo='sudo -E'
 
-# transfer.sh
-_transfer() {
-    # write to output to tmpfile because of progress bar
-    tmpfile=$( mktemp -t transferXXX )
-    curl --progress-bar --upload-file $1 https://transfer.sh/$(basename $1) >> $tmpfile
-    cat $tmpfile
-    echo
-    rm -f $tmpfile
-}
-
-alias transfer=_transfer
-
 if [ -d "${HOME}/.rvm/bin" ]; then
   export PATH="$PATH:$HOME/.rvm/bin" # Add RVM to PATH for scripting
 fi
+
+if [ -d "$HOME/.yarn/bin" ]; then
+  export PATH="$PATH:$HOME/.yarn/bin"
+fi
+
 
 if [ -d "${HOME}/src/golang" ]; then
   export PATH="$PATH:/usr/local/go/bin"
