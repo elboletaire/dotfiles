@@ -34,13 +34,13 @@ symlink() {
 }
 
 # Update apt packages
-if ! sudo apt update; then
-  echo "Cannot update apt. ${aborting}" && exit 1
+if ! sudo pacman -Syu; then
+  echo "Cannot update pacman. ${aborting}" && exit 1
 fi
 
 # Install common required packages. We don't install git, as it's the way to
 # install the dotfiles.
-if ! sudo apt install -y curl zsh vim; then
+if ! sudo pacman -S --noconfirm curl zsh vim which; then
   echo "Packages installation unsuccessful. ${aborting}" && exit 1
 fi
 
