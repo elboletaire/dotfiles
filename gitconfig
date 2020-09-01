@@ -3,7 +3,11 @@
 
 [user]
     name = Òscar Casajuana
-    email = elboletaire@underave.net
+    email = elboletaire@gmail.com
+    signingkey = 3D8D55409254C7C6
+
+[commit]
+    gpgsign = true
 
 [core]
     editor = vim
@@ -19,10 +23,6 @@
 [diff]
     tool = vimdiff
 
-[mergetool "sublimerge"]
-    cmd = subl -n --wait \"$REMOTE\" \"$BASE\" \"$LOCAL\" \"$MERGED\" --command \"sublimerge_diff_views\"
-    trustExitCode = false
-
 [mergetool]
     prompt = false
 
@@ -33,11 +33,14 @@
     pull-up = "!f() { git pull && git submodule update --init --recursive && git submodule status; }; f"
     lol = log --graph --decorate --pretty=oneline --abbrev-commit
     lola = log --graph --decorate --pretty=oneline --abbrev-commit --all
+    c = commit -S
+    co = commit -S
     rc = !git reset $1 && git checkout $1
     rcs = !git reset $1 && git checkout $1 && git status
     recent = "!r() { cur=$(git rev-parse --abbrev-ref HEAD); git for-each-ref --sort=-committerdate refs/heads/ --format='%(color:yellow)%(refname:short)|%(color:green)%(committerdate:relative)|%(color:blue)%(subject)|%(color:magenta)%(authorname)%(color:reset)' | sed \"s@m${cur}|@m* ${cur}|@\" | column -ts'|'; }; r"
     d = difftool
     m = mergetool
+    stashq = -c commit.gpgsign=false stash
 
 [color]
     ui = always
@@ -66,3 +69,8 @@
     oldHighlight = red bold 52
     newNormal = green bold
     newHighlight = green bold 22
+
+[url "ssh://git@gitlab.com/"]
+	insteadOf = https://gitlab.com/
+[url "ssh://git@github.com/"]
+	insteadOf = https://github.com/
