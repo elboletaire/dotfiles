@@ -11,6 +11,7 @@ if [[ -s "${ZDOTDIR:-$HOME}/.zprezto/init.zsh" ]]; then
 fi
 
 alias sudo='sudo -E'
+export GPG_TTY=$(tty)
 
 export LS_COLORS="$(vivid generate molokai)"
 
