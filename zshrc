@@ -5,6 +5,12 @@
 #   Sorin Ionescu <sorin.ionescu@gmail.com>
 #
 
+# Define completions
+fpath+=(${HOME}/.dotfiles/completion/_docker-compose)
+fpath+=(${HOME}/.dotfiles/completion/_buffalo)
+# Load completions
+autoload -U compinit && compinit
+
 # Source Prezto.
 if [[ -s "${ZDOTDIR:-$HOME}/.zprezto/init.zsh" ]]; then
   source "${ZDOTDIR:-$HOME}/.zprezto/init.zsh"
@@ -75,10 +81,6 @@ load-nvmrc() {
 add-zsh-hook chpwd load-nvmrc
 load-nvmrc
 
-# Define completions
-fpath=(~/.dotfiles/completion $fpath)
-# Load completions
-autoload -Uz compinit && compinit -i
 
 # added by travis gem
 [ -f "${HOME}/.travis/travis.sh" ] && source "${HOME}/.travis/travis.sh"

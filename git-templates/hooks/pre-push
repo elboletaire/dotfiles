@@ -16,5 +16,13 @@ if [[ -d ./node_modules/.bin && -f ./package.json ]] && grep '"test"' ./package.
   fi
 fi
 
+if [[ -f ./makefile ]] && grep 'test:' ./makefile > /dev/null; then
+	CI=true make test
+	rc=$?
+  if [[ $rc != 0 ]]; then
+    exit $rc
+  fi
+fi
+
 
 exit 0
