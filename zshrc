@@ -15,6 +15,10 @@ export GPG_TTY=$(tty)
 
 export LS_COLORS="$(vivid generate molokai)"
 
+if [ -d /usr/local/go/bin ]; then
+    PATH="$PATH:/usr/local/go/bin"
+fi
+
 # Define completions
 fpath=(~/.dotfiles/completion $fpath)
 # Load completions
