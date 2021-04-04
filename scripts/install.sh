@@ -40,7 +40,7 @@ fi
 
 # Install common required packages. We don't install git, as it's the way to
 # install the dotfiles.
-if ! sudo pacman -S --noconfirm curl zsh vim which; then
+if ! sudo pacman -S --noconfirm curl zsh vivid vim which; then
   echo "Packages installation unsuccessful. ${aborting}" && exit 1
 fi
 
