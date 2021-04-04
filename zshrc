@@ -17,6 +17,7 @@ export LS_COLORS="$(vivid generate molokai)"
 
 if [ -d /usr/local/go/bin ]; then
     PATH="$PATH:/usr/local/go/bin"
+    PATH="$PATH:${HOME}/go/bin"
 fi
 
 # Define completions
