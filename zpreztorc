@@ -113,7 +113,7 @@ zstyle ':prezto:module:prompt' theme 'sorin'
 #
 
 # Set the SSH identities to load into the agent.
-# zstyle ':prezto:module:ssh:load' identities 'elboletaire'
+zstyle ':prezto:module:ssh:load' identities 'elboletaire'
 
 #
 # Syntax Highlighting

@@ -13,6 +13,9 @@ if [ -d $HOME/.config/composer ]; then
   PATH=$PATH:$HOME/.config/composer/vendor/bin
 fi
 
+export $(dbus-launch)
+export DISPLAY=$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}'):0
+export LIBGL_ALWAYS_INDIRECT=1
 
 #
 # Browser
