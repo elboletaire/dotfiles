@@ -1,5 +1,6 @@
 [init]
     templatedir = ~/.dotfiles/git-templates
+    defaultBranch = develop
 
 [user]
     name = Òscar Casajuana
