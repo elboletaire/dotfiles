@@ -17,7 +17,12 @@ export LS_COLORS="$(vivid generate molokai)"
 
 if [ -d /usr/local/go/bin ]; then
     PATH="$PATH:/usr/local/go/bin"
-    PATH="$PATH:${HOME}/go/bin"
+fi
+
+go=$(which go)
+
+if [ -x $go ]; then
+  PATH="$PATH:${HOME}/go/bin"
 fi
 
 export NVM_DIR="$HOME/.nvm"
