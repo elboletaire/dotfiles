@@ -4,7 +4,7 @@
 [user]
     name = Òscar Casajuana
     email = elboletaire@gmail.com
-    signingkey = 3D8D55409254C7C6
+    signingkey = /home/elboletaire/.ssh/elboletaire.pub
 
 [commit]
     gpgsign = true
@@ -75,3 +75,5 @@
 [url "ssh://git@github.com/"]
 	insteadOf = https://github.com/
 
+[gpg]
+  format = ssh
