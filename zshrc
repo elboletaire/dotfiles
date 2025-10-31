@@ -27,6 +27,10 @@ if [ -d ${HOME}/go/bin ]; then
   PATH="$PATH:${HOME}/go/bin"
 fi
 
+if [ -d ${HOME}/.cargo/bin ]; then
+  PATH="$PATH:${HOME}/.cargo/bin"
+fi
+
 # Define completions
 fpath=(~/.dotfiles/completion $fpath)
 # Load completions
