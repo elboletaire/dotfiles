@@ -8,8 +8,29 @@ if [[ -x ./vendor/bin/phpunit ]]; then
   fi
 fi
 
-if [[ -d ./node_modules/.bin && -f ./package.json ]] && grep '"test"' ./package.json > /dev/null; then
-  CI=true yarn test
+# Detect JS package manager and run tests if applicable
+if [[ -f ./package.json ]] && grep '"test"' ./package.json > /dev/null; then
+  if [[ -f ./package.json ]]; then
+    pkg_mgr_field=$(grep '"packageManager"' ./package.json | head -1 | sed -E 's/.*"packageManager": *"([^"]+)".*/\1/')
+    if [[ -n "$pkg_mgr_field" ]]; then
+      pkg_mgr=$(echo "$pkg_mgr_field" | cut -d@ -f1)
+    else
+      # Fallback detection
+      if [[ -f yarn.lock ]]; then
+        pkg_mgr="yarn"
+      elif [[ -f pnpm-lock.yaml ]]; then
+        pkg_mgr="pnpm"
+      elif [[ -f package-lock.json ]]; then
+        pkg_mgr="npm"
+      else
+        pkg_mgr="yarn"
+      fi
+    fi
+  fi
+
+  echo "Detected package manager: $pkg_mgr"
+
+  CI=true $pkg_mgr test
   rc=$?
   if [[ $rc != 0 ]]; then
     exit $rc
