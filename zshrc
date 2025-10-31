@@ -75,3 +75,8 @@ case ":$PATH:" in
   *) export PATH="$PNPM_HOME:$PATH" ;;
 esac
 # pnpm end
+
+# opencode
+if [ -d /home/elboletaire/.opencode/bin ]; then
+    export PATH="$PATH:/home/elboletaire/.opencode/bin"
+fi
