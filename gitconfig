@@ -77,4 +77,4 @@
 	insteadOf = https://github.com/
 
 [gpg]
-  format = ssh
+    format = ssh
