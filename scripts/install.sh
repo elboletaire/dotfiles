@@ -2,7 +2,7 @@
 
 declare -r dotfiles=~/.dotfiles
 declare -r oldfiles=~/old_dotfiles
-declare -r exclude=("README.md" "LICENSE" "scripts" "git-templates")
+declare -r exclude=("README.md" "LICENSE" "scripts" "git")
 declare -r aborting="Aborting dotfiles installation..."
 
 backup_dotfile() {

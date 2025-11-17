@@ -1,11 +1,11 @@
 [init]
-    templatedir = ~/.dotfiles/git-templates
+    templatedir = ~/.dotfiles/git/templates
     defaultBranch = main
 
 [user]
     name = Òscar Casajuana
     email = elboletaire@gmail.com
-    signingkey = /home/elboletaire/.ssh/elboletaire.pub
+    signingkey = ~/.ssh/elboletaire.pub
 
 [commit]
     gpgsign = true
@@ -72,9 +72,10 @@
     newHighlight = green bold 22
 
 [url "ssh://git@gitlab.com/"]
-	insteadOf = https://gitlab.com/
+    insteadOf = https://gitlab.com/
 [url "ssh://git@github.com/"]
-	insteadOf = https://github.com/
-
+    insteadOf = https://github.com/
 [gpg]
     format = ssh
+[gpg "ssh"]
+    allowedSignersFile = ~/.dotfiles/git/allowed_signers
