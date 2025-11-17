@@ -65,8 +65,12 @@ load-nvmrc() {
 add-zsh-hook chpwd load-nvmrc
 load-nvmrc
 
-
-. "$HOME/.local/bin/env"
+if [ -d "$HOME/.local/bin" ]; then
+  export PATH="$HOME/.local/bin:$PATH"
+  if [ -f "$HOME/.local/bin/env" ]; then
+    . "$HOME/.local/bin/env"
+  fi
+fi
 
 # pnpm
 export PNPM_HOME="/home/elboletaire/.local/share/pnpm"
