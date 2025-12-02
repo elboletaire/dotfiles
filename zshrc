@@ -84,3 +84,4 @@ esac
 if [ -d /home/elboletaire/.opencode/bin ]; then
     export PATH="$PATH:/home/elboletaire/.opencode/bin"
 fi
+

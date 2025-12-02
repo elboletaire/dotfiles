@@ -4,3 +4,6 @@
 [submodule "zprezto-upstream"]
 	path = zprezto
 	url = git@github.com:sorin-ionescu/prezto.git
+[submodule "config/kitty/kitty-themes"]
+	path = config/kitty/kitty-themes
+	url = https://github.com/dexpota/kitty-themes.git
