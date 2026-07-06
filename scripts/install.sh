@@ -81,9 +81,8 @@ if [[ "$OS" == "Darwin" ]]; then
   if ! brew update; then
     echo "Cannot update Homebrew. ${aborting}" && exit 1
   fi
-  # Install common required packages. We don't install git, as it's the way to
-  # install the dotfiles.
-  if ! brew install curl zsh vivid vim; then
+  # curl, zsh, vim, and which are all pre-installed on macOS; only vivid needs Homebrew.
+  if ! brew install vivid; then
     echo "Packages installation unsuccessful. ${aborting}" && exit 1
   fi
 else
