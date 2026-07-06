@@ -91,3 +91,6 @@ if [ -d "$HOME/.opencode/bin" ]; then
     export PATH="$PATH:$HOME/.opencode/bin"
 fi
 
+# Local overrides and secrets (not tracked in git)
+[[ -f ~/.zshrc.local ]] && source ~/.zshrc.local
+
