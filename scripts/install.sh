@@ -71,15 +71,31 @@ symlink_config() {
   done
 }
 
-# Update apt packages
-if ! sudo pacman -Syu; then
-  echo "Cannot update pacman. ${aborting}" && exit 1
-fi
+OS=$(uname -s)
 
-# Install common required packages. We don't install git, as it's the way to
-# install the dotfiles.
-if ! sudo pacman -S --noconfirm curl zsh vivid vim which; then
-  echo "Packages installation unsuccessful. ${aborting}" && exit 1
+if [[ "$OS" == "Darwin" ]]; then
+  # macOS: require Homebrew to be installed
+  if ! command -v brew &>/dev/null; then
+    echo "Homebrew not found. Install it from https://brew.sh and re-run. ${aborting}" && exit 1
+  fi
+  if ! brew update; then
+    echo "Cannot update Homebrew. ${aborting}" && exit 1
+  fi
+  # Install common required packages. We don't install git, as it's the way to
+  # install the dotfiles.
+  if ! brew install curl zsh vivid vim; then
+    echo "Packages installation unsuccessful. ${aborting}" && exit 1
+  fi
+else
+  # Linux (Arch): use pacman
+  if ! sudo pacman -Syu; then
+    echo "Cannot update pacman. ${aborting}" && exit 1
+  fi
+  # Install common required packages. We don't install git, as it's the way to
+  # install the dotfiles.
+  if ! sudo pacman -S --noconfirm curl zsh vivid vim which; then
+    echo "Packages installation unsuccessful. ${aborting}" && exit 1
+  fi
 fi
 
 # Git init submodules
@@ -92,7 +108,7 @@ symlink
 symlink_config
 
 # Change the shell of the current user to zsh
-chsh ${USERNAME} --shell $(which zsh)
+chsh -s $(which zsh)
 
 # Run Vundle.vim :PluginInstall cmd
 vim -c 'PluginInstall' -c 'qa!'

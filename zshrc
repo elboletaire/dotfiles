@@ -75,7 +75,11 @@ if [ -d "$HOME/.local/bin" ]; then
 fi
 
 # pnpm
-export PNPM_HOME="/home/elboletaire/.local/share/pnpm"
+if [[ "$OSTYPE" == darwin* ]]; then
+  export PNPM_HOME="$HOME/Library/pnpm"
+else
+  export PNPM_HOME="$HOME/.local/share/pnpm"
+fi
 case ":$PATH:" in
   *":$PNPM_HOME/bin:"*) ;;
   *) export PATH="$PNPM_HOME/bin:$PATH" ;;
@@ -83,7 +87,7 @@ esac
 # pnpm end
 
 # opencode
-if [ -d /home/elboletaire/.opencode/bin ]; then
-    export PATH="$PATH:/home/elboletaire/.opencode/bin"
+if [ -d "$HOME/.opencode/bin" ]; then
+    export PATH="$PATH:$HOME/.opencode/bin"
 fi
 

@@ -14,7 +14,8 @@ config.initial_rows = 35
 config.scrollback_lines = 10000
 
 -- or, changing the font size and color scheme.
-config.font_size = 10
+-- macOS Retina displays need a larger size
+config.font_size = wezterm.target_triple:find('darwin') and 12 or 10
 config.color_scheme = 'Monokai Pro (Gogh)'
 
 config.window_frame = {

@@ -1,4 +1,6 @@
 # pyright: reportMissingImports=false
+import platform
+import subprocess
 from datetime import datetime
 from kitty.boss import get_boss
 from kitty.fast_data_types import Screen, add_timer, get_options
@@ -127,39 +129,77 @@ def _redraw_tab_bar(_):
         tm.mark_tab_bar_dirty()
 
 
-def get_battery_cells() -> list:
+def _battery_cells_from_status(status: str, percent: int) -> list:
+    # TODO: declare the lambda once and don't repeat the code
+    if status == "Discharging":
+        icon_color = UNPLUGGED_COLORS[
+            min(UNPLUGGED_COLORS.keys(), key=lambda x: abs(x - percent))
+        ]
+        icon = UNPLUGGED_ICONS[
+            min(UNPLUGGED_ICONS.keys(), key=lambda x: abs(x - percent))
+        ]
+    elif status == "Not charging":
+        icon_color = UNPLUGGED_COLORS[
+            min(UNPLUGGED_COLORS.keys(), key=lambda x: abs(x - percent))
+        ]
+        icon = PLUGGED_ICONS[
+            min(PLUGGED_ICONS.keys(), key=lambda x: abs(x - percent))
+        ]
+    else:
+        icon_color = PLUGGED_COLORS[
+            min(PLUGGED_COLORS.keys(), key=lambda x: abs(x - percent))
+        ]
+        icon = PLUGGED_ICONS[
+            min(PLUGGED_ICONS.keys(), key=lambda x: abs(x - percent))
+        ]
+    return [(bat_text_color, str(percent) + "% "), (icon_color, icon)]
+
+
+def _get_battery_cells_linux() -> list:
     try:
         with open("/sys/class/power_supply/BAT0/status", "r") as f:
-            status = f.read()
+            status = f.read().strip()
         with open("/sys/class/power_supply/BAT0/capacity", "r") as f:
             percent = int(f.read())
-        if status == "Discharging\n":
-            # TODO: declare the lambda once and don't repeat the code
-            icon_color = UNPLUGGED_COLORS[
-                min(UNPLUGGED_COLORS.keys(), key=lambda x: abs(x - percent))
-            ]
-            icon = UNPLUGGED_ICONS[
-                min(UNPLUGGED_ICONS.keys(), key=lambda x: abs(x - percent))
-            ]
-        elif status == "Not charging\n":
-            icon_color = UNPLUGGED_COLORS[
-                min(UNPLUGGED_COLORS.keys(), key=lambda x: abs(x - percent))
-            ]
-            icon = PLUGGED_ICONS[
-                min(PLUGGED_ICONS.keys(), key=lambda x: abs(x - percent))
-            ]
-        else:
-            icon_color = PLUGGED_COLORS[
-                min(PLUGGED_COLORS.keys(), key=lambda x: abs(x - percent))
-            ]
-            icon = PLUGGED_ICONS[
-                min(PLUGGED_ICONS.keys(), key=lambda x: abs(x - percent))
-            ]
-        percent_cell = (bat_text_color, str(percent) + "% ")
-        icon_cell = (icon_color, icon)
-        return [percent_cell, icon_cell]
+        return _battery_cells_from_status(status, percent)
     except FileNotFoundError:
         return []
+
+
+def _get_battery_cells_macos() -> list:
+    try:
+        result = subprocess.run(
+            ["pmset", "-g", "batt"], capture_output=True, text=True, timeout=1
+        )
+        for line in result.stdout.splitlines():
+            if "InternalBattery" not in line:
+                continue
+            # Example: " -InternalBattery-0 (id=...)	80%; discharging; 3:45 remaining"
+            parts = line.split("\t", 1)
+            if len(parts) < 2:
+                continue
+            info = parts[1]
+            percent_str, _, rest = info.partition(";")
+            percent = int(percent_str.strip().rstrip("%"))
+            raw_status = rest.strip().split(";")[0].strip()
+            status_map = {
+                "discharging": "Discharging",
+                "charging": "Charging",
+                "finishing charge": "Charging",
+                "charged": "Full",
+                "ac attached": "Not charging",
+            }
+            status = status_map.get(raw_status.lower(), "Charging")
+            return _battery_cells_from_status(status, percent)
+    except Exception:
+        pass
+    return []
+
+
+def get_battery_cells() -> list:
+    if platform.system() == "Darwin":
+        return _get_battery_cells_macos()
+    return _get_battery_cells_linux()
 
 
 timer_id = None

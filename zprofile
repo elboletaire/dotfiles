@@ -20,6 +20,10 @@ fi
 
 if [[ "$OSTYPE" == darwin* ]]; then
   export BROWSER='open'
+  # Homebrew on Apple Silicon installs to /opt/homebrew; Intel Macs use /usr/local
+  if [ -d /opt/homebrew/bin ]; then
+    path=(/opt/homebrew/bin /opt/homebrew/sbin $path)
+  fi
 fi
 
 #
@@ -34,7 +38,11 @@ export PAGER='less'
 # Language
 #
 
-export LC_ALL="ca_ES.utf8"
+if [[ "$OSTYPE" == darwin* ]]; then
+  export LC_ALL="ca_ES.UTF-8"
+else
+  export LC_ALL="ca_ES.utf8"
+fi
 
 if [[ -z "$LANG" ]]; then
   export LANG='en_US.UTF-8'
