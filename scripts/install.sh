@@ -74,9 +74,9 @@ symlink_config() {
 OS=$(uname -s)
 
 if [[ "$OS" == "Darwin" ]]; then
-  # macOS: require Homebrew to be installed
+  # macOS: install Homebrew if not present
   if ! command -v brew &>/dev/null; then
-    echo "Homebrew not found. Install it from https://brew.sh and re-run. ${aborting}" && exit 1
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   fi
   if ! brew update; then
     echo "Cannot update Homebrew. ${aborting}" && exit 1
