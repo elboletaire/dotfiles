@@ -94,7 +94,7 @@ install_nvm() {
 }
 
 install_ai_agents() {
-  npm install -g @anthropic-ai/claude-code
+  curl -fsSL https://claude.ai/install.sh | bash
   npm install -g @earendil-works/pi-coding-agent
 }
 
