@@ -4,6 +4,7 @@ declare -r dotfiles=~/.dotfiles
 declare -r oldfiles=~/old_dotfiles
 declare -r exclude=("README.md" "LICENSE" "scripts" "git" "config" "ai")
 declare -r aborting="Aborting dotfiles installation..."
+OS=$(uname -s)
 
 backup_dotfile() {
   if [ ! -d $oldfiles ]; then
@@ -26,6 +27,10 @@ symlink() {
       continue
     fi
     destination=~/.$filename
+    # Skip if it's already the intended symlink (keeps re-runs cruft-free)
+    if [ -L "$destination" ] && [ "$(readlink "$destination")" = "$file" ]; then
+      continue
+    fi
     if [ -f $destination -o -d $destination ]; then
       backup_dotfile $destination
     fi
@@ -58,6 +63,11 @@ symlink_config() {
     local item_name=$(basename $item)
     local destination=~/.config/$item_name
 
+    # Skip if it's already the intended symlink (keeps re-runs cruft-free)
+    if [ -L "$destination" ] && [ "$(readlink "$destination")" = "$item" ]; then
+      continue
+    fi
+
     # Backup existing file or directory
     if [ -f $destination -o -d $destination ]; then
       if [ ! -d $config_backup ]; then
@@ -74,7 +84,16 @@ symlink_config() {
 install_rtk() {
   # rtk (Rust Token Killer): CLI proxy that compresses command output before it
   # reaches the assistant. https://github.com/rtk-ai/rtk
-  if command -v rtk &>/dev/null; then
+  # Pass "update" to force an upgrade even when rtk is already installed.
+  local mode=$1
+
+  if [[ "$mode" == "update" ]]; then
+    if [[ "$OS" == "Darwin" ]]; then
+      brew upgrade rtk || brew install rtk
+    else
+      curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/master/install.sh | sh
+    fi
+  elif command -v rtk &>/dev/null; then
     echo "rtk already installed ($(rtk --version))"
   elif [[ "$OS" == "Darwin" ]]; then
     brew install rtk
@@ -140,51 +159,84 @@ symlink_ai() {
   fi
 }
 
-OS=$(uname -s)
-
-if [[ "$OS" == "Darwin" ]]; then
-  # macOS: install Homebrew if not present
-  if ! command -v brew &>/dev/null; then
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+update_skills() {
+  # Bump the shared ~/.agents skills hub to latest and re-sync the lock into the
+  # repo so the version bump shows up as a reviewable git change.
+  if ! command -v npx &>/dev/null; then
+    echo "npx not found; skipping skills update."
+    return
   fi
-  if ! brew update; then
-    echo "Cannot update Homebrew. ${aborting}" && exit 1
+  npx --yes skills update -g -y
+  if [ -f ~/.agents/.skill-lock.json ]; then
+    cp ~/.agents/.skill-lock.json "$dotfiles/ai/skills/skill-lock.json"
+    echo "Synced skill-lock.json into the repo (review & commit the bump)."
   fi
-  # curl, zsh, vim, and which are all pre-installed on macOS; only vivid needs Homebrew.
-  if ! brew install vivid; then
-    echo "Packages installation unsuccessful. ${aborting}" && exit 1
+}
+
+install_packages() {
+  if [[ "$OS" == "Darwin" ]]; then
+    # macOS: install Homebrew if not present
+    if ! command -v brew &>/dev/null; then
+      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    fi
+    if ! brew update; then
+      echo "Cannot update Homebrew. ${aborting}" && exit 1
+    fi
+    # curl, zsh, vim, and which are all pre-installed on macOS; only vivid needs Homebrew.
+    if ! brew install vivid; then
+      echo "Packages installation unsuccessful. ${aborting}" && exit 1
+    fi
+  else
+    # Linux (Arch): use pacman
+    if ! sudo pacman -Syu; then
+      echo "Cannot update pacman. ${aborting}" && exit 1
+    fi
+    # Install common required packages. We don't install git, as it's the way to
+    # install the dotfiles.
+    if ! sudo pacman -S --noconfirm curl zsh vivid vim which; then
+      echo "Packages installation unsuccessful. ${aborting}" && exit 1
+    fi
   fi
-else
-  # Linux (Arch): use pacman
-  if ! sudo pacman -Syu; then
-    echo "Cannot update pacman. ${aborting}" && exit 1
-  fi
-  # Install common required packages. We don't install git, as it's the way to
-  # install the dotfiles.
-  if ! sudo pacman -S --noconfirm curl zsh vivid vim which; then
-    echo "Packages installation unsuccessful. ${aborting}" && exit 1
-  fi
-fi
+}
 
-# Git init submodules
-git submodule update --init --recursive
+do_install() {
+  install_packages
+  git submodule update --init --recursive
+  symlink
+  symlink_config
+  # Install rtk and wire its hook into Claude Code and Pi (before symlink_ai)
+  install_rtk
+  # Symlink AI assistant config (prompts, agents, instructions) and restore skills
+  symlink_ai
+  # Change the shell of the current user to zsh
+  chsh -s "$(which zsh)"
+  # Run Vundle.vim :PluginInstall cmd
+  vim -c 'PluginInstall' -c 'qa!'
+  echo "dotfiles installation was successful"
+}
 
-# Make symbolic links
-symlink
+do_update() {
+  # Lightweight: no system packages, no submodule version bump.
+  git submodule update --init --recursive
+  symlink
+  symlink_config
+  install_rtk update
+  symlink_ai
+  update_skills
+  echo "dotfiles update complete"
+}
 
-# Make symbolic links for config directory
-symlink_config
+do_update_ai() {
+  # AI-only fast path: refresh rtk, its hooks, the AI symlinks and the skills.
+  install_rtk update
+  symlink_ai
+  update_skills
+  echo "AI stack update complete"
+}
 
-# Install rtk and wire its hook into Claude Code and Pi (before symlink_ai)
-install_rtk
-
-# Symlink AI assistant config (prompts, agents, instructions) and restore skills
-symlink_ai
-
-# Change the shell of the current user to zsh
-chsh -s $(which zsh)
-
-# Run Vundle.vim :PluginInstall cmd
-vim -c 'PluginInstall' -c 'qa!'
-
-echo "dotfiles installation was successful" && exit 0
+case "${1:-install}" in
+  install) do_install ;;
+  update)  do_update ;;
+  ai)      do_update_ai ;;
+  *) echo "usage: $(basename "$0") [install|update|ai]" && exit 1 ;;
+esac
