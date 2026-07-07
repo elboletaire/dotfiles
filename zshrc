@@ -12,6 +12,8 @@ fi
 
 alias sudo='sudo -E'
 alias jprobe='ffprobe -v error -print_format json -show_format -show_streams'
+alias ytdl='yt-dlp -f "bestvideo[vcodec^=avc1]+bestaudio[ext=m4a]/best[vcodec^=avc1][ext=mp4]" --merge-output-format mp4'
+alias icat='kitten icat'
 export GPG_TTY=$(tty)
 
 export MAKEFLAGS="-j10"
@@ -75,8 +77,8 @@ fi
 # pnpm
 export PNPM_HOME="/home/elboletaire/.local/share/pnpm"
 case ":$PATH:" in
-  *":$PNPM_HOME:"*) ;;
-  *) export PATH="$PNPM_HOME:$PATH" ;;
+  *":$PNPM_HOME/bin:"*) ;;
+  *) export PATH="$PNPM_HOME/bin:$PATH" ;;
 esac
 # pnpm end
 
