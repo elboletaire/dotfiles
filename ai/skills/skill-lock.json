@@ -6,27 +6,27 @@
       "sourceType": "github",
       "sourceUrl": "https://github.com/vercel-labs/skills.git",
       "skillPath": "skills/find-skills/SKILL.md",
-      "skillFolderHash": "c2f31172b6f256272305a5e6e7228b258446899f",
+      "skillFolderHash": "eb6a23305aea6e340d14b9de3766e721f9f4861b",
       "installedAt": "2026-02-03T11:47:05.419Z",
-      "updatedAt": "2026-02-03T11:47:05.419Z"
+      "updatedAt": "2026-07-07T16:51:09.060Z"
     },
     "agent-browser": {
       "source": "vercel-labs/agent-browser",
       "sourceType": "github",
       "sourceUrl": "https://github.com/vercel-labs/agent-browser.git",
       "skillPath": "skills/agent-browser/SKILL.md",
-      "skillFolderHash": "070eedbbdfcd62e10082b44b5eaca16cffc51f31",
+      "skillFolderHash": "9b31e495b887e4ca123960415eca69fc7e1bba28",
       "installedAt": "2026-02-04T11:52:38.529Z",
-      "updatedAt": "2026-02-19T14:47:58.813Z"
+      "updatedAt": "2026-07-07T16:41:17.574Z"
     },
     "using-superpowers": {
       "source": "obra/superpowers",
       "sourceType": "github",
       "sourceUrl": "https://github.com/obra/superpowers.git",
       "skillPath": "skills/using-superpowers/SKILL.md",
-      "skillFolderHash": "64c70a2b656d440ddb50818c2477e028facbc468",
+      "skillFolderHash": "8528440d6778e041cb1b9a0ada13f9f3cecda663",
       "installedAt": "2026-04-16T11:49:26.965Z",
-      "updatedAt": "2026-04-16T11:49:26.965Z"
+      "updatedAt": "2026-07-07T16:41:19.999Z"
     },
     "github-issues": {
       "source": "github/awesome-copilot",
@@ -51,45 +51,45 @@
       "sourceType": "github",
       "sourceUrl": "https://github.com/obra/superpowers.git",
       "skillPath": "skills/brainstorming/SKILL.md",
-      "skillFolderHash": "f260c775073816860fef8a37c032ac77e2ff5821",
+      "skillFolderHash": "b14f49a55a8387cfa12ac89794ab79698d7fddbb",
       "installedAt": "2026-04-25T22:09:15.417Z",
-      "updatedAt": "2026-04-25T22:09:15.417Z"
+      "updatedAt": "2026-07-07T16:41:22.590Z"
     },
     "systematic-debugging": {
       "source": "obra/superpowers",
       "sourceType": "github",
       "sourceUrl": "https://github.com/obra/superpowers.git",
       "skillPath": "skills/systematic-debugging/SKILL.md",
-      "skillFolderHash": "828c239ac986cc1fc7edd10292f66e4a3640e9c0",
+      "skillFolderHash": "5702624a1f0e5ad478234442ce5cde038a525465",
       "installedAt": "2026-04-25T22:09:26.693Z",
-      "updatedAt": "2026-04-25T22:09:26.693Z"
+      "updatedAt": "2026-07-07T16:41:25.137Z"
     },
     "test-driven-development": {
       "source": "obra/superpowers",
       "sourceType": "github",
       "sourceUrl": "https://github.com/obra/superpowers.git",
       "skillPath": "skills/test-driven-development/SKILL.md",
-      "skillFolderHash": "98904a7d8e0e04b9bd46220b9b17298f45fe0b72",
+      "skillFolderHash": "61939b456845d75979423c855829d05cbf2c304d",
       "installedAt": "2026-04-25T22:09:35.404Z",
-      "updatedAt": "2026-04-25T22:09:35.404Z"
+      "updatedAt": "2026-07-07T16:41:27.673Z"
     },
     "writing-plans": {
       "source": "obra/superpowers",
       "sourceType": "github",
       "sourceUrl": "https://github.com/obra/superpowers.git",
       "skillPath": "skills/writing-plans/SKILL.md",
-      "skillFolderHash": "704e240d4b281baf8a339e1418baa249860197f7",
+      "skillFolderHash": "ab2adb78b24572c2a80c18158ad699ab065c73df",
       "installedAt": "2026-04-25T22:09:44.887Z",
-      "updatedAt": "2026-04-25T22:09:44.887Z"
+      "updatedAt": "2026-07-07T16:41:30.792Z"
     },
     "executing-plans": {
       "source": "obra/superpowers",
       "sourceType": "github",
       "sourceUrl": "https://github.com/obra/superpowers.git",
       "skillPath": "skills/executing-plans/SKILL.md",
-      "skillFolderHash": "20087d25fb28f5f54578d873dc198ab24b34f967",
+      "skillFolderHash": "d10ac40a0b6c12e46fd642eb88a6f2bda6deb1e5",
       "installedAt": "2026-04-25T22:09:54.875Z",
-      "updatedAt": "2026-04-27T00:56:31.355Z"
+      "updatedAt": "2026-07-07T16:41:33.268Z"
     },
     "context7": {
       "source": "intellectronica/agent-skills",
