@@ -168,7 +168,10 @@ symlink_ai() {
       }
     ' "$ai/skills/skill-lock.json" | while IFS=$'\t' read -r src name; do
       echo ">> skills add $src --skill $name"
-      npx --yes skills add "$src" --skill "$name" -g -y 2>&1 \
+      # Redirect stdin from /dev/null: without this, `skills add` consumes the
+      # remaining piped lines from the loop's stdin and only the first skill
+      # (find-skills) ever installs.
+      npx --yes skills add "$src" --skill "$name" -g -y </dev/null 2>&1 \
         | grep -v 'does not support global skill installation' || true
     done
   else
