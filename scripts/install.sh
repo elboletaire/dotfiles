@@ -2,7 +2,7 @@
 
 declare -r dotfiles=~/.dotfiles
 declare -r oldfiles=~/old_dotfiles
-declare -r exclude=("README.md" "LICENSE" "scripts" "git" "config")
+declare -r exclude=("README.md" "LICENSE" "scripts" "git" "config" "ai")
 declare -r aborting="Aborting dotfiles installation..."
 
 backup_dotfile() {
@@ -71,6 +71,75 @@ symlink_config() {
   done
 }
 
+install_rtk() {
+  # rtk (Rust Token Killer): CLI proxy that compresses command output before it
+  # reaches the assistant. https://github.com/rtk-ai/rtk
+  if command -v rtk &>/dev/null; then
+    echo "rtk already installed ($(rtk --version))"
+  elif [[ "$OS" == "Darwin" ]]; then
+    brew install rtk
+  else
+    curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/master/install.sh | sh
+  fi
+
+  # Wire the hook into Claude Code and Pi. This also (re)generates ~/.claude/RTK.md,
+  # which is why RTK.md is not tracked in the repo. Run before symlink_ai so rtk
+  # never edits our tracked CLAUDE.md symlink.
+  if command -v rtk &>/dev/null; then
+    rtk init -g --auto-patch            # Claude Code
+    rtk init -g --agent pi --auto-patch # Pi
+  else
+    echo "rtk not on PATH after install; skipping hook init"
+  fi
+}
+
+# Symlink a single AI-config path into place, backing up whatever is already there.
+link_ai() {
+  local src=$1 dest=$2
+  mkdir -p "$(dirname "$dest")"
+  if [ -L "$dest" ] && [ "$(readlink "$dest")" = "$src" ]; then
+    return
+  fi
+  if [ -e "$dest" ] || [ -L "$dest" ]; then
+    mkdir -p "$oldfiles"
+    mv -v "$dest" "$oldfiles/"
+  fi
+  ln -s "$src" "$dest"
+}
+
+symlink_ai() {
+  local ai=$dotfiles/ai
+
+  # Prompts: single source of truth shared by Pi prompts and Claude commands.
+  link_ai "$ai/prompts" ~/.pi/agent/prompts
+  link_ai "$ai/prompts" ~/.claude/commands
+
+  # Pi subagent definitions and global instructions.
+  link_ai "$ai/pi/agents" ~/.pi/agent/agents
+  link_ai "$ai/pi/AGENTS.md" ~/.pi/agent/AGENTS.md
+
+  # Claude global instructions.
+  link_ai "$ai/claude/CLAUDE.md" ~/.claude/CLAUDE.md
+
+  # Skills: rebuild the shared ~/.agents hub from the committed lock. The global
+  # lock has no built-in restore, so re-add each skill from its recorded source.
+  if command -v npx &>/dev/null && command -v node &>/dev/null; then
+    node -e '
+      const path = require("path");
+      const skills = require(path.resolve(process.argv[1])).skills || {};
+      for (const [name, s] of Object.entries(skills)) {
+        if (s.source) console.log(s.source + "\t" + name);
+      }
+    ' "$ai/skills/skill-lock.json" | while IFS=$'\t' read -r src name; do
+      echo ">> skills add $src --skill $name"
+      npx --yes skills add "$src" --skill "$name" -g -y || echo "  (failed: $name)"
+    done
+  else
+    echo "node/npx not found; skipping skills restore."
+    echo "Install Node, then re-run: bash $dotfiles/scripts/install.sh"
+  fi
+}
+
 OS=$(uname -s)
 
 if [[ "$OS" == "Darwin" ]]; then
@@ -105,6 +174,12 @@ symlink
 
 # Make symbolic links for config directory
 symlink_config
+
+# Install rtk and wire its hook into Claude Code and Pi (before symlink_ai)
+install_rtk
+
+# Symlink AI assistant config (prompts, agents, instructions) and restore skills
+symlink_ai
 
 # Change the shell of the current user to zsh
 chsh -s $(which zsh)
