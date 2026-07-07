@@ -193,8 +193,11 @@ install_packages() {
     fi
     # Install common required packages. We don't install git, as it's the way to
     # install the dotfiles.
-    if ! sudo pacman -S --noconfirm curl zsh vivid vim which; then
+    if ! sudo pacman -S --noconfirm yay curl zsh vivid vim which; then
       echo "Packages installation unsuccessful. ${aborting}" && exit 1
+    fi
+    if ! yay -S --noconfirm obscura-browser-bin; then
+      echo "Could not install AUR packages. ${aborting}" && exit 1
     fi
   fi
 }
