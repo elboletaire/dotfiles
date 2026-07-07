@@ -81,6 +81,23 @@ symlink_config() {
   done
 }
 
+install_nvm() {
+  if [ ! -s "$HOME/.nvm/nvm.sh" ]; then
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/HEAD/install.sh | bash
+  fi
+  export NVM_DIR="$HOME/.nvm"
+  # shellcheck disable=SC1091
+  \. "$NVM_DIR/nvm.sh"
+  nvm install --lts
+  nvm alias default lts/*
+  nvm use default
+}
+
+install_ai_agents() {
+  npm install -g @anthropic-ai/claude-code
+  npm install -g @earendil-works/pi-coding-agent
+}
+
 install_rtk() {
   # rtk (Rust Token Killer): CLI proxy that compresses command output before it
   # reaches the assistant. https://github.com/rtk-ai/rtk
@@ -151,7 +168,8 @@ symlink_ai() {
       }
     ' "$ai/skills/skill-lock.json" | while IFS=$'\t' read -r src name; do
       echo ">> skills add $src --skill $name"
-      npx --yes skills add "$src" --skill "$name" -g -y || echo "  (failed: $name)"
+      npx --yes skills add "$src" --skill "$name" -g -y 2>&1 \
+        | grep -v 'does not support global skill installation' || true
     done
   else
     echo "node/npx not found; skipping skills restore."
@@ -168,8 +186,17 @@ update_skills() {
   fi
   npx --yes skills update -g -y
   if [ -f ~/.agents/.skill-lock.json ]; then
-    cp ~/.agents/.skill-lock.json "$dotfiles/ai/skills/skill-lock.json"
-    echo "Synced skill-lock.json into the repo (review & commit the bump)."
+    local before after
+    before=$(node -e 'console.log(Object.keys(require(process.argv[1]).skills||{}).length)' \
+      "$dotfiles/ai/skills/skill-lock.json" 2>/dev/null || echo 0)
+    after=$(node -e 'console.log(Object.keys(require(process.argv[1]).skills||{}).length)' \
+      ~/.agents/.skill-lock.json 2>/dev/null || echo 0)
+    if [ "$after" -ge "$before" ]; then
+      cp ~/.agents/.skill-lock.json "$dotfiles/ai/skills/skill-lock.json"
+      echo "Synced skill-lock.json into the repo (review & commit the bump)."
+    else
+      echo "Warning: global lock has $after skill(s) vs $before in dotfiles — skipping sync to avoid data loss."
+    fi
   fi
 }
 
@@ -204,16 +231,14 @@ install_packages() {
 
 do_install() {
   install_packages
+  install_nvm               # must come before anything that needs node/npx/npm
+  install_ai_agents         # claude-code and pi need node from the step above
   git submodule update --init --recursive
   symlink
   symlink_config
-  # Install rtk and wire its hook into Claude Code and Pi (before symlink_ai)
-  install_rtk
-  # Symlink AI assistant config (prompts, agents, instructions) and restore skills
-  symlink_ai
-  # Change the shell of the current user to zsh
+  install_rtk               # wires hooks into claude and pi, which must exist first
+  symlink_ai                # config symlinks + skills restore (needs npx)
   chsh -s "$(which zsh)"
-  # Run Vundle.vim :PluginInstall cmd
   vim -c 'PluginInstall' -c 'qa!'
   echo "dotfiles installation was successful"
 }
@@ -221,6 +246,8 @@ do_install() {
 do_update() {
   # Lightweight: no system packages, no submodule version bump.
   git submodule update --init --recursive
+  install_nvm
+  install_ai_agents
   symlink
   symlink_config
   install_rtk update
@@ -231,6 +258,8 @@ do_update() {
 
 do_update_ai() {
   # AI-only fast path: refresh rtk, its hooks, the AI symlinks and the skills.
+  install_nvm
+  install_ai_agents
   install_rtk update
   symlink_ai
   update_skills
