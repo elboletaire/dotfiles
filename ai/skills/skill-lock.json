@@ -7,8 +7,8 @@
       "sourceUrl": "https://github.com/vercel-labs/skills.git",
       "skillPath": "skills/find-skills/SKILL.md",
       "skillFolderHash": "eb6a23305aea6e340d14b9de3766e721f9f4861b",
-      "installedAt": "2026-02-03T11:47:05.419Z",
-      "updatedAt": "2026-07-07T16:51:09.060Z"
+      "installedAt": "2026-07-07T17:13:14.740Z",
+      "updatedAt": "2026-07-07T18:42:42.778Z"
     },
     "agent-browser": {
       "source": "vercel-labs/agent-browser",
@@ -16,8 +16,8 @@
       "sourceUrl": "https://github.com/vercel-labs/agent-browser.git",
       "skillPath": "skills/agent-browser/SKILL.md",
       "skillFolderHash": "9b31e495b887e4ca123960415eca69fc7e1bba28",
-      "installedAt": "2026-02-04T11:52:38.529Z",
-      "updatedAt": "2026-07-07T16:41:17.574Z"
+      "installedAt": "2026-07-07T18:33:32.967Z",
+      "updatedAt": "2026-07-07T18:42:44.174Z"
     },
     "using-superpowers": {
       "source": "obra/superpowers",
@@ -25,8 +25,8 @@
       "sourceUrl": "https://github.com/obra/superpowers.git",
       "skillPath": "skills/using-superpowers/SKILL.md",
       "skillFolderHash": "8528440d6778e041cb1b9a0ada13f9f3cecda663",
-      "installedAt": "2026-04-16T11:49:26.965Z",
-      "updatedAt": "2026-07-07T16:41:19.999Z"
+      "installedAt": "2026-07-07T18:33:36.231Z",
+      "updatedAt": "2026-07-07T18:42:47.917Z"
     },
     "github-issues": {
       "source": "github/awesome-copilot",
@@ -34,8 +34,8 @@
       "sourceUrl": "https://github.com/github/awesome-copilot.git",
       "skillPath": "skills/github-issues/SKILL.md",
       "skillFolderHash": "95fb5bd16c2cecb7c14c58d7e902a91daae2ec5e",
-      "installedAt": "2026-04-22T09:25:58.457Z",
-      "updatedAt": "2026-05-26T07:54:05.196Z"
+      "installedAt": "2026-07-07T18:33:45.118Z",
+      "updatedAt": "2026-07-07T18:42:56.522Z"
     },
     "git-commit": {
       "source": "github/awesome-copilot",
@@ -43,8 +43,8 @@
       "sourceUrl": "https://github.com/github/awesome-copilot.git",
       "skillPath": "skills/git-commit/SKILL.md",
       "skillFolderHash": "883a6a7466f55a9cd9f22cf1cce2d9333fc9b998",
-      "installedAt": "2026-04-22T09:26:19.937Z",
-      "updatedAt": "2026-05-26T07:53:59.414Z"
+      "installedAt": "2026-07-07T18:33:53.138Z",
+      "updatedAt": "2026-07-07T18:42:56.519Z"
     },
     "brainstorming": {
       "source": "obra/superpowers",
@@ -52,8 +52,8 @@
       "sourceUrl": "https://github.com/obra/superpowers.git",
       "skillPath": "skills/brainstorming/SKILL.md",
       "skillFolderHash": "b14f49a55a8387cfa12ac89794ab79698d7fddbb",
-      "installedAt": "2026-04-25T22:09:15.417Z",
-      "updatedAt": "2026-07-07T16:41:22.590Z"
+      "installedAt": "2026-07-07T18:33:56.225Z",
+      "updatedAt": "2026-07-07T18:42:47.912Z"
     },
     "systematic-debugging": {
       "source": "obra/superpowers",
@@ -61,8 +61,8 @@
       "sourceUrl": "https://github.com/obra/superpowers.git",
       "skillPath": "skills/systematic-debugging/SKILL.md",
       "skillFolderHash": "5702624a1f0e5ad478234442ce5cde038a525465",
-      "installedAt": "2026-04-25T22:09:26.693Z",
-      "updatedAt": "2026-07-07T16:41:25.137Z"
+      "installedAt": "2026-07-07T18:33:59.351Z",
+      "updatedAt": "2026-07-07T18:42:47.916Z"
     },
     "test-driven-development": {
       "source": "obra/superpowers",
@@ -70,8 +70,8 @@
       "sourceUrl": "https://github.com/obra/superpowers.git",
       "skillPath": "skills/test-driven-development/SKILL.md",
       "skillFolderHash": "61939b456845d75979423c855829d05cbf2c304d",
-      "installedAt": "2026-04-25T22:09:35.404Z",
-      "updatedAt": "2026-07-07T16:41:27.673Z"
+      "installedAt": "2026-07-07T18:34:02.185Z",
+      "updatedAt": "2026-07-07T18:42:47.916Z"
     },
     "writing-plans": {
       "source": "obra/superpowers",
@@ -79,8 +79,8 @@
       "sourceUrl": "https://github.com/obra/superpowers.git",
       "skillPath": "skills/writing-plans/SKILL.md",
       "skillFolderHash": "ab2adb78b24572c2a80c18158ad699ab065c73df",
-      "installedAt": "2026-04-25T22:09:44.887Z",
-      "updatedAt": "2026-07-07T16:41:30.792Z"
+      "installedAt": "2026-07-07T18:34:05.179Z",
+      "updatedAt": "2026-07-07T18:42:47.917Z"
     },
     "executing-plans": {
       "source": "obra/superpowers",
@@ -88,8 +88,8 @@
       "sourceUrl": "https://github.com/obra/superpowers.git",
       "skillPath": "skills/executing-plans/SKILL.md",
       "skillFolderHash": "d10ac40a0b6c12e46fd642eb88a6f2bda6deb1e5",
-      "installedAt": "2026-04-25T22:09:54.875Z",
-      "updatedAt": "2026-07-07T16:41:33.268Z"
+      "installedAt": "2026-07-07T18:34:08.030Z",
+      "updatedAt": "2026-07-07T18:42:47.915Z"
     },
     "context7": {
       "source": "intellectronica/agent-skills",
@@ -97,8 +97,8 @@
       "sourceUrl": "https://github.com/intellectronica/agent-skills.git",
       "skillPath": "skills/context7/SKILL.md",
       "skillFolderHash": "c7ab574e006997d98e8a2d8fb7a1db0d2477b180",
-      "installedAt": "2026-04-26T13:23:24.296Z",
-      "updatedAt": "2026-04-26T13:23:24.296Z"
+      "installedAt": "2026-07-07T18:34:10.973Z",
+      "updatedAt": "2026-07-07T18:42:59.620Z"
     },
     "skill-creator": {
       "source": "anthropics/skills",
@@ -107,17 +107,17 @@
       "skillPath": "skills/skill-creator/SKILL.md",
       "skillFolderHash": "3cf9a8db32597ba3e24b584a3d696f4e11c7d7b6",
       "pluginName": "example-skills",
-      "installedAt": "2026-04-26T18:26:30.021Z",
-      "updatedAt": "2026-04-26T18:26:30.021Z"
+      "installedAt": "2026-07-07T18:34:14.458Z",
+      "updatedAt": "2026-07-07T18:43:03.403Z"
     },
     "impeccable": {
       "source": "pbakaus/impeccable",
       "sourceType": "github",
       "sourceUrl": "https://github.com/pbakaus/impeccable.git",
-      "skillPath": "skill/SKILL.md",
-      "skillFolderHash": "6d2dbc37eccb5d89902bda605f1a8bdbad7f36d8",
-      "installedAt": "2026-05-22T13:05:57.113Z",
-      "updatedAt": "2026-05-22T13:05:57.113Z"
+      "skillPath": ".agents/skills/impeccable/SKILL.md",
+      "skillFolderHash": "fbe0f1b1ef0218e575c1243fa91060ed792e3187",
+      "installedAt": "2026-07-07T18:34:21.246Z",
+      "updatedAt": "2026-07-07T18:43:15.623Z"
     },
     "resume-generator": {
       "source": "eyadsibai/ltk",
@@ -125,8 +125,8 @@
       "sourceUrl": "https://github.com/eyadsibai/ltk.git",
       "skillPath": "plugins/ltk-product/skills/resume-generator/SKILL.md",
       "skillFolderHash": "ad22c1ba8f381bdce1a7be5de96eb813ae51a519",
-      "installedAt": "2026-05-26T08:07:55.062Z",
-      "updatedAt": "2026-05-26T08:07:55.062Z"
+      "installedAt": "2026-07-07T18:34:24.928Z",
+      "updatedAt": "2026-07-07T18:43:18.970Z"
     },
     "effective-print-design": {
       "source": "sebastian-software/effective-print-design",
@@ -134,8 +134,8 @@
       "sourceUrl": "https://github.com/sebastian-software/effective-print-design.git",
       "skillPath": "SKILL.md",
       "skillFolderHash": "d9d97a58acc9e7d7beafd4569f717ab7ab89d410",
-      "installedAt": "2026-05-26T08:13:31.884Z",
-      "updatedAt": "2026-05-26T08:13:31.884Z"
+      "installedAt": "2026-07-07T18:34:27.571Z",
+      "updatedAt": "2026-07-07T18:43:21.806Z"
     },
     "graphic-designer": {
       "source": "pablostanley/designteam-app",
@@ -143,8 +143,8 @@
       "sourceUrl": "https://github.com/pablostanley/designteam-app.git",
       "skillPath": "skills/graphic-designer/SKILL.md",
       "skillFolderHash": "a88366edf63f9a7915f335c856622ac76555c1e3",
-      "installedAt": "2026-05-26T08:13:40.419Z",
-      "updatedAt": "2026-05-26T08:13:40.419Z"
+      "installedAt": "2026-07-07T18:34:33.099Z",
+      "updatedAt": "2026-07-07T18:43:25.619Z"
     },
     "davinci-sdk": {
       "source": "vocdoni/skills",
@@ -152,8 +152,8 @@
       "sourceUrl": "https://github.com/vocdoni/skills.git",
       "skillPath": "plugins/davinci-sdk/skills/davinci-sdk/SKILL.md",
       "skillFolderHash": "cfe73a8b62d35f22cad3affc28a790dcce39ebc6",
-      "installedAt": "2026-06-17T13:03:49.887Z",
-      "updatedAt": "2026-06-17T13:03:49.887Z"
+      "installedAt": "2026-07-07T18:34:36.313Z",
+      "updatedAt": "2026-07-07T18:43:29.490Z"
     },
     "vocdoni-ballot-protocol": {
       "source": "vocdoni/skills",
@@ -161,8 +161,8 @@
       "sourceUrl": "https://github.com/vocdoni/skills.git",
       "skillPath": "plugins/vocdoni-sdk/skills/vocdoni-ballot-protocol/SKILL.md",
       "skillFolderHash": "f0bb65007cb66248d3d62924e4e16ce720dc9cbc",
-      "installedAt": "2026-06-17T13:03:49.888Z",
-      "updatedAt": "2026-06-17T13:03:49.888Z"
+      "installedAt": "2026-07-07T18:34:39.774Z",
+      "updatedAt": "2026-07-07T18:43:29.487Z"
     },
     "vocdoni-sdk": {
       "source": "vocdoni/skills",
@@ -170,18 +170,17 @@
       "sourceUrl": "https://github.com/vocdoni/skills.git",
       "skillPath": "plugins/vocdoni-sdk/skills/vocdoni-sdk/SKILL.md",
       "skillFolderHash": "c5597f28d37cf1e456aeb6a23df283cbc120f3d4",
-      "installedAt": "2026-06-17T13:03:49.888Z",
-      "updatedAt": "2026-06-17T13:03:49.888Z"
+      "installedAt": "2026-07-07T18:34:43.441Z",
+      "updatedAt": "2026-07-07T18:43:29.490Z"
     },
     "tsdown": {
       "source": "rolldown/tsdown",
       "sourceType": "github",
       "sourceUrl": "https://github.com/rolldown/tsdown.git",
-      "ref": "main",
       "skillPath": "skills/tsdown/SKILL.md",
       "skillFolderHash": "50e517b5232e4247206aeea2013a0b0277c2b666",
-      "installedAt": "2026-06-19T10:49:46.117Z",
-      "updatedAt": "2026-06-19T10:49:46.117Z"
+      "installedAt": "2026-07-07T18:34:50.324Z",
+      "updatedAt": "2026-07-07T18:43:32.881Z"
     },
     "obscura-browser": {
       "source": "mangmax/obscura-browser-skill",
@@ -189,27 +188,9 @@
       "sourceUrl": "https://github.com/mangmax/obscura-browser-skill.git",
       "skillPath": "SKILL.md",
       "skillFolderHash": "f285dfdac5c3188fc4c3574eee487ae793ae9b50",
-      "installedAt": "2026-07-07T16:34:46.748Z",
-      "updatedAt": "2026-07-07T16:34:46.748Z"
+      "installedAt": "2026-07-07T18:34:53.312Z",
+      "updatedAt": "2026-07-07T18:43:35.613Z"
     }
   },
-  "dismissed": {
-    "findSkillsPrompt": true
-  },
-  "lastSelectedAgents": [
-    "amp",
-    "antigravity",
-    "antigravity-cli",
-    "cline",
-    "codex",
-    "cursor",
-    "deepagents",
-    "gemini-cli",
-    "github-copilot",
-    "kimi-code-cli",
-    "opencode",
-    "warp",
-    "zed",
-    "pi"
-  ]
+  "dismissed": {}
 }
