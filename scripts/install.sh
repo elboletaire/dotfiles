@@ -95,7 +95,7 @@ install_nvm() {
 
 install_ai_agents() {
   curl -fsSL https://claude.ai/install.sh | bash
-  npm install -g @earendil-works/pi-coding-agent
+  curl -fsSL https://pi.dev/install.sh | sh
 }
 
 install_rtk() {
