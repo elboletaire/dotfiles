@@ -159,19 +159,28 @@ symlink_ai() {
 
   # Skills: rebuild the shared ~/.agents hub from the committed lock. The global
   # lock has no built-in restore, so re-add each skill from its recorded source.
+  # Skills are grouped by source so a repo shared by several skills (e.g.
+  # obra/superpowers) is cloned once and all its skills install in one command.
   if command -v npx &>/dev/null && command -v node &>/dev/null; then
     node -e '
       const path = require("path");
       const skills = require(path.resolve(process.argv[1])).skills || {};
+      const bySource = {};
       for (const [name, s] of Object.entries(skills)) {
-        if (s.source) console.log(s.source + "\t" + name);
+        if (!s.source) continue;
+        (bySource[s.source] ||= []).push(name);
       }
-    ' "$ai/skills/skill-lock.json" | while IFS=$'\t' read -r src name; do
-      echo ">> skills add $src --skill $name"
+      for (const [src, names] of Object.entries(bySource)) {
+        console.log(src + "\t" + names.join(" "));
+      }
+    ' "$ai/skills/skill-lock.json" | while IFS=$'\t' read -r src names; do
+      echo ">> skills add $src --skill $names"
+      # $names is intentionally unquoted so each space-separated skill becomes a
+      # distinct argument to --skill (the flag is variadic).
       # Redirect stdin from /dev/null: without this, `skills add` consumes the
-      # remaining piped lines from the loop's stdin and only the first skill
-      # (find-skills) ever installs.
-      npx --yes skills add "$src" --skill "$name" -g -y </dev/null 2>&1 \
+      # remaining piped lines from the loop's stdin and only the first source
+      # ever installs.
+      npx --yes skills add "$src" --skill $names -g -y </dev/null 2>&1 \
         | grep -v 'does not support global skill installation' || true
     done
   else
