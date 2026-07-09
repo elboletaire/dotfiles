@@ -70,6 +70,10 @@ set laststatus=2       " always show vim airline
 let g:airline#extensions#tabline#enabled = 1
 " Enable line highlighting
 set cursorline
+" Only highlight the number column, not the whole line (cheaper redraws)
+if exists('+cursorlineopt')
+  set cursorlineopt=number
+endif
 
 " Persistent undo
 " tell it to use an undo file
@@ -79,6 +83,10 @@ set undodir=~/.vimundo/
 
 " Enable syntax color highlighting
 syntax on
+
+" Avoid 'redrawtime' exceeded errors on files with git conflicts / long lines
+set redrawtime=10000   " give the syntax engine more time (default 2000ms)
+set synmaxcol=200      " don't highlight past column 200 (big speedup on long lines)
 
 " Set 256 color mode
 set t_Co=256
