@@ -66,13 +66,13 @@ Each reviewer's task prompt must contain:
 - The plan file path and full contents (if found), with this explicit instruction: *"Verify the implementation follows this plan step by step. Any deviation, missing step, or out-of-scope change is a finding."*
 - This instruction: *"You are review-only. Do NOT edit any files. Return your findings exclusively as a single Markdown table with columns `| Severity | File/Area | Issue | Recommendation |`. Severity values: Critical / High / Medium / Low / Info. If you find nothing, return an empty table with a short note."*
 
-After launching, inform the user that both reviews are running in the background and the conversation is free. You can continue doing other useful local work (or end your turn), and you will poll for results before proceeding to the cross-review phase.
+After launching, inform the user that both reviews are running in the background and the conversation is free.
 
 ---
 
 ## Step 4 — Wait for Phase 1 results
 
-Poll `subagent({ action: "status", id: "..." })` for each run until both are complete. Once both finish, extract the findings tables and display them under clearly labelled headings using the actual resolved model names:
+Wait for each run until both are complete. Only poll `subagent({ action: "status", id: "..." })` if the user explicitly asks to do so. Once both finish, extract the findings tables and display them under clearly labelled headings using the actual resolved model names:
 
 > **Review A — <resolved Reviewer A model>**
 > *(table)*
@@ -101,7 +101,7 @@ Save both run IDs.
 
 ## Step 6 — Wait for Phase 2 results and synthesize
 
-Poll until both cross-reviews are complete. Then apply these rules to build the final output:
+Wait until you get notified both cross-reviews are complete. Then apply these rules to build the final output:
 
 - **Confirmed** — issue raised by a reviewer and upheld (or independently raised) by the cross-reviewer. → Include in final table.
 - **False Positive** — issue flagged as "False Positive" by the cross-reviewer. → Move to Discarded section.

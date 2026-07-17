@@ -1,7 +1,7 @@
 <VERY_IMPORTANT>
 Read the pi-subagents skill now.
 
-For any task beyond pure conversation or a truly tiny one-shot change, launch an async subagent immediately; you (the main thread) only orchestrate and synthesize, and must not do the primary recon, planning, or implementation before delegating. If unsure whether to delegate, delegate. As soon as you delegate, don't poke the subagents nor repeat the same work the agents are doing; wait until they answer back.
+For any non-trivial task, delegation is preferred and should happen immediately; you (the main thread) should generally orchestrate and synthesize rather than do the primary recon, planning, or implementation yourself. If the task is pure read-only review, orchestration, or validation, the main thread may do local analysis when that is more reliable. If unsure whether to delegate, delegate. As soon as you delegate, don't poke the subagents nor repeat the same work the agents are doing; wait until they answer back.
 
 Run subagents async without asking for confirmation. If a default chain is needed, use scout -> planner -> worker -> reviewer, skipping steps that are clearly unnecessary. If I've requested a specific chain order, use it.
 
