@@ -27,18 +27,22 @@ From this point on, use the resolved values as **Reviewer A model**, **Reviewer 
 
 ---
 
-## Step 1 — Determine review scope
+## Step 1 — Determine review scope (orchestrator only — do this before launching any subagent)
 
 Resolved scope: use the scope determined in Step 0.
 
-If the resolved scope is empty, build the diff yourself:
+If the resolved scope is empty, build the diff yourself by running the following git commands directly:
 1. Run `git rev-parse --abbrev-ref HEAD` to get the current branch name.
-2. Run `git diff origin/<branch>...HEAD` to capture every change since the last push to origin — this includes staged, unstaged, and committed-but-not-yet-pushed changes, not just working-tree modifications.
-3. If the branch has no remote tracking branch, fall back to `git diff HEAD~1..HEAD`.
+2. Try each base ref in order until you get a non-empty diff:
+   a. `git diff origin/<branch>...HEAD` — changes not yet pushed to the tracking branch.
+   b. `git diff origin/develop...HEAD` — if step (a) is empty (e.g. the branch was freshly checked out from origin).
+   c. `git diff origin/main...HEAD` — last resort; note that in some projects `origin/main` is the production branch, so prefer `origin/develop` first.
+   d. `git diff HEAD~1..HEAD` — fallback when no remote ref resolves.
+Use the first base ref that produces a non-empty diff.
 
 If the resolved scope is not empty, use it as the review target.
 
-Capture the resulting diff or scope as the **review target**. Paste it inline into each reviewer's task prompt.
+Capture the resulting diff or scope as the **review target**. The orchestrator owns this step — reviewers must never run git commands themselves; the raw diff text is pasted verbatim into each subagent's prompt.
 
 ---
 
@@ -62,7 +66,7 @@ Launch **both** reviewer subagents simultaneously with `async: true` and `contex
 - **Reviewer B** → model = resolved Reviewer B model
 
 Each reviewer's task prompt must contain:
-- The full review target (diff or scope from Step 1).
+- The raw diff or scope resolved in Step 1, pasted verbatim. Do NOT instruct reviewers to run git commands — the diff is provided in full.
 - The plan file path and full contents (if found), with this explicit instruction: *"Verify the implementation follows this plan step by step. Any deviation, missing step, or out-of-scope change is a finding."*
 - This instruction: *"You are review-only. Do NOT edit any files. Return your findings exclusively as a single Markdown table with columns `| Severity | File/Area | Issue | Recommendation |`. Severity values: Critical / High / Medium / Low / Info. If you find nothing, return an empty table with a short note."*
 
