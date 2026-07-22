@@ -2,7 +2,7 @@
 description: Enter review mode (read-only, plan-based analysis)
 ---
 
-Review the work done by the previous agent in read-only mode.
+Review the work done by the previous developer in read-only mode.
 
 Inspect the git log up to the latest published version and review the relevant diffs carefully. Look for matching plans/specs/tasks and use them as the main review units.
 
