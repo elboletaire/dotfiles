@@ -143,6 +143,28 @@ link_ai() {
   ln -s "$src" "$dest"
 }
 
+# Make the global skills lock a symlink into the repo, so every `skills` run
+# writes straight into the tracked file (the CLI writes the lock with a plain
+# writeFile, no temp-file rename, so the link survives writes). If a regular
+# global lock already exists with more skills than the repo copy, sync it into
+# the repo first so nothing is lost when it gets replaced by the link.
+link_skill_lock() {
+  local repo_lock=$dotfiles/ai/skills/skill-lock.json
+  local global_lock=$HOME/.agents/.skill-lock.json
+  if [ -f "$global_lock" ] && [ ! -L "$global_lock" ] && command -v node &>/dev/null; then
+    local repo_count global_count
+    repo_count=$(node -e 'console.log(Object.keys(require(process.argv[1]).skills||{}).length)' \
+      "$repo_lock" 2>/dev/null || echo 0)
+    global_count=$(node -e 'console.log(Object.keys(require(process.argv[1]).skills||{}).length)' \
+      "$global_lock" 2>/dev/null || echo 0)
+    if [ "$global_count" -gt "$repo_count" ]; then
+      cp "$global_lock" "$repo_lock"
+      echo "Synced newer global skill-lock.json into the repo before linking."
+    fi
+  fi
+  link_ai "$repo_lock" "$global_lock"
+}
+
 symlink_ai() {
   local ai=$dotfiles/ai
 
@@ -156,6 +178,10 @@ symlink_ai() {
 
   # Claude global instructions.
   link_ai "$ai/claude/CLAUDE.md" ~/.claude/CLAUDE.md
+
+  # Skills lock: the repo file is the source of truth and the global lock is a
+  # symlink to it, so `skills add/update -g` runs land as reviewable git diffs.
+  link_skill_lock
 
   # Skills: rebuild the shared ~/.agents hub from the committed lock. The global
   # lock has no built-in restore, so re-add each skill from its recorded source.
@@ -190,26 +216,16 @@ symlink_ai() {
 }
 
 update_skills() {
-  # Bump the shared ~/.agents skills hub to latest and re-sync the lock into the
-  # repo so the version bump shows up as a reviewable git change.
+  # Bump the shared ~/.agents skills hub to latest. The global lock is a symlink
+  # into the repo (see link_skill_lock), so the bump lands directly in the
+  # tracked file as a reviewable git change.
   if ! command -v npx &>/dev/null; then
     echo "npx not found; skipping skills update."
     return
   fi
+  link_skill_lock
   npx --yes skills update -g -y
-  if [ -f ~/.agents/.skill-lock.json ]; then
-    local before after
-    before=$(node -e 'console.log(Object.keys(require(process.argv[1]).skills||{}).length)' \
-      "$dotfiles/ai/skills/skill-lock.json" 2>/dev/null || echo 0)
-    after=$(node -e 'console.log(Object.keys(require(process.argv[1]).skills||{}).length)' \
-      ~/.agents/.skill-lock.json 2>/dev/null || echo 0)
-    if [ "$after" -ge "$before" ]; then
-      cp ~/.agents/.skill-lock.json "$dotfiles/ai/skills/skill-lock.json"
-      echo "Synced skill-lock.json into the repo (review & commit the bump)."
-    else
-      echo "Warning: global lock has $after skill(s) vs $before in dotfiles — skipping sync to avoid data loss."
-    fi
-  fi
+  echo "skill-lock.json updated in the repo (review & commit the bump)."
 }
 
 install_packages() {
