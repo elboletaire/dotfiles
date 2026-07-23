@@ -107,17 +107,17 @@
       "skillPath": "skills/skill-creator/SKILL.md",
       "skillFolderHash": "3cf9a8db32597ba3e24b584a3d696f4e11c7d7b6",
       "pluginName": "example-skills",
-      "installedAt": "2026-07-07T18:34:14.458Z",
-      "updatedAt": "2026-07-07T18:43:03.403Z"
+      "installedAt": "2026-04-26T18:26:30.021Z",
+      "updatedAt": "2026-04-26T18:26:30.021Z"
     },
     "impeccable": {
       "source": "pbakaus/impeccable",
       "sourceType": "github",
       "sourceUrl": "https://github.com/pbakaus/impeccable.git",
-      "skillPath": ".agents/skills/impeccable/SKILL.md",
-      "skillFolderHash": "fbe0f1b1ef0218e575c1243fa91060ed792e3187",
-      "installedAt": "2026-07-07T18:34:21.246Z",
-      "updatedAt": "2026-07-07T18:43:15.623Z"
+      "skillPath": "skill/SKILL.md",
+      "skillFolderHash": "6d2dbc37eccb5d89902bda605f1a8bdbad7f36d8",
+      "installedAt": "2026-05-22T13:05:57.113Z",
+      "updatedAt": "2026-05-22T13:05:57.113Z"
     },
     "resume-generator": {
       "source": "eyadsibai/ltk",
@@ -170,17 +170,18 @@
       "sourceUrl": "https://github.com/vocdoni/skills.git",
       "skillPath": "plugins/vocdoni-sdk/skills/vocdoni-sdk/SKILL.md",
       "skillFolderHash": "c5597f28d37cf1e456aeb6a23df283cbc120f3d4",
-      "installedAt": "2026-07-07T18:34:43.441Z",
-      "updatedAt": "2026-07-07T18:43:29.490Z"
+      "installedAt": "2026-06-17T13:03:49.888Z",
+      "updatedAt": "2026-06-17T13:03:49.888Z"
     },
     "tsdown": {
       "source": "rolldown/tsdown",
       "sourceType": "github",
       "sourceUrl": "https://github.com/rolldown/tsdown.git",
+      "ref": "main",
       "skillPath": "skills/tsdown/SKILL.md",
       "skillFolderHash": "50e517b5232e4247206aeea2013a0b0277c2b666",
-      "installedAt": "2026-07-07T18:34:50.324Z",
-      "updatedAt": "2026-07-07T18:43:32.881Z"
+      "installedAt": "2026-06-19T10:49:46.117Z",
+      "updatedAt": "2026-06-19T10:49:46.117Z"
     },
     "obscura-browser": {
       "source": "mangmax/obscura-browser-skill",
@@ -188,9 +189,57 @@
       "sourceUrl": "https://github.com/mangmax/obscura-browser-skill.git",
       "skillPath": "SKILL.md",
       "skillFolderHash": "f285dfdac5c3188fc4c3574eee487ae793ae9b50",
-      "installedAt": "2026-07-07T18:34:53.312Z",
-      "updatedAt": "2026-07-07T18:43:35.613Z"
+      "installedAt": "2026-07-07T16:34:46.748Z",
+      "updatedAt": "2026-07-07T16:34:46.748Z"
+    },
+    "fleet": {
+      "source": "asheshgoplani/agent-deck",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/asheshgoplani/agent-deck.git",
+      "skillPath": "skills/fleet/SKILL.md",
+      "skillFolderHash": "1266560556da11cbac366edcbc537df5d0629f0a",
+      "pluginName": "agent-deck",
+      "installedAt": "2026-07-23T16:43:51.827Z",
+      "updatedAt": "2026-07-23T16:43:51.827Z"
+    },
+    "agent-deck": {
+      "source": "asheshgoplani/agent-deck",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/asheshgoplani/agent-deck.git",
+      "skillPath": "skills/agent-deck/SKILL.md",
+      "skillFolderHash": "b532f8de756dce41b34e9951cfe58452335626f8",
+      "pluginName": "agent-deck",
+      "installedAt": "2026-07-23T16:43:51.827Z",
+      "updatedAt": "2026-07-23T16:43:51.827Z"
+    },
+    "session-share": {
+      "source": "asheshgoplani/agent-deck",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/asheshgoplani/agent-deck.git",
+      "skillPath": "skills/session-share/SKILL.md",
+      "skillFolderHash": "1c06884d1170d503779eee6b8beed0a2142e93b4",
+      "pluginName": "agent-deck",
+      "installedAt": "2026-07-23T16:43:51.828Z",
+      "updatedAt": "2026-07-23T16:43:51.828Z"
     }
   },
-  "dismissed": {}
+  "dismissed": {
+    "findSkillsPrompt": true
+  },
+  "lastSelectedAgents": [
+    "amp",
+    "antigravity",
+    "antigravity-cli",
+    "cline",
+    "codex",
+    "cursor",
+    "deepagents",
+    "gemini-cli",
+    "github-copilot",
+    "kimi-code-cli",
+    "opencode",
+    "warp",
+    "zed",
+    "pi"
+  ]
 }
