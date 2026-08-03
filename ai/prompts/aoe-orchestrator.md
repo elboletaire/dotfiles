@@ -58,6 +58,15 @@ Note the key is `.group` on `session show`, but `group_path` in the raw `session
 
 Derive the title from the branch name: drop the `feat/`, `fix/`, `chore/` prefix, replace separators with spaces, and title-case it. `feat/convert-images` becomes `Convert Images`.
 
+## Worktree folder location and naming
+
+Worktrees live **inside the repo** under `.worktrees/`, and folders keep the branch prefix: `feat/convert-images` lands in `<repo>/.worktrees/feat-convert-images`. Both halves come from `~/.config/agent-of-empires/config.toml`, not from anything in this prompt:
+
+- `worktree.path_template = "./.worktrees/{branch}"` puts them inside the repo (`.worktrees/` is in the global gitignore at `~/.config/git/ignore`).
+- `session.tie_workdir_to_name = false` makes `{branch}` use the real branch name. With it on (aoe's default), the folder derives from the session title instead and the prefix is lost.
+
+If a new worktree shows up in the wrong place or without its prefix, one of those settings regressed; fix the config rather than renaming folders by hand (`git` refuses to move worktrees containing submodules anyway).
+
 ## Rules
 
 - `-l` is required or the session is only created, never started.
