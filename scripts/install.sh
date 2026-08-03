@@ -98,6 +98,28 @@ install_ai_agents() {
   curl -fsSL https://pi.dev/install.sh | sh
 }
 
+install_aoe() {
+  # aoe (Agent of Empires): tmux-based session manager for AI coding agents.
+  # https://github.com/agent-of-empires/agent-of-empires
+  # Pass "update" to force an upgrade even when aoe is already installed.
+  local mode=$1
+  local installer="https://raw.githubusercontent.com/agent-of-empires/agent-of-empires/main/scripts/install.sh"
+
+  if [[ "$mode" == "update" ]]; then
+    if [[ "$OS" == "Darwin" ]]; then
+      brew upgrade aoe || brew install aoe
+    else
+      curl -fsSL "$installer" | bash
+    fi
+  elif command -v aoe &>/dev/null; then
+    echo "aoe already installed ($(aoe --version 2>/dev/null || echo present))"
+  elif [[ "$OS" == "Darwin" ]]; then
+    brew install aoe
+  else
+    curl -fsSL "$installer" | bash
+  fi
+}
+
 install_rtk() {
   # rtk (Rust Token Killer): CLI proxy that compresses command output before it
   # reaches the assistant. https://github.com/rtk-ai/rtk
@@ -261,6 +283,7 @@ do_install() {
   install_packages
   install_nvm               # must come before anything that needs node/npx/npm
   install_ai_agents         # claude-code and pi need node from the step above
+  install_aoe
   git submodule update --init --recursive
   symlink
   symlink_config
@@ -276,6 +299,7 @@ do_update() {
   git submodule update --init --recursive
   install_nvm
   install_ai_agents
+  install_aoe update
   symlink
   symlink_config
   install_rtk update
@@ -288,6 +312,7 @@ do_update_ai() {
   # AI-only fast path: refresh rtk, its hooks, the AI symlinks and the skills.
   install_nvm
   install_ai_agents
+  install_aoe update
   install_rtk update
   symlink_ai
   update_skills
