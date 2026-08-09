@@ -1,0 +1,70 @@
+name: dotfiles-skills
+version: 1.0.0
+description: Elboletaire's dotfiles skill set, managed by APM.
+targets:
+  - agent-skills
+  - claude
+dependencies:
+  apm:
+    - git: https://github.com/vercel-labs/skills.git
+      path: skills/find-skills
+      alias: find-skills
+      ref: 941a7bcfeca4bf07913b9fb6f8ed81f20ff5297c
+    - git: https://github.com/obra/superpowers.git
+      path: skills/using-superpowers
+      alias: using-superpowers
+      ref: 44c9b2d6e889982ac18c27d05a19fefe335194e1
+    - git: https://github.com/github/awesome-copilot.git
+      path: skills/github-issues
+      alias: github-issues
+      ref: ab7544d03d4c49fdd07f5958e1888ad39c4118e2
+    - git: https://github.com/github/awesome-copilot.git
+      path: skills/git-commit
+      alias: git-commit
+      ref: ab7544d03d4c49fdd07f5958e1888ad39c4118e2
+    - git: https://github.com/obra/superpowers.git
+      path: skills/brainstorming
+      alias: brainstorming
+      ref: 44c9b2d6e889982ac18c27d05a19fefe335194e1
+    - git: https://github.com/obra/superpowers.git
+      path: skills/systematic-debugging
+      alias: systematic-debugging
+      ref: 44c9b2d6e889982ac18c27d05a19fefe335194e1
+    - git: https://github.com/obra/superpowers.git
+      path: skills/test-driven-development
+      alias: test-driven-development
+      ref: 44c9b2d6e889982ac18c27d05a19fefe335194e1
+    - git: https://github.com/obra/superpowers.git
+      path: skills/writing-plans
+      alias: writing-plans
+      ref: 44c9b2d6e889982ac18c27d05a19fefe335194e1
+    - git: https://github.com/obra/superpowers.git
+      path: skills/executing-plans
+      alias: executing-plans
+      ref: 44c9b2d6e889982ac18c27d05a19fefe335194e1
+    - git: https://github.com/intellectronica/agent-skills.git
+      path: skills/context7
+      alias: context7
+      ref: 9b0e00ad1b941165e2506545bbfddafa34cf2cb8
+    - git: https://github.com/anthropics/skills.git
+      path: skills/skill-creator
+      alias: skill-creator
+      ref: f17010c9bb483898c1d9c9f42dde2b3a98889434
+    - git: https://github.com/pbakaus/impeccable.git
+      path: .agents/skills/impeccable
+      alias: impeccable
+      ref: 1cbee026c319af4b8afc95bbf3cd2f736aeab484
+    - git: https://github.com/sebastian-software/effective-print-design.git
+      alias: effective-print-design
+      ref: d9d97a58acc9e7d7beafd4569f717ab7ab89d410
+    - git: https://github.com/pablostanley/designteam-app.git
+      path: skills/graphic-designer
+      alias: graphic-designer
+      ref: 2eb77e278eb85bc1efe4f2758eed495c2bf01995
+    - git: https://github.com/mangmax/obscura-browser-skill.git
+      alias: obscura-browser
+      ref: f285dfdac5c3188fc4c3574eee487ae793ae9b50
+    - git: https://github.com/agent-of-empires/agent-of-empires.git
+      path: contrib/hermes-skill
+      alias: aoe
+      ref: 86ccdd16ee19c91a91bbbd5a01fe061e494903e4
