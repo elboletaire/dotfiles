@@ -294,8 +294,11 @@ def mode_for(slug, pr_row, me):
 
 # ---------------------------------------------------------------------- main
 
+SEP = {"pr": "#", "issue": "!", "investigate": "?"}
+
+
 def key(slug, num, kind="pr"):
-    return f"{slug}{'#' if kind == 'pr' else '!'}{num}"
+    return f"{slug}{SEP[kind]}{num}"
 
 
 def scan(state, refresh=False):
@@ -345,7 +348,7 @@ def scan(state, refresh=False):
 
     # ---- tracked items
     for k, it in list(items.items()):
-        slug = k.split("#")[0].split("!")[0]
+        slug = k.split("#")[0].split("!")[0].split("?")[0]
         d = details.get(k)
         sess = it.get("session")
         smeta = f"session={sid(sess)}"
@@ -503,7 +506,11 @@ def split_key(k):
     if "!" in k:
         slug, num = k.split("!", 1)
         return slug, int(num), "issue"
-    raise SystemExit(f"bad key {k!r} (want owner/repo#PR or owner/repo!ISSUE)")
+    if "?" in k:
+        slug, name = k.split("?", 1)
+        return slug, name, "investigate"
+    raise SystemExit(f"bad key {k!r} (want owner/repo#PR, owner/repo!ISSUE "
+                     f"or owner/repo?investigation)")
 
 
 def render_prompt(name, subs):
@@ -525,7 +532,7 @@ def resolve_mode(slug, num, kind, me):
     """Re-derived here, never taken on trust from the caller."""
     if slug in HOME_REPOS:
         return "fix"
-    if kind == "issue":
+    if kind in ("issue", "investigate"):
         return "fix"
     d = gh_json(["pr", "view", str(num), "-R", slug, "--json", "assignees"],
                 default={}) or {}
@@ -542,7 +549,7 @@ def find_session(repo_path, branch):
     return None
 
 
-def spawn(state, key_, branch, title, new_branch):
+def spawn(state, key_, branch, title, new_branch, question=None):
     me = whoami(state)
     slug, num, kind = split_key(key_)
     reg = state.get("registry", {})
@@ -581,11 +588,13 @@ def spawn(state, key_, branch, title, new_branch):
     item = {"mode": mode, "branch": branch, "session": sess["id"],
             "pr": num if kind == "pr" else None, "reviewed_sha": None,
             "phase": "working", "added": int(time.time())}
+    if question:
+        item["question"] = question
     state["items"][key_] = item
     save(state)
 
-    tmpl = "work" if kind == "issue" else (
-        "review-fix" if mode == "fix" else "review-comment")
+    tmpl = {"issue": "work", "investigate": "investigate"}.get(
+        kind, "review-fix" if mode == "fix" else "review-comment")
     print(f"spawned {key_} mode={mode} branch={branch} session={sess['id']} "
           f"group={group}/worktrees")
     print(f"next: send the '{tmpl}' prompt to session {sess['id']}")
@@ -672,11 +681,20 @@ def main():
     if cmd == "render":
         # render <template> KEY=VAL ...
         subs = dict(kv.split("=", 1) for kv in args[2:] if "=" in kv)
+        it_ = state.get("items", {}).get(subs.get("KEY", ""), {})
+        if it_.get("question"):
+            subs.setdefault("QUESTION", it_["question"])
+            subs.setdefault("BRANCH", it_.get("branch", ""))
         print(render_prompt(args[1], subs))
         return 0
     if cmd == "spawn":
         # spawn <key> <branch> <title> [--new]
         return spawn(state, args[1], args[2], args[3], "--new" in args[4:])
+    if cmd == "investigate":
+        # investigate <slug> <name> <branch> <title> <question>
+        slug_, name, branch, title, question = args[1:6]
+        return spawn(state, key(slug_, name, "investigate"), branch, title,
+                     True, question=question)
     if cmd == "siblings":
         print_siblings(state, args[1],
                        args[2] if len(args) > 2 else None)
@@ -755,7 +773,8 @@ def main():
 
     print(f"unknown command: {cmd}", file=sys.stderr)
     print("usage: scan.sh [scan|refresh|status|pause|resume|decline|undecline|"
-          "track|untrack|set-phase|mark-reviewed|mark-merged|render|spawn]", file=sys.stderr)
+          "track|untrack|set-phase|mark-reviewed|mark-merged|render|spawn|"
+          "investigate]", file=sys.stderr)
     return 1
 
 
