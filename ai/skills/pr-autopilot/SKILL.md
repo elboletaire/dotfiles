@@ -45,6 +45,9 @@ action until the user resumes.
   (below). Ambiguous number with candidates in several repos: ask which repo.
 - **"no 166"** -> `$A decline <key>`. It never appears again. (`$A undecline` reverses it.)
 - **"pause"** / **"resume"** -> `$A pause` / `$A resume`.
+- **"/investigate <repo> <question>"** -> spawn an investigation (below). The
+  question is the user's, verbatim -- never paraphrase it into the prompt, and
+  never answer it yourself. You are the orchestrator; the session investigates.
 - **"status"** -> run a scan and report; add `$A status` for raw state.
 
 ## Spawning
@@ -69,6 +72,27 @@ aoe send <session> "$($A render <template> REPO=<repo> ISSUE=<n> PR=<n> \
 
 For a `mode=fix` PR you are adopting, send `rebase` first and `review-fix` on
 the following tick -- one message per tick, so each lands in a settled agent.
+
+### Investigations
+
+`/investigate <repo> <free-form question>` -- work that starts from a question
+rather than a GitHub item. Key shape is `owner/repo?name`. You pick the branch
+(`chore/`, `fix/`... per the question's nature), the `name` (the branch's slug),
+and the title; the question is passed verbatim and stored on the item.
+
+```
+$A investigate <slug> <name> <branch> "<Title>" "<the user's question>"
+aoe send <session> "$($A render investigate "KEY=<key>" REPO=<slug> BASE=<base>)"
+```
+
+Quote `KEY=` -- the `?` in the key is a glob character and zsh will not match it
+bare. The question is pulled from the item by `KEY=`, so never re-type it on the
+command line.
+
+The item is `mode=fix` with `pr=null`, so it follows the issue-driven lifecycle
+with no special casing: `WORKING` until a PR appears on the branch, then the
+normal review flow. It may also end with no PR at all -- a report that nothing
+needs changing is a valid outcome, not a failure.
 
 Respect `ACTIVE n/MAX` in the header. `UNTRACKED n` counts worktree sessions
 already running that autopilot did not start -- they are real load. If
