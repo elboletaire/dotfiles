@@ -39,8 +39,13 @@ fpath=(~/.dotfiles/completion $fpath)
 autoload -Uz compinit && compinit -i
 
 export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+# nvm's alias parser strips comments with `${line%%#*}`, which zsh rejects as
+# "bad pattern: #*" when extended_glob (set by Prezto) is on. That silently
+# breaks the `default` alias, so nvm activates no version at all and node is
+# missing. Sourcing under `emulate -c` gives nvm's functions a sticky emulation
+# with extended_glob off, so they keep working whatever the shell sets later.
+[ -s "$NVM_DIR/nvm.sh" ] && emulate -R zsh -o noextendedglob -c '. "$NVM_DIR/nvm.sh"'  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && emulate -R zsh -o noextendedglob -c '. "$NVM_DIR/bash_completion"'  # This loads nvm bash_completion
 
 autoload -U add-zsh-hook
 
