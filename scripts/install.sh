@@ -711,11 +711,23 @@ install_packages() {
       echo "Cannot update pacman. ${aborting}" && exit 1
     fi
     # Install common required packages. We don't install git, as it's the way to
-    # install the dotfiles.
-    if ! sudo pacman -S --noconfirm yay curl zsh vivid vim which jq; then
+    # install the dotfiles. base-devel is needed to build AUR packages below.
+    if ! sudo pacman -S --needed --noconfirm base-devel curl zsh vivid vim which jq; then
       echo "Packages installation unsuccessful. ${aborting}" && exit 1
     fi
-    if ! yay -S --noconfirm obscura-browser-bin; then
+    # yay is an AUR helper, and the AUR is not an official repo, so pacman
+    # cannot install it: bootstrap it with makepkg the first time around.
+    if ! command -v yay &>/dev/null; then
+      local yay_src
+      yay_src="$(mktemp -d)"
+      if ! git clone --depth 1 https://aur.archlinux.org/yay-bin.git "$yay_src" ||
+        ! (cd "$yay_src" && makepkg -si --noconfirm); then
+        rm -rf "$yay_src"
+        echo "Could not bootstrap yay. ${aborting}" && exit 1
+      fi
+      rm -rf "$yay_src"
+    fi
+    if ! yay -S --needed --noconfirm obscura-browser-bin; then
       echo "Could not install AUR packages. ${aborting}" && exit 1
     fi
   fi
