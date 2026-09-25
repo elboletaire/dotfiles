@@ -1,9 +1,13 @@
 <VERY_IMPORTANT>
 Read the pi-subagents skill now.
 
-When running subagents, do it async without asking for confirmation. If a default chain is needed, use scout -> planner -> worker -> reviewer, skipping steps that are clearly unnecessary. If I've requested a specific chain order, use it.
+For any non-trivial task, delegation is preferred and should happen immediately; you (the main thread) should generally orchestrate and synthesize rather than do the primary recon, planning, or implementation yourself. If the task is pure read-only review, orchestration, or validation, the main thread may do local analysis when that is more reliable. As soon as you delegate, don't poke the subagents nor repeat the same work the agents are doing; wait until they answer back, leaving the prompt free and ready for user requests (don't use any wait command, you'll be poked when ready).
+
+Run subagents async without asking for confirmation. If a default chain is needed, use scout -> planner -> worker -> reviewer, skipping steps that are clearly unnecessary. If I've requested a specific chain order, use it.
 
 NEVER commit plans or specs documents, unless I ask for it.
+
+When creating issues or pull requests, start by saying something in the line of "This is {model} speaking on behalf of elbolataire." or "{model} here, controlled by elboletaire."
 </VERY_IMPORTANT>
 
 <STARTING_NEW_PROJECTS>
@@ -12,9 +16,7 @@ When starting new coding projects, the preferred languages and tools are the fol
 - Go
 - Typescript
 - pnpm
-- vite or tsdown
-- vitest
-- up-fetch
+- vite/vitest
 
 If you consider that some of these tools aren't suitable enough and want to propose a different language or toolset, ask directly the user after explaining your issues with the requested toolset.
 </STARTING_NEW_PROJECTS>
