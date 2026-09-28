@@ -4,4 +4,17 @@ When creating issues or pull requests, rather than ending with youre signature, 
 
 When I ask you to post a comment on a PR we've just reviewed, post it as a review by default, not as a regular comment. Also, make sure to mark it as either "Request changes" or "Approve", depending on the outcome of the review.
 
+<STARTING_NEW_PROJECTS>
+When starting new coding projects, the preferred languages and tools are the following:
+
+- Go
+- Typescript
+- pnpm
+- vite or tsdown
+- vitest
+- up-fetch
+
+If you consider that some of these tools aren't suitable enough and want to propose a different language or toolset, ask directly the user after explaining your issues with the requested toolset.
+</STARTING_NEW_PROJECTS>
+
 @RTK.md
