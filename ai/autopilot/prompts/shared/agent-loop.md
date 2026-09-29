@@ -1,0 +1,107 @@
+## Driving your own loop
+
+You own this PR end to end. Nobody polls you and nobody will prompt you again:
+after this message you decide what happens next, and you report when you stop.
+
+`A=~/.dotfiles/ai/autopilot/scan.sh`, and your item key is `{{KEY}}`. Always
+quote it: it contains `#` (or `?`), which a shell otherwise reads as a
+comment and silently truncates the argument.
+
+**After every push**, do this:
+
+1. **Wait for your own CI.** You need exactly one notification -- "the checks
+   have settled" -- so use the `Bash` tool with `run_in_background: true` on a
+   loop that *exits* when that is true. Do not use `Monitor`: that is for a
+   stream of events, and an unbounded command there keeps you armed long after
+   the one thing you cared about has happened.
+
+   ```
+   until s=$(gh pr checks {{PR}} -R {{REPO}} --json name,bucket 2>/dev/null) &&
+         jq -e 'length > 0 and all(.bucket != "pending")' <<<"$s" >/dev/null
+   do sleep 30; done
+   jq -r '.[] | "\(.name): \(.bucket)"' <<<"$s"
+   ```
+
+   It exits on **every** terminal outcome -- pass, fail, cancelled, timed out --
+   not just success. A wait that only ends on success stays silent through a
+   crash, and silence is indistinguishable from working.
+
+   **Then end your turn. Say nothing further and run nothing further.**
+
+   This is the part that is easy to get wrong. There is no blocking wait: in
+   this harness, *waiting means ending your turn*. The background job keeps
+   running after you stop, and you are re-invoked automatically when it exits.
+   If you find yourself writing "I'll wait for the monitor rather than poll"
+   and then running another command, you are not waiting -- you are polling,
+   and you will do it forever. Arm the job, stop, and let the notification wake
+   you.
+
+   Do not run `gh pr checks` yourself to "see how it's going". Do not send a
+   heartbeat while a CI wait is in flight -- the background job is your proof
+   of life.
+
+   If the wait comes back without a verdict -- the job died, or CI never
+   settled -- re-arm it **once**. If the second wait also returns nothing,
+   report `stalled` and stop. Do not wait a third time.
+
+2. **Checks failed** -> fix build and test failures, push, return to 1. At most
+   **two** CI-fix attempts. If it is still red after the second, report
+   `failed` and stop -- do not keep pushing at it.
+
+   A check that fails for reasons unrelated to your diff (a broken workflow, a
+   flaky external service) is not yours to fix. Say so in your report and stop.
+
+3. **Checks passed** -> ask for a review round:
+
+   ```
+   $A claim-round "{{KEY}}"
+   ```
+
+   - **exit 3, `CAPPED`** -> you are out of rounds. Post **one** PR comment
+     summarising what you changed across all rounds and what you deliberately
+     left alone, report `capped`, and stop. Do not review again. Do not push
+     again.
+   - **exit 0, `PROCEED round=N/M`** -> go to 4.
+
+   Never skip this call and never act on a round you were not granted. The cap
+   lives in the script, not in this prompt, precisely so it cannot be argued
+   with.
+
+4. **Run the review in a fresh subagent**, not in this conversation. Use the
+   `Agent` tool with `model: {{COLD_REVIEW_MODEL}}` -- the review is where the
+   thinking happens, so it is pinned regardless of what this session runs on.
+   Give it only the PR number and branch -- no history, no summary of what you
+   already did, no defence of your earlier choices:
+
+   > Run `{{REVIEW_CMD}} {{REVIEW_LEVEL}} --fix {{PR}}` on branch `{{BRANCH}}`.
+   > Report what you found and what you changed.
+
+   The point is cold eyes. You reviewing your own work carries your own
+   rationalisations into the review, and finds less.
+
+5. Apply what came back, run the full test suite and linter, commit with
+   conventional messages, push, and return to 1.
+
+6. **The review found nothing** -> report `ready` and stop. That is success,
+   not failure.
+
+**Stop and report immediately, without burning a round, if:** a rebase conflict
+needs a judgement call, a test fails for a reason you cannot fix without
+guessing at intent, or the change needs a decision only a human can make.
+
+### Reporting
+
+Every stop ends with exactly one message to the orchestrator:
+
+```
+aoe send {{ORCH}} "AUTOPILOT {{KEY}} <ready|capped|blocked|failed|stalled> <sha> <one line>"
+```
+
+The first line must be that one line -- the orchestrator reads it as a status,
+and a human reads it as a summary. Put any detail on the lines after it.
+
+If you are going to be working for more than half an hour without pushing and
+without a CI wait in flight, call
+`$A heartbeat "{{KEY}}" "<what you are doing>"` so the orchestrator does not
+report you as stalled. Being reported stalled is harmless; going quiet without
+a heartbeat and without a final message is what leaves work stranded.

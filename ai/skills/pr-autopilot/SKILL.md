@@ -21,17 +21,49 @@ Row keys are `owner/repo#PR` and `owner/repo!ISSUE`.
 If the header says `PAUSED yes`, report the row counts and stop -- take no
 action until the user resumes.
 
+## Tick report
+
+Every tick ends with the same fixed layout, so the user can scan it in five
+seconds. Tables, not prose. Omit a section when it is empty. Never truncate
+titles, and use the GitHub title as-is instead of paraphrasing it.
+
+1. **Headline**: one line of counts, e.g.
+   `🔴 1 needs you · 🟡 3 running · ⚪ 19 to pick · 4/6 slots`.
+2. **🔴 Needs you**: `CAPPED`, `READY`, `PUSHED` (label it **stale**), `STALLED` that is a real stall,
+   `CLOSED`, agent `blocked`/`failed` reports, and `state=idle` sessions over
+   1h. Columns: `Item | What | Why it's here | Your move`. "Your move" is one
+   short verb phrase ("merge or review", "check its window").
+3. **🟡 Running**: `WORKING` rows plus `STALLED` rows for sessions the user
+   started by hand (they never heartbeat, so "stalled" is noise there). Columns:
+   `Item | What | State | For`.
+4. **✅ Did this tick**: one bullet per action taken (cleanup, rebase sent,
+   spawn, track). Leave it out when nothing was done.
+5. **⚪ Pick next**: every `PROPOSE` row, numbered 1..N in scan order.
+   Columns: `# | Repo | Item | Title | Kind`, where Kind is `issue`,
+   `adopt PR` (someone else's PR assigned to the user), `your PR`, or `review only`
+   (mode=comment). Put collision warnings (same area as a running session,
+   duplicate of tracked work) in the Kind cell, never below the table.
+6. **Footer**: one line with the next tick time, then `go <#>` / `no <#>`.
+
+`go <#>` and `no <#>` resolve against the most recent Pick next table you
+showed. GitHub numbers ("go 1807") still work. Report `UNCLONED`, `SKIPPED` and
+`UNKNOWN` as one-line notes under the footer.
+
 ## What each row means
 
 | Row | Do this |
 |---|---|
 | `MERGED` | `$A cleanup <key>` -- removes the session and its worktree, marks it handled, and then prints the fan-out set as `SIBLINGS:` lines of `<session> <branch> <pr> <base> <key>`. For each of those lines, `aoe send <session> "$($A render rebase REPO=<slug> PR=<pr> BRANCH=<branch> BASE=<base>)"`. The set is already filtered to `mode=fix` and excludes the merged item; never widen it by hand. |
-| `REVIEW` | `aoe session set-session-id <session> ""` then `aoe session stop <session>`, then `$A set-phase <key> booting`. That is the whole action -- the prompt goes out next tick, once the agent has actually rebooted. |
-| `BOOTING` | `aoe send <session> "$($A render review-fix\|review-comment ...)"` picking the template by `mode=`, then `$A mark-reviewed <key> <head-sha>` using the `head=` value the previous REVIEW row showed (re-read it from `$A status` if you no longer have it). |
-| `FEEDBACK` | A human or a review bot left a review on a PR you own. `aoe send <session> "$($A render address-feedback REPO=<slug> PR=<pr> BRANCH=<branch> BASE=<base>)"`, then `$A mark-feedback <key> <the since= value from the row>`. Only ever appears for `mode=fix`. |
-| `WORKING` | Nothing. Report branch and age. If `age` is large and `state=idle`, say so -- the user decides. |
+| `REVIEW` | Only ever appears for `driver=orchestrator` items (legacy, and `mode=comment`). `aoe session set-session-id <session> ""` then `aoe session stop <session>`, then `$A set-phase <key> booting`. That is the whole action -- the prompt goes out next tick, once the agent has actually rebooted. |
+| `BOOTING` | The row names the prompt as `template=`. Send exactly that one: `aoe send <session> "$($A render <template> REPO=<slug> PR=<n> BRANCH=<branch> BASE=<base> PREV=<prev>)"` (`PREV=` only for `re-review`, taken from the row). Before sending, make sure the session's worktree is on the PR's current head (fetch, then `git checkout --detach origin/<branch>` when the worktree is clean). Then `$A mark-reviewed <key> <head-sha>` with the head you checked out. `re-review` is the follow-up after the author pushed: it checks that the new commits fix what we raised and break nothing else, and it is never a second full review. `review-comment` is the first review of someone else's PR. Both verify every finding in a fresh subagent before posting. |
+| `FEEDBACK` | A human or a review bot left a review on a PR you own. Addressing it resets the review-round budget to 0. Bot accounts in `FEEDBACK_IGNORE_AUTHORS` (default `github-actions`) never produce these rows, for reviews as well as comments -- a CI bot that reviews on every push would otherwise reset the cap forever. `aoe send <session> "$($A render address-feedback REPO=<slug> PR=<pr> BRANCH=<branch> BASE=<base>)"`, then `$A mark-feedback <key> <the since= value from the row>`. Only ever appears for `mode=fix`. |
+| `STALLED` | An agent-driven item that has neither pushed nor sent a heartbeat for `AGENT_STALL_MIN` (35m). **Take no action** -- do not reboot it, do not re-prompt it. Report the branch, the quiet time and the round count, and let the user decide. It usually means the agent crashed, its background CI wait never returned, or its report never arrived. |
+| `WORKING` | Nothing. Report branch and age. A `driver=agent` row also shows `rounds=N/M quiet=Xm` -- it is running its own loop and needs nothing from you. If `age` is large and `state=idle`, say so -- the user decides. |
+| `CAPPED` | Autopilot hit `MAX_REVIEW_ROUNDS` on this PR and stopped on its own. **Take no action.** Report it once with the round count and the head sha, and say the PR is waiting on the user: merge it, review it on github.com (which resets the budget), or run `$A reset-rounds <key>` to grant another round. Never send another review prompt to a capped item. |
 | `READY` | `PushNotification` once: "PR #N in <repo> ready to merge". Do not merge. Do not re-notify on later ticks for the same head sha. |
-| `DONE` | Report once. `mode=comment` work ends here -- there is nothing to merge and nothing to push. |
+| `DONE` | Report once. A posted review holds no slot; while its session is still running the scan shows `WORKING ... reviewing, not posted yet` instead, which does. `mode=comment` work ends here -- there is nothing to merge and nothing to push. |
+| `PUSHED` | **Stale PR.** The author of a PR we reviewed pushed new commits and never re-requested the review, and the branch has been quiet for `RE_REVIEW_QUIET_HOURS` (4h). Never review it on your own. Put it in 🔴 Needs you as a stale PR, with the quiet time. The user replies `re-review <#>` (you do the `REVIEW` action for it, then `BOOTING` next tick) or `ack <#>` (`$A ack-push <key>`, which stops the flag until the next push or re-request). |
+| `GONE` | The user removed this item's session by hand. The scan has already untracked it, and it no longer holds a slot. Report it once. Take no action. |
 | `CLOSED` | Report. The PR was closed unmerged; ask the user whether to clean up. Do not remove anything yourself. |
 | `PROPOSE` | Collect these and present them as a numbered list. **Spawn nothing until the user says so.** |
 | `UNCLONED` | Report with the clone command. Never clone, never spawn. |
@@ -44,6 +76,7 @@ action until the user resumes.
 - **"go 1782"**, "go vocdoni.io#194", "go all the dependabot ones" -> spawn each
   (below). Ambiguous number with candidates in several repos: ask which repo.
 - **"no 166"** -> `$A decline <key>`. It never appears again. (`$A undecline` reverses it.)
+- **"re-review 452"** / **"ack 452"** -> the two answers to a stale `PUSHED` PR (see that row).
 - **"pause"** / **"resume"** -> `$A pause` / `$A resume`.
 - **"/investigate <repo> <question>"** -> spawn an investigation (below). The
   question is the user's, verbatim -- never paraphrase it into the prompt, and
@@ -53,8 +86,12 @@ action until the user resumes.
 ## Spawning
 
 You choose the branch name and session title; the script does the mechanics
-(fetch, `aoe add`, group move, tracking) and **re-derives the mode itself** --
-do not pass a mode.
+(fetch, `aoe add`, group move, tracking), **re-derives the mode itself** -- do
+not pass a mode -- and **pins the model** from `config.sh` by the template that
+creates the session (currently `opus[1m]` for every template -- Opus with 1M
+context, so review loops do not auto-compact). The worker never inherits your model, so running autopilot
+on a small model still gets you full-size workers. `spawn` prints `model=` --
+report it. Never pass a model yourself.
 
 - Issue: branch `<type>/<slug>-<issue>` (`feat/`, `fix/`, `chore/`, `docs/`,
   `test/`, `refactor/` per the issue's nature), title-cased title from the
@@ -70,8 +107,11 @@ aoe send <session> "$($A render <template> REPO=<repo> ISSUE=<n> PR=<n> \
                         BRANCH=<branch> BASE=<base>)"
 ```
 
-For a `mode=fix` PR you are adopting, send `rebase` first and `review-fix` on
-the following tick -- one message per tick, so each lands in a settled agent.
+A PR's mode comes from `scan.py`, never from you: `fix` when the user opened
+it or is its **assignee** (the explicit adopt signal), `comment` otherwise --
+repo and review requests do not change it. For a `fix` PR whose branch is
+behind its base, send `rebase` alone: it rebases and then runs the whole
+review loop, so a later `review-fix` would prompt the agent twice.
 
 ### Investigations
 
@@ -104,14 +144,40 @@ queued rather than spawning past it.
 
 End every tick with `ScheduleWakeup`:
 
-- ~270s if any `WORKING`, `BOOTING` or `REVIEW` row exists (stays inside the
-  prompt-cache window).
-- ~1200s if only `PROPOSE`, `READY`, `DONE` or `STALE` rows remain.
+- ~270s only while a `driver=orchestrator` item is mid-flight (`BOOTING` or
+  `REVIEW` row) -- those still need you every round.
+- ~1500-1800s otherwise. Agent-driven items report to you; the tick is a
+  watchdog for the ones that do not, not a polling loop. A `WORKING` row with
+  `driver=agent` is not a reason to tick fast.
 - Never 300s.
 - `noop: true` when the table produced no action and nothing changed.
 
+## Agent reports
+
+`mode=fix` items spawned from now on are **agent-driven**: the agent waits on
+its own CI, claims its own review rounds (`scan.sh claim-round`, which the
+script caps), runs each review in a fresh subagent, and messages you when it
+stops. You do not prompt it again after the first prompt.
+
+Its report arrives in your session as a line starting `AUTOPILOT <key> <state>`:
+
+| state | What it means | You do |
+|---|---|---|
+| `ready` | Review found nothing; PR is as done as the agent can make it | Confirm against the next scan's `READY` row, then tell the user |
+| `capped` | Hit `MAX_REVIEW_ROUNDS`; summary comment posted on the PR | Report. Never grant another round unprompted -- that is `$A reset-rounds`, and only when the user asks |
+| `blocked` | Needs a human judgement call | Report verbatim; the user decides |
+| `failed` | CI still red after two fix attempts | Report with the failing check |
+| `stalled` | Its CI wait returned no verdict twice | Report; the user decides whether to re-prompt |
+
+Never treat a report as proof. `READY` shows the real check state from GitHub;
+if an agent says `ready` and the table disagrees, the table wins.
+
 ## Rules
 
+0. **Never exceed `MAX_REVIEW_ROUNDS`** (config.sh, currently 3). The counter
+   increments on `mark-reviewed` and the table enforces it by printing `CAPPED`
+   instead of `REVIEW`. Act on the row you are given; never hand-roll a review
+   send for a capped item.
 1. **Never merge.** `READY` notifies; the user merges.
 2. **Never push to a `mode=comment` branch** -- no rebase, no fan-out, no
    commits. It is someone else's work and you were asked only to review it.
@@ -122,5 +188,7 @@ End every tick with `ScheduleWakeup`:
 4. **Never remove a session you were not told to.** `MERGED` -> `cleanup` is the
    only automatic removal. `STALE` and `CLOSED` are reports.
 5. **Never clone.**
-6. One `aoe send` per session per tick. Two messages in one tick race each other.
-7. Report what you did in a few lines. Do not paste prompt bodies back.
+6. **Never prompt a `driver=agent` item twice.** Its first prompt carries the
+   whole loop; a second message lands mid-flight and races its own work.
+7. One `aoe send` per session per tick. Two messages in one tick race each other.
+8. Report in the Tick report layout above. Do not paste prompt bodies back.

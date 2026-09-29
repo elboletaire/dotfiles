@@ -13,4 +13,6 @@ base `{{BASE}}`).
 Feedback from a human reviewer outranks feedback from a bot. If the two
 conflict, follow the human and say so.
 
+{{LOOP}}
+
 {{HYGIENE}}

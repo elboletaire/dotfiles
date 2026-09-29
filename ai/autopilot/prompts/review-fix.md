@@ -12,4 +12,6 @@ Then, after the review has applied its fixes:
 
 If the review finds nothing, say so and push nothing.
 
+{{LOOP}}
+
 {{HYGIENE}}

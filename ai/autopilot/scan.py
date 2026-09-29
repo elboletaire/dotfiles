@@ -5,17 +5,36 @@ Reads GitHub + aoe, diffs against a small state file, prints a compact table of
 actionable rows. Deterministic; no model involved. See SKILL.md for how the
 rows are acted on.
 """
+import fcntl
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 
 HOME_REPOS = os.environ.get("HOME_REPOS", "").split()
 ISSUE_ORGS = os.environ.get("ISSUE_ORGS", "").split()
 MAX_ACTIVE = int(os.environ.get("MAX_ACTIVE", "6"))
+MAX_REVIEW_ROUNDS = int(os.environ.get("MAX_REVIEW_ROUNDS", "3"))
+AGENT_STALL_MIN = int(os.environ.get("AGENT_STALL_MIN", "35"))
+# A review-only PR whose author pushed after our review but never re-requested
+# it is flagged PUSHED once its head has been unchanged this long.
+RE_REVIEW_QUIET_HOURS = float(os.environ.get("RE_REVIEW_QUIET_HOURS", "4"))
+
+# Model per spawn, keyed by the template that creates the session. Pinned onto
+# the claude command line rather than inherited, so the orchestrator's own
+# model never decides what the workers run on.
+MODEL_FOR = {
+    "work": os.environ.get("MODEL_WORK", "opus"),
+    "investigate": os.environ.get("MODEL_INVESTIGATE", "opus"),
+    "review-fix": os.environ.get("MODEL_REVIEW_FIX", "sonnet"),
+    "review-comment": os.environ.get("MODEL_REVIEW_COMMENT", "opus"),
+}
+MODEL_COLD_REVIEW = os.environ.get("MODEL_COLD_REVIEW", "opus")
 STALE_HOURS = int(os.environ.get("STALE_HOURS", "48"))
 ISSUE_MAX_AGE_DAYS = int(os.environ.get("ISSUE_MAX_AGE_DAYS", "120"))
 STATE_FILE = os.environ.get(
@@ -65,10 +84,30 @@ def load():
 
 def save(state):
     os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
-    tmp = STATE_FILE + ".tmp"
+    tmp = f"{STATE_FILE}.tmp.{os.getpid()}"
     with open(tmp, "w") as fh:
         json.dump(state, fh, indent=2, sort_keys=True)
     os.replace(tmp, STATE_FILE)
+
+
+@contextmanager
+def locked():
+    """Exclusive lock for the whole read-modify-write of the state file.
+
+    save() is atomic on its own, but every mutating command does
+    load() -> mutate -> save(); without this, two concurrent writers both read
+    the same counter and the second silently discards the first's increment.
+    The counter that gets lost is review_rounds -- the cap itself. Readers
+    (scan/status) do not take the lock.
+    """
+    os.makedirs(os.path.dirname(STATE_FILE) or ".", exist_ok=True)
+    fh = open(STATE_FILE + ".lock", "w")
+    try:
+        fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+        yield
+    finally:
+        fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+        fh.close()
 
 
 def whoami(state):
@@ -179,9 +218,11 @@ def home_prs(slug):
 
 
 def search_prs(query_flag, me):
-    rows = gh_json(["search", "prs", query_flag, "--state", "open", "--limit",
+    rows = gh_json(["search", "prs", query_flag, "--state", "open",
+                    "--archived=false", "--limit",
                     "60", "--json",
-                    "number,repository,title,author,url"], default=[]) or []
+                    "number,repository,title,author,assignees,url"],
+                   default=[]) or []
     for r in rows:
         r["repo"] = (r.get("repository") or {}).get("nameWithOwner")
     return [r for r in rows if r.get("repo")]
@@ -211,7 +252,8 @@ def org_issues(me):
     rows = []
     for org in ISSUE_ORGS:
         got = gh_json(["search", "issues", "--assignee", me, "--state", "open",
-                       "--owner", org, "--updated", f">={cutoff()}",
+                       "--owner", org, "--archived=false",
+                       "--updated", f">={cutoff()}",
                        "--limit", "60", "--json",
                        "number,repository,title,url"], default=[]) or []
         for r in got:
@@ -229,7 +271,8 @@ def open_heads(slug):
 def pr_detail(slug, number):
     d = gh_json(["pr", "view", str(number), "-R", slug, "--json",
                  "number,state,mergedAt,headRefOid,headRefName,baseRefName,"
-                 "statusCheckRollup,isDraft,url,title,reviews,comments"],
+                 "statusCheckRollup,isDraft,url,title,reviews,comments,"
+                 "reviewRequests"],
                 default=None)
     return d
 
@@ -245,7 +288,11 @@ def new_feedback(detail, since):
     for r in (detail or {}).get("reviews") or []:
         when = r.get("submittedAt") or ""
         body = r.get("body") or ""
-        if when <= since or AGENT_MARKER in body:
+        author = (r.get("author") or {}).get("login", "?")
+        # FEEDBACK_IGNORE has to cover reviews as well as comments: a CI bot
+        # that reviews on every push would otherwise reset the review-round
+        # counter forever and defeat MAX_REVIEW_ROUNDS.
+        if when <= since or AGENT_MARKER in body or author in FEEDBACK_IGNORE:
             continue
         state_ = r.get("state") or ""
         if state_ not in ("CHANGES_REQUESTED", "COMMENTED", "APPROVED"):
@@ -254,8 +301,7 @@ def new_feedback(detail, since):
         # carries an actual note is worth waking the agent for.
         if state_ == "APPROVED" and not body.strip():
             continue
-        out.append((r.get("author", {}).get("login", "?"), when,
-                    r.get("state", "REVIEW"), body[:60]))
+        out.append((author, when, r.get("state", "REVIEW"), body[:60]))
     for c in (detail or {}).get("comments") or []:
         when = c.get("createdAt") or ""
         body = c.get("body") or ""
@@ -282,14 +328,17 @@ def checks_of(detail):
 
 # ---------------------------------------------------------------------- mode
 
-def mode_for(slug, pr_row, me):
-    """'fix' | 'comment' | None (out of scope)."""
-    if slug in HOME_REPOS:
-        return "fix"
+def mode_for(pr_row, me):
+    """'fix' for PRs you own, 'comment' for everyone else's.
+
+    You own a PR when you opened it, or when it is assigned to you (as
+    assignee, not reviewer) -- the explicit signal to adopt someone else's
+    PR. On any other PR the useful output is a review they can act on, not
+    commits pushed over their work. The repo does not change this.
+    """
+    author = (pr_row.get("author") or {}).get("login")
     assignees = [a.get("login") for a in (pr_row.get("assignees") or [])]
-    if me in assignees:
-        return "fix"
-    return "comment"      # only reachable via the review-requested search
+    return "fix" if author == me or me in assignees else "comment"
 
 
 # ---------------------------------------------------------------------- main
@@ -312,6 +361,7 @@ def scan(state, refresh=False):
         set(state.get("skipped_paths", [])) | set(NEW_SKIPS))
 
     path_to_slug = {v["path"].rstrip("/"): k for k, v in reg.items()}
+    session_paths = {s["id"]: s.get("path") for s in sessions}
 
     # branch -> session, per repo path
     by_branch = {}
@@ -353,6 +403,16 @@ def scan(state, refresh=False):
         sess = it.get("session")
         smeta = f"session={sid(sess)}"
 
+        # The user removed the session by hand (trashed or gone from aoe).
+        # Stop tracking it so it frees its slot; a merged PR still goes
+        # through MERGED below so its cleanup and fan-out happen.
+        if sess and sess not in session_paths and not (
+                it.get("pr") and d and d.get("state") == "MERGED"):
+            items.pop(k)
+            rows.append(("GONE", k, f"{smeta} removed outside autopilot "
+                                    "-> untracked, slot freed"))
+            continue
+
         if it.get("pr") and d and d.get("state") == "MERGED":
             if k not in handled:
                 rows.append(("MERGED", k, f"branch={it.get('branch')} {smeta}"))
@@ -365,30 +425,69 @@ def scan(state, refresh=False):
 
         if it.get("phase") == "booting":
             active += 1
-            rows.append(("BOOTING", k, f"mode={it['mode']} {smeta}"))
+            # A comment item that was already reviewed gets a follow-up review
+            # scoped to the author's new commits, not a second full review.
+            if it["mode"] == "comment" and it.get("reviewed_sha"):
+                tmpl = f"template=re-review PREV={it['reviewed_sha']}"
+            elif it["mode"] == "comment":
+                tmpl = "template=review-comment"
+            else:
+                tmpl = "template=review-fix"
+            rows.append(("BOOTING", k, f"mode={it['mode']} {smeta} {tmpl}"))
             continue
 
         if not it.get("pr"):
             # issue-driven work, PR not opened yet
             repo_path = reg.get(slug, {}).get("path", "").rstrip("/")
+            # The agent may have switched its worktree to another branch and
+            # opened the PR from there; the branch recorded at spawn/track time
+            # would then never match. Follow the worktree's live branch.
+            wt_path = session_paths.get(sess)
+            if wt_path and os.path.isdir(wt_path):
+                code, cur, _ = sh(["git", "branch", "--show-current"],
+                                  cwd=wt_path)
+                if code == 0 and cur and cur != it.get("branch"):
+                    it["branch"] = cur
             found = None
             for pr in results.get(("prs", slug), []) or []:
                 if pr["headRefName"] == it.get("branch"):
                     found = pr
                     break
             if found is None and repo_path:
-                got = gh_json(["pr", "list", "-R", slug, "--state", "open",
+                # --state all: a PR opened and merged between two ticks must
+                # still be found, or its session lingers as WORKING forever.
+                got = gh_json(["pr", "list", "-R", slug, "--state", "all",
                                "--head", it.get("branch", ""), "--json",
                                PR_FIELDS], default=[]) or []
                 found = got[0] if got else None
             if found:
                 it["pr"] = found["number"]
                 nk = key(slug, found["number"])
+                # The agent was handed the issue key in its prompt and will
+                # keep using it for claim-round/heartbeat; remember it so those
+                # calls still resolve after the re-key.
+                it.setdefault("prev_keys", []).append(k)
                 items[nk] = items.pop(k)
-                rows.append(("REVIEW", nk,
-                             f"mode={it['mode']} {smeta} head={found['headRefOid'][:7]} "
-                             f"reviewed=none"))
+                if found.get("state") == "MERGED":
+                    if nk not in handled:
+                        rows.append(("MERGED", nk, f"branch={it.get('branch')} {smeta}"))
+                    continue
+                if found.get("state") == "CLOSED":
+                    rows.append(("CLOSED", nk, f"branch={it.get('branch')} {smeta} "
+                                               "-> not merged; session left alone"))
+                    continue
                 active += 1
+                # An agent-driven item runs its own review loop; a REVIEW row
+                # here would tell the orchestrator to reboot it mid-flight.
+                if it.get("driver") == "agent":
+                    rows.append(("WORKING", nk,
+                                 f"branch={it.get('branch')} {smeta} driver=agent "
+                                 f"rounds={int(it.get('review_rounds', 0))}/"
+                                 f"{MAX_REVIEW_ROUNDS} quiet=0m"))
+                else:
+                    rows.append(("REVIEW", nk,
+                                 f"mode={it['mode']} {smeta} head={found['headRefOid'][:7]} "
+                                 f"reviewed=none"))
                 continue
             st = live.get(sess, {}).get("state", "?")
             age = live.get(sess, {}).get("age_secs", 0)
@@ -404,15 +503,136 @@ def scan(state, refresh=False):
             continue
         active += 1
         rv = it.get("reviewed_sha") or ""
+
+        # A human (or review bot) leaving a review outranks everything below:
+        # it is explicit instruction, where REVIEW is only autopilot's own
+        # second guess. Items tracked before feedback_seen existed get it
+        # stamped now, so pre-existing reviews do not stampede on first scan.
+        if it["mode"] == "fix":
+            if "feedback_seen" not in it:
+                it["feedback_seen"] = time.strftime("%Y-%m-%dT%H:%M:%SZ",
+                                                    time.gmtime())
+            fb = new_feedback(d, it.get("feedback_seen"))
+            if fb:
+                who, when, kind, snippet = fb[-1]
+                rows.append(("FEEDBACK", k,
+                             f"mode=fix {smeta} since={it['feedback_seen']} "
+                             f"{who} {kind} \"{snippet}\""))
+                continue
+
+        rounds = int(it.get("review_rounds", 0))
+
+        # An agent-driven item runs its own loop: it waits on its own CI,
+        # claims its own rounds and reports when it is done. The orchestrator
+        # never sends it a review prompt -- it only watches for the agent
+        # going quiet, because a dead agent and a working one look identical
+        # from here.
+        if it.get("driver") == "agent" and rounds < MAX_REVIEW_ROUNDS:
+            if not rv or not head.startswith(rv):
+                quiet = (int(time.time()) - int(it.get("last_seen")
+                         or it.get("added") or 0)) // 60
+                if quiet >= AGENT_STALL_MIN:
+                    rows.append(("STALLED", k,
+                                 f"mode={it['mode']} {smeta} head={head[:7]} "
+                                 f"rounds={rounds}/{MAX_REVIEW_ROUNDS} "
+                                 f"quiet={quiet}m -> agent not reporting"))
+                else:
+                    rows.append(("WORKING", k,
+                                 f"branch={it.get('branch')} {smeta} "
+                                 f"driver=agent rounds={rounds}/"
+                                 f"{MAX_REVIEW_ROUNDS} quiet={quiet}m"))
+                continue
+
+        # Once the user's account has approved someone else's PR, that PR is
+        # finished for us: a later push by the author must not trigger another
+        # review, which would post "Request changes" over the approval.
+        if it["mode"] == "comment":
+            mine = [r for r in (d.get("reviews") or [])
+                    if (r.get("author") or {}).get("login") == me
+                    and r.get("state") in ("APPROVED", "CHANGES_REQUESTED")]
+            if mine and mine[-1].get("state") == "APPROVED":
+                if live.get(sess, {}).get("state") != "running":
+                    active -= 1
+                rows.append(("DONE", k, f"mode=comment {smeta} approved by you "
+                                        "-> no further reviews"))
+                continue
+
+        # Follow-up reviews of someone else's PR run when the author asks for
+        # one (re-requests the review), not on every push. A push that is never
+        # followed by a re-request is flagged PUSHED once the branch has been
+        # quiet for RE_REVIEW_QUIET_HOURS, so the PR cannot sit in limbo.
+        if it["mode"] == "comment" and rv:
+            running = live.get(sess, {}).get("state") == "running"
+            requested = me in [(r.get("login") or r.get("name"))
+                               for r in (d.get("reviewRequests") or [])]
+            if running:
+                rows.append(("WORKING", k, f"mode=comment {smeta} "
+                                           "reviewing, not posted yet"))
+                continue
+            active -= 1
+            # `mine` non-empty: our review is posted, so a pending request for
+            # us is a re-request, not the original one. Once per head, so a
+            # request left pending (e.g. we posted nothing) cannot loop.
+            if requested and mine and it.get("rerequest_head") != head:
+                if rounds >= MAX_REVIEW_ROUNDS:
+                    rows.append(("CAPPED", k,
+                                 f"mode=comment {smeta} head={head[:7]} "
+                                 f"rounds={rounds}/{MAX_REVIEW_ROUNDS} "
+                                 "re-requested -> autopilot stopped; you decide"))
+                    continue
+                it["rerequest_head"] = head
+                active += 1
+                rows.append(("REVIEW", k, f"mode=comment {smeta} "
+                                          f"head={head[:7]} reviewed={rv[:7]} "
+                                          f"round={rounds + 1}/{MAX_REVIEW_ROUNDS} "
+                                          "re-requested"))
+                continue
+            if not head.startswith(rv):
+                if it.get("head_seen") != head:
+                    it["head_seen"] = head
+                    it["head_seen_at"] = int(time.time())
+                quiet_h = (int(time.time()) - int(it["head_seen_at"])) / 3600
+                if it.get("push_acked") == head:
+                    rows.append(("DONE", k, f"mode=comment {smeta} new commits "
+                                            "acknowledged -> waiting on re-request"))
+                elif quiet_h >= RE_REVIEW_QUIET_HOURS:
+                    rows.append(("PUSHED", k, f"mode=comment {smeta} head={head[:7]} "
+                                              f"reviewed={rv[:7]} quiet={quiet_h:.0f}h "
+                                              "-> pushed since our review, never re-requested"))
+                else:
+                    rows.append(("DONE", k, f"mode=comment {smeta} new commits "
+                                            f"{quiet_h:.1f}h ago -> waiting on re-request"))
+                continue
+            rows.append(("DONE", k, f"mode=comment {smeta} review posted "
+                                    "-> not yours to merge"))
+            continue
+
         # the table prints head[:7] and mark-reviewed stores whatever it was
         # given, so compare by prefix rather than exact match
         if not rv or not head.startswith(rv):
+            if rounds >= MAX_REVIEW_ROUNDS:
+                rows.append(("CAPPED", k,
+                             f"mode={it['mode']} {smeta} head={head[:7]} "
+                             f"rounds={rounds}/{MAX_REVIEW_ROUNDS} "
+                             "-> autopilot stopped; you decide"))
+                continue
             rows.append(("REVIEW", k, f"mode={it['mode']} {smeta} "
                                       f"head={head[:7]} "
-                                      f"reviewed={(it.get('reviewed_sha') or 'none')[:7]}"))
+                                      f"reviewed={(it.get('reviewed_sha') or 'none')[:7]} "
+                                      f"round={rounds + 1}/{MAX_REVIEW_ROUNDS}"))
         elif it["mode"] == "comment":
-            rows.append(("DONE", k, f"mode=comment {smeta} review posted "
-                                    "-> not yours to merge"))
+            # mark-reviewed runs right after the prompt is sent, so the sha
+            # match alone does not mean the review is posted: while the session
+            # is still running it is in flight and holds its slot. Once idle,
+            # the review waits on the author, not on an agent -- no slot. It is
+            # still tracked, so a new push brings back REVIEW.
+            if live.get(sess, {}).get("state") == "running":
+                rows.append(("WORKING", k, f"mode=comment {smeta} "
+                                           "reviewing, not posted yet"))
+            else:
+                active -= 1
+                rows.append(("DONE", k, f"mode=comment {smeta} review posted "
+                                        "-> not yours to merge"))
         else:
             rows.append(("READY", k, f"mode=fix {smeta} checks={checks_of(d)} "
                                      "-> you merge"))
@@ -423,15 +643,15 @@ def scan(state, refresh=False):
 
     for slug in HOME_REPOS:
         for pr in results.get(("prs", slug), []) or []:
-            cand[key(slug, pr["number"])] = (slug, pr, "fix")
+            cand[key(slug, pr["number"])] = (slug, pr, mode_for(pr, me))
     for pr in results.get(("as", "*"), []) or []:
         k = key(pr["repo"], pr["number"])
         if k not in cand:
-            cand[k] = (pr["repo"], pr, "fix")
+            cand[k] = (pr["repo"], pr, mode_for(pr, me))
     for pr in results.get(("rr", "*"), []) or []:
         k = key(pr["repo"], pr["number"])
         if k not in cand:
-            cand[k] = (pr["repo"], pr, "comment")
+            cand[k] = (pr["repo"], pr, mode_for(pr, me))
 
     for k, (slug, pr, mode) in sorted(cand.items()):
         if k in seen:
@@ -498,6 +718,22 @@ def scan(state, refresh=False):
 
 # ------------------------------------------------------- render & spawn
 
+def resolve_key(state, k):
+    """Exact key, else an item that used to be known by it.
+
+    An issue-driven item is re-keyed from owner/repo!ISSUE to owner/repo#PR the
+    moment its PR appears, but the agent's prompt still carries the old key.
+    Without this, its first claim-round after opening the PR fails and the
+    round is never counted."""
+    items = state.get("items", {})
+    if k in items:
+        return k
+    for cand, it in items.items():
+        if k in (it.get("prev_keys") or []):
+            return cand
+    return k
+
+
 def split_key(k):
     """'owner/repo#123' -> (slug, 123, 'pr'); '...!123' -> (slug, 123, 'issue')"""
     if "#" in k:
@@ -513,6 +749,60 @@ def split_key(k):
                      f"or owner/repo?investigation)")
 
 
+def orchestrator_session():
+    """aoe session id of the orchestrator, for the agent to report back to.
+
+    Resolved at render time rather than configured: the id is stable for a
+    session but a new orchestrator session gets a new one, and a stale id
+    would silently swallow every agent report.
+    """
+    code, out, _ = sh(["aoe", "session", "current", "-q"], timeout=20)
+    name = out.strip() if code == 0 else ""
+    return name or "Autopilot"
+
+
+def issue_context(slug, number, body_max=8000, comment_max=1500, keep=8):
+    """The issue, verbatim, for splicing into the prompt.
+
+    Fetched here rather than summarised by the orchestrator: a paraphrase of a
+    requirement is lossy in exactly the way that matters, and the orchestrator
+    typically read only the title and body while the discussion often lives in
+    the comments.
+
+    Body and comments get separate budgets. A single overlong body must never
+    be able to push the comments out -- the comments are the part the
+    orchestrator has not seen, so they are the last thing to drop.
+    """
+    d = gh_json(["issue", "view", str(number), "-R", slug, "--json",
+                 "number,title,body,labels,comments"], default=None)
+    if not d:
+        return ""
+
+    def clip(text, limit, hint):
+        text = (text or "").strip()
+        if len(text) <= limit:
+            return text
+        return text[:limit] + f"\n\n[...{hint} truncated at {limit} chars]"
+
+    out = [f"### {slug}#{d['number']}: {d.get('title') or ''}"]
+    labels = ", ".join(l.get("name", "") for l in (d.get("labels") or []))
+    if labels:
+        out.append(f"labels: {labels}")
+    out += ["", clip(d.get("body"), body_max, "body") or "_(no description)_"]
+
+    comments = d.get("comments") or []
+    dropped = max(0, len(comments) - keep)
+    if dropped:
+        out += ["", f"[{dropped} earlier comment(s) omitted -- read them with "
+                    f"`gh issue view {number} -R {slug} --comments`]"]
+    for c in comments[-keep:]:
+        who = (c.get("author") or {}).get("login", "?")
+        when = (c.get("createdAt") or "")[:10]
+        out += ["", f"--- comment by {who} ({when}) ---",
+                clip(c.get("body"), comment_max, "comment")]
+    return "\n".join(out)
+
+
 def render_prompt(name, subs):
     pdir = os.environ.get("PROMPT_DIR") or os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "prompts")
@@ -521,23 +811,51 @@ def render_prompt(name, subs):
         body = fh.read()
     with open(os.path.join(pdir, "shared", "pr-hygiene.md")) as fh:
         subs.setdefault("HYGIENE", fh.read().strip())
+    # {{LOOP}} is only substituted for templates that actually carry it, so
+    # review-comment.md (someone else's branch) never gets a push loop.
+    if "{{LOOP}}" in body:
+        with open(os.path.join(pdir, "shared", "agent-loop.md")) as fh:
+            subs.setdefault("LOOP", fh.read().strip())
+    if "{{ORCH}}" in body or "{{LOOP}}" in body:
+        subs.setdefault("ORCH", orchestrator_session())
+    # Set unconditionally: this placeholder lives inside the LOOP fragment,
+    # not in the template body, so an `in body` test would never fire.
+    subs.setdefault("COLD_REVIEW_MODEL", MODEL_COLD_REVIEW)
+    if "{{CONTEXT}}" in body and "CONTEXT" not in subs and subs.get("ISSUE") \
+            and subs.get("REPO"):
+        subs["CONTEXT"] = issue_context(subs["REPO"], subs["ISSUE"])
+    if "KEY" not in subs and subs.get("REPO"):
+        if subs.get("PR"):
+            subs["KEY"] = f"{subs['REPO']}#{subs['PR']}"
+        elif subs.get("ISSUE"):
+            subs["KEY"] = f"{subs['REPO']}!{subs['ISSUE']}"
     subs.setdefault("REVIEW_CMD", os.environ.get("REVIEW_CMD", "/review"))
+    if name in ("review-comment", "re-review"):
+        subs.setdefault("REVIEW_LEVEL",
+                        os.environ.get("REVIEW_LEVEL_COMMENT", "medium"))
     subs.setdefault("REVIEW_LEVEL", os.environ.get("REVIEW_LEVEL", "high"))
+    # Shared fragments are spliced in FIRST: they carry their own {{REPO}},
+    # {{PR}} and {{BRANCH}} placeholders, and if they were substituted in the
+    # same pass as everything else those would survive the pass and then be
+    # stripped to empty by the sweep below -- yielding `gh pr checks  -R  `.
+    for frag in ("CONTEXT", "LOOP", "HYGIENE"):
+        if frag in subs:
+            body = body.replace("{{" + frag + "}}", str(subs[frag]))
     for k, v in subs.items():
+        if k in ("CONTEXT", "LOOP", "HYGIENE"):
+            continue
         body = body.replace("{{" + k + "}}", str(v))
     return re.sub(r"\{\{[A-Z_]+\}\}", "", body).strip()
 
 
 def resolve_mode(slug, num, kind, me):
     """Re-derived here, never taken on trust from the caller."""
-    if slug in HOME_REPOS:
-        return "fix"
     if kind in ("issue", "investigate"):
         return "fix"
-    d = gh_json(["pr", "view", str(num), "-R", slug, "--json", "assignees"],
+    d = gh_json(["pr", "view", str(num), "-R", slug, "--json",
+                 "author,assignees"],
                 default={}) or {}
-    logins = [a.get("login") for a in (d.get("assignees") or [])]
-    return "fix" if me in logins else "comment"
+    return mode_for(d, me)
 
 
 def find_session(repo_path, branch):
@@ -569,10 +887,21 @@ def spawn(state, key_, branch, title, new_branch, question=None):
     if find_session(path, branch):
         raise SystemExit(f"a session already exists on {branch} in {slug}")
 
+    tmpl = {"issue": "work", "investigate": "investigate"}.get(
+        kind, "review-fix" if mode == "fix" else "review-comment")
+    model = MODEL_FOR.get(tmpl, "")
+
     args = ["aoe", "add", path, "-w", branch]
     if new_branch:
         args += ["-b", "--base-branch", base]
     args += ["-P", orc, "-t", title, "-l"]
+    # --extra-args, not --model: `aoe add --model` is ACP-only and is silently
+    # dropped for a tmux session, which would leave config.sh claiming one
+    # model while the worker quietly ran another.
+    if model:
+        # aoe splices extra-args into a zsh launch script unquoted, so a
+        # bracketed id like opus[1m] would die as a failed glob.
+        args += ["--extra-args", f"--model {shlex.quote(model)}"]
     code, out, err = sh(args, timeout=300)
     if code != 0:
         raise SystemExit(f"aoe add failed: {err or out}")
@@ -587,16 +916,15 @@ def spawn(state, key_, branch, title, new_branch, question=None):
 
     item = {"mode": mode, "branch": branch, "session": sess["id"],
             "pr": num if kind == "pr" else None, "reviewed_sha": None,
-            "phase": "working", "added": int(time.time())}
+            "phase": "working", "added": int(time.time()),
+            "driver": "agent" if mode == "fix" else "orchestrator"}
     if question:
         item["question"] = question
     state["items"][key_] = item
     save(state)
 
-    tmpl = {"issue": "work", "investigate": "investigate"}.get(
-        kind, "review-fix" if mode == "fix" else "review-comment")
     print(f"spawned {key_} mode={mode} branch={branch} session={sess['id']} "
-          f"group={group}/worktrees")
+          f"group={group}/worktrees model={model or 'default'}")
     print(f"next: send the '{tmpl}' prompt to session {sess['id']}")
     print(f"PROMPT_TEMPLATE={tmpl} BASE={base} REPO={slug}")
     return 0
@@ -650,7 +978,8 @@ def cleanup(state, key_):
     return 0
 
 
-ORDER = ["MERGED", "REVIEW", "FEEDBACK", "BOOTING", "WORKING", "READY", "DONE", "CLOSED",
+ORDER = ["MERGED", "REVIEW", "FEEDBACK", "BOOTING", "WORKING", "STALLED",
+         "READY", "CAPPED", "PUSHED", "DONE", "CLOSED", "GONE",
          "PROPOSE", "UNCLONED", "STALE", "UNKNOWN"]
 
 
@@ -668,11 +997,21 @@ def render(rows, active, nrepos, state, untracked=0):
               "(not a repo, renamed, or no access)")
 
 
+READ_ONLY = {"render", "status", "siblings"}
+
+
 def main():
     args = sys.argv[1:]
     cmd = args[0] if args else "scan"
-    state = load()
+    if cmd in READ_ONLY:
+        return dispatch(cmd, args, load())
+    # scan mutates (registry memo, feedback_seen stamps) and every other
+    # command is a read-modify-write, so both run under the lock.
+    with locked():
+        return dispatch(cmd, args, load())
 
+
+def dispatch(cmd, args, state):
     if cmd in ("scan", "refresh"):
         rows, active, n, untracked = scan(state, refresh=(cmd == "refresh"))
         save(state)
@@ -731,6 +1070,19 @@ def main():
         save(state)
         print(f"tracked {k} mode={mode} branch={branch} session={sid(session)}")
         return 0
+    if cmd == "ack-push":
+        # ack-push <key>: the user has seen the PUSHED flag; stop flagging this
+        # head. A re-request or a further push brings the PR back.
+        k = args[1]
+        it = state["items"].get(k)
+        if it and it.get("pr"):
+            d = pr_detail(k.split("#")[0], it["pr"]) or {}
+            it["push_acked"] = d.get("headRefOid")
+            save(state)
+            print(f"{k} push_acked={str(it['push_acked'])[:7]}")
+            return 0
+        print(f"unknown item {k}", file=sys.stderr)
+        return 1
     if cmd == "untrack":
         for k in args[1:]:
             state["items"].pop(k, None)
@@ -751,16 +1103,53 @@ def main():
         k, when = args[1], args[2]
         if k in state["items"]:
             state["items"][k]["feedback_seen"] = when
+            state["items"][k]["review_rounds"] = 0
             save(state)
-            print(f"{k} feedback_seen={when}")
+            print(f"{k} feedback_seen={when} rounds=0")
         return 0
     if cmd == "mark-reviewed":
         k, sha = args[1], args[2]
         if k in state["items"]:
-            state["items"][k]["reviewed_sha"] = sha
-            state["items"][k]["phase"] = "fixing"
+            it = state["items"][k]
+            it["reviewed_sha"] = sha
+            it["phase"] = "fixing"
+            it["review_rounds"] = int(it.get("review_rounds", 0)) + 1
             save(state)
-            print(f"{k} reviewed={sha[:7]}")
+            print(f"{k} reviewed={sha[:7]} "
+                  f"round={it['review_rounds']}/{MAX_REVIEW_ROUNDS}")
+        return 0
+    if cmd == "claim-round":
+        k = resolve_key(state, args[1])
+        it = state["items"].get(k)
+        if it is None:
+            print(f"unknown item {k}", file=sys.stderr)
+            return 1
+        n = int(it.get("review_rounds", 0))
+        if n >= MAX_REVIEW_ROUNDS:
+            print(f"CAPPED rounds={n}/{MAX_REVIEW_ROUNDS}")
+            return 3
+        n += 1
+        it["review_rounds"] = n
+        it["phase"] = "fixing"
+        it["last_seen"] = int(time.time())
+        save(state)
+        print(f"PROCEED round={n}/{MAX_REVIEW_ROUNDS}")
+        return 0
+    if cmd == "heartbeat":
+        k = resolve_key(state, args[1])
+        if k in state["items"]:
+            state["items"][k]["last_seen"] = int(time.time())
+            if len(args) > 2:
+                state["items"][k]["last_note"] = " ".join(args[2:])[:200]
+            save(state)
+            print(f"{k} last_seen=now")
+        return 0
+    if cmd == "reset-rounds":
+        for k in args[1:]:
+            if k in state["items"]:
+                state["items"][k]["review_rounds"] = 0
+                print(f"{k} rounds=0/{MAX_REVIEW_ROUNDS}")
+        save(state)
         return 0
     if cmd == "mark-merged":
         for k in args[1:]:
@@ -773,7 +1162,10 @@ def main():
 
     print(f"unknown command: {cmd}", file=sys.stderr)
     print("usage: scan.sh [scan|refresh|status|pause|resume|decline|undecline|"
-          "track|untrack|set-phase|mark-reviewed|mark-merged|render|spawn|"
+          "track|untrack|set-phase|mark-reviewed|claim-round|heartbeat|"
+          "reset-rounds|"
+          "mark-merged|"
+          "render|spawn|"
           "investigate]", file=sys.stderr)
     return 1
 

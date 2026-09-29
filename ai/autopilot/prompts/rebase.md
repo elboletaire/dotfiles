@@ -12,4 +12,6 @@
 
 Report: whether it was clean, what you resolved, test result, pushed or not.
 
+{{LOOP}}
+
 {{HYGIENE}}

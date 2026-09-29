@@ -24,4 +24,6 @@ rather than trying to change it from here -- this worktree only covers
 
 If you get blocked, stop and report what blocked you.
 
+{{LOOP}}
+
 {{HYGIENE}}
