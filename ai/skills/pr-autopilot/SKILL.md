@@ -18,8 +18,41 @@ the table is the truth, and it is cheap to re-read.
 
 Row keys are `owner/repo#PR` and `owner/repo!ISSUE`.
 
-If the header says `PAUSED yes`, report the row counts and stop -- take no
-action until the user resumes.
+If the header says `PAUSED yes`:
+
+- **On the first tick of a session** (the user just typed `/pr-autopilot` and
+  no tick has run in this conversation yet), the pause is a leftover from an
+  earlier session: run `$A resume`, say so in the headline (`▶️ resumed, was
+  paused since <date>`), and carry on with the tick. A pause set during this
+  session is honoured.
+- **On any other tick**, report the row counts and stop. Take no action until
+  the user resumes.
+- **Every reply while paused** -- ticks, answers, `go`/`detach`/anything --
+  opens with one banner line: `⏸️ PAUSED since <date> -- held: <what the
+  table would have acted on>`. The user must never find out hours later.
+
+## Readable output (ADHD-ready)
+
+The user is juggling many PRs across many repos and reads this on a phone or
+between tasks. Every reply, not just tick reports, follows these rules:
+
+- **The one thing first.** If something needs a decision, the first line is
+  that item and the decision, in bold. Everything else comes after.
+- **One line per item.** Item, what it is, one short reason, one short verb.
+  No multi-sentence cells. Long explanations go under a `<details>` block.
+- **Max 5 rows in 🔴 Needs you.** Oldest unanswered first. The rest collapse
+  into one line: `+N more waiting on you (say "all")`.
+- **Pick next only when it changed.** If the PROPOSE set and order are
+  identical to the last table shown, replace the table with one line:
+  `⚪ N to pick -- unchanged, say "list" to show`. Always show it on `list`,
+  `status`, or when a row was added or removed.
+- **Say what changed since last tick** in ✅ or a single `Δ` line, never
+  make the user diff two tables.
+- **Repeat the item's title** every time it is mentioned, never only the
+  number. Numbers alone force a lookup.
+- **No prose paragraphs over two sentences.** Bullets, tables, short lines.
+- **Questions get the answer in the first sentence**, then at most three
+  supporting lines. Offer detail, don't dump it.
 
 ## Tick report
 
@@ -46,7 +79,7 @@ titles, and use the GitHub title as-is instead of paraphrasing it.
 6. **Footer**: one line with the next tick time, then `go <#>` / `no <#>`.
 
 `go <#>` and `no <#>` resolve against the most recent Pick next table you
-showed. GitHub numbers ("go 1807") still work. Report `UNCLONED`, `SKIPPED` and
+showed. GitHub numbers ("go 1807") still work. Report `UNCLONED` and
 `UNKNOWN` as one-line notes under the footer.
 
 ## What each row means
@@ -68,7 +101,6 @@ showed. GitHub numbers ("go 1807") still work. Report `UNCLONED`, `SKIPPED` and
 | `PROPOSE` | Collect these and present them as a numbered list. **Spawn nothing until the user says so.** |
 | `UNCLONED` | Report with the clone command. Never clone, never spawn. |
 | `STALE` | Report with `aoe remove <session> --delete-worktree --force` as a suggestion. **Never run it.** |
-| `SKIPPED` | An orchestrator session's path did not resolve on GitHub. Mention it once -- it usually means a rename, and a renamed repo silently drops out of scope. |
 | `UNKNOWN` | `gh pr view` failed. Report and move on; it usually resolves next tick. |
 
 ## Answering the user
@@ -78,6 +110,13 @@ showed. GitHub numbers ("go 1807") still work. Report `UNCLONED`, `SKIPPED` and
 - **"no 166"** -> `$A decline <key>`. It never appears again. (`$A undecline` reverses it.)
 - **"re-review 452"** / **"ack 452"** -> the two answers to a stale `PUSHED` PR (see that row).
 - **"pause"** / **"resume"** -> `$A pause` / `$A resume`.
+- **"detach <#>"**, "detach this", "archive the X session" -> `$A detach <key>`.
+  It archives the aoe session (tmux torn down, worktree and branch kept) and
+  untracks the item, so it frees its slot and its PR or issue is proposed
+  again like anything else. Use it for work the user is parking, not
+  abandoning. Reverse with `aoe session unarchive <session>` plus `$A track`.
+  When the user names a session by title rather than key, find it with
+  `aoe list` and match it to the row's `session=` prefix.
 - **"/investigate <repo> <question>"** -> spawn an investigation (below). The
   question is the user's, verbatim -- never paraphrase it into the prompt, and
   never answer it yourself. You are the orchestrator; the session investigates.
@@ -86,7 +125,8 @@ showed. GitHub numbers ("go 1807") still work. Report `UNCLONED`, `SKIPPED` and
 ## Spawning
 
 You choose the branch name and session title; the script does the mechanics
-(fetch, `aoe add`, group move, tracking), **re-derives the mode itself** -- do
+(fetch, `aoe add -g Autopilot/<repo-name>`, tracking; the subgroup is created
+on first use), **re-derives the mode itself** -- do
 not pass a mode -- and **pins the model** from `config.sh` by the template that
 creates the session (currently `opus[1m]` for every template -- Opus with 1M
 context, so review loops do not auto-compact). The worker never inherits your model, so running autopilot
@@ -112,6 +152,29 @@ it or is its **assignee** (the explicit adopt signal), `comment` otherwise --
 repo and review requests do not change it. For a `fix` PR whose branch is
 behind its base, send `rebase` alone: it rebases and then runs the whole
 review loop, so a later `review-fix` would prompt the agent twice.
+
+### Stacked PRs
+
+A `mode=comment` PR whose base is another open PR's head branch is part of a
+stack. Before spawning, walk the stack with `gh pr list --json
+number,headRefName,baseRefName` until the base is the repo's default branch,
+and review the whole stack at once instead of one layer: a lone review flags
+things a later layer already fixes. Spawn on the **bottom** PR (its key tracks
+the stack, its base is the real base), then send `review-stack` instead of
+`review-comment`, with `STACK=` as space-separated `PR:branch` entries in
+merge order, bottom to top:
+
+```
+$A spawn <bottom-key> <bottom-branch> "<Title>"
+aoe send <session> "$($A render review-stack REPO=<slug> BASE=<base> \
+    STACK="704:payg/0-prep 705:payg/1-foundation 706:payg/2-paying")"
+```
+
+Then `$A mark-reviewed <bottom-key> <bottom-head-sha>` as for any review. The
+template reviews every layer in parallel, drops candidates a later layer
+fixes, verifies the rest at the top of the stack, and posts at most one
+review per PR. Only the bottom PR is tracked; the others get their review and
+nothing else.
 
 ### Investigations
 

@@ -5,6 +5,22 @@
 # redirects to vocdoni/vocdoni-app; using the old slug silently drops the repo).
 HOME_REPOS="vocdoni/vocdoni-app vocdoni/vocdoni.io vocdoni/vocdoni-integrator-sdk"
 
+# Where your local clones live. Autopilot treats every git repo directly under
+# these folders (a real `.git` dir; worktrees are skipped) as "cloned", and
+# resolves its GitHub slug and base branch with `gh repo view`. Space-separated.
+CLONE_ROOTS="$HOME/src/vocdoni $HOME/src/davinci"
+
+# Two clones can resolve to the same slug (ui-scaffold and vocdoni-app are both
+# vocdoni/vocdoni-app). The path listed here wins; otherwise the first in
+# alphabetical order does. Worktree sessions are matched to a repo by this path,
+# so pick the clone your existing worktrees hang off.
+CLONE_PREFER="$HOME/src/vocdoni/ui-scaffold"
+
+# Every session autopilot spawns goes into <AUTOPILOT_GROUP>/<repo-name>, where
+# repo-name is the slug's repo part (vocdoni/vocdoni-sdk -> vocdoni-sdk). A new
+# repo gets its own subgroup on first spawn; nothing to configure.
+AUTOPILOT_GROUP="Autopilot"
+
 # Orgs whose issues are candidates when assigned to you. Add "elboletaire" here
 # if you want issue candidates from your personal repos (manga-downloader etc).
 ISSUE_ORGS="vocdoni"

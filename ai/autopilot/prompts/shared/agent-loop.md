@@ -67,20 +67,45 @@ comment and silently truncates the argument.
    lives in the script, not in this prompt, precisely so it cannot be argued
    with.
 
-4. **Run the review in a fresh subagent**, not in this conversation. Use the
-   `Agent` tool with `model: {{COLD_REVIEW_MODEL}}` -- the review is where the
+4. **Review in two passes, both in fresh subagents.** Never review in this
+   conversation: you reviewing your own work carries your own rationalisations
+   into the review, and finds less. Use the `Agent` tool with
+   `model: {{COLD_REVIEW_MODEL}}` for both passes -- the review is where the
    thinking happens, so it is pinned regardless of what this session runs on.
-   Give it only the PR number and branch -- no history, no summary of what you
-   already did, no defence of your earlier choices:
 
-   > Run `{{REVIEW_CMD}} {{REVIEW_LEVEL}} --fix {{PR}}` on branch `{{BRANCH}}`.
-   > Report what you found and what you changed.
+   **Pass 1 -- candidates (nothing is changed).** Give the subagent only the
+   PR number and branch -- no history, no summary of what you already did, no
+   defence of your earlier choices:
 
-   The point is cold eyes. You reviewing your own work carries your own
-   rationalisations into the review, and finds less.
+   > Run `{{REVIEW_CMD}} {{REVIEW_LEVEL}} {{PR}}` on branch `{{BRANCH}}`,
+   > without `--fix` and without `--comment`. Return a numbered list of
+   > candidate findings: file, line, the claimed defect, and whether it would
+   > block a merge. Change nothing and post nothing.
 
-5. Apply what came back, run the full test suite and linter, commit with
-   conventional messages, push, and return to 1.
+   This pass casts a wide net, so some candidates are false positives.
+
+   **Pass 2 -- verification.** A second, separate subagent gets only the PR
+   number, the branch, this worktree's path and the numbered candidate list --
+   not pass 1's reasoning, and no hint of which ones you believe:
+
+   > Verify each candidate finding on {{REPO}} PR #{{PR}} (branch
+   > `{{BRANCH}}`, worktree <path>) independently. For each one, read the
+   > code, trace the call path, and run the tests or a small repro when that
+   > settles it. Return one verdict per candidate:
+   > - CONFIRMED -- with the concrete input or state that makes it go wrong,
+   >   the file:line, and what you ran or read to confirm it;
+   > - REJECTED -- with the reason it does not hold.
+   > Do not add new findings. Change nothing and post nothing.
+
+   A candidate with no verdict, or a CONFIRMED without concrete evidence,
+   counts as REJECTED.
+
+5. **Nothing CONFIRMED** -> the review found nothing. Go to 6. Rejected
+   candidates cost no fix cycle and no push; that is the point of pass 2.
+
+   **Something CONFIRMED** -> fix only the CONFIRMED findings, in this
+   session. Run the full test suite and linter, commit with conventional
+   messages, push, and return to 1.
 
 6. **The review found nothing** -> report `ready` and stop. That is success,
    not failure.

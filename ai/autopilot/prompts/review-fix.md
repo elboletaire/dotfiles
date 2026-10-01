@@ -1,16 +1,21 @@
 You own {{REPO}} PR #{{PR}} (branch `{{BRANCH}}`, base `{{BASE}}`).
 
-Run: {{REVIEW_CMD}} {{REVIEW_LEVEL}} --fix {{PR}}
+Do one review round now, exactly as step 4 of "Driving your own loop" below
+describes: pass 1 collects candidates in a fresh subagent, pass 2 verifies
+them in a second fresh subagent, and only CONFIRMED findings get fixed. Do not
+run the review with `--fix` and do not review in this conversation.
 
-Then, after the review has applied its fixes:
+Then:
 
-1. Run the full test suite and linter. They must pass.
+1. Fix only what pass 2 confirmed. Run the full test suite and linter. They
+   must pass.
 2. Commit the fixes with conventional commit messages.
-3. Push to `{{BRANCH}}`.
-4. Report a one-paragraph summary: what the review found, what you changed,
-   and anything you deliberately did not change.
+3. Push to `{{BRANCH}}`, and continue with the loop below from step 1.
+4. Report a one-paragraph summary: candidates from pass 1, confirmed and
+   rejected in pass 2, what you changed, and anything you deliberately did
+   not change.
 
-If the review finds nothing, say so and push nothing.
+If nothing is confirmed, say so, push nothing, and report `ready`.
 
 {{LOOP}}
 

@@ -18,6 +18,10 @@ from contextlib import contextmanager
 
 HOME_REPOS = os.environ.get("HOME_REPOS", "").split()
 ISSUE_ORGS = os.environ.get("ISSUE_ORGS", "").split()
+CLONE_ROOTS = os.environ.get("CLONE_ROOTS", "").split()
+CLONE_PREFER = [os.path.expanduser(p).rstrip("/")
+                for p in os.environ.get("CLONE_PREFER", "").split()]
+AUTOPILOT_GROUP = os.environ.get("AUTOPILOT_GROUP", "Autopilot")
 MAX_ACTIVE = int(os.environ.get("MAX_ACTIVE", "6"))
 MAX_REVIEW_ROUNDS = int(os.environ.get("MAX_REVIEW_ROUNDS", "3"))
 AGENT_STALL_MIN = int(os.environ.get("AGENT_STALL_MIN", "35"))
@@ -171,35 +175,52 @@ def resolve_repo(path):
     return slug, base
 
 
-SKIPPED = []
-NEW_SKIPS = []
+NEW_IGNORED = []
 
 
-def build_registry(sessions, old, refresh=False, old_skips=None):
-    """slug -> {path, group, orc, base}. Derived from orchestrator sessions."""
+def clone_dirs():
+    """Git clones directly under each CLONE_ROOTS folder. Only a real `.git`
+    directory counts: a worktree's `.git` is a file, so worktrees are skipped."""
+    out = []
+    for root in CLONE_ROOTS:
+        root = os.path.expanduser(root)
+        try:
+            names = sorted(os.listdir(root))
+        except OSError:
+            continue
+        for n in names:
+            p = os.path.join(root, n)
+            if os.path.isdir(os.path.join(p, ".git")):
+                out.append(p)
+    return out
+
+
+def build_registry(old, refresh=False, old_ignored=None):
+    """slug -> {path, base}, derived from the clones on disk.
+
+    Folders that do not resolve on GitHub (no remote, no access) are ignored
+    and memoised so they are not re-probed every tick; `refresh` clears the
+    memo. When two clones resolve to the same slug, a CLONE_PREFER path wins,
+    else the first in alphabetical order.
+    """
     reg = {} if refresh else dict(old)
-    known_paths = {v["path"] for v in reg.values()}
-    # Paths that already failed to resolve: skip re-probing and re-reporting
-    # them every tick. `refresh` clears the memo so a rename still surfaces.
-    memo = set() if refresh else set(old_skips or [])
-    todo = []
-    for s in sessions:
-        path = s.get("path")
-        if not path or s.get("worktree") or not os.path.isdir(path):
-            continue
-        if not refresh and (path in known_paths or path in memo):
-            continue
-        todo.append(s)
+    known = {v["path"] for v in reg.values()}
+    memo = set() if refresh else set(old_ignored or [])
+    todo = [p for p in clone_dirs() if p not in known and p not in memo]
     if todo:
         with ThreadPoolExecutor(max_workers=8) as ex:
-            for s, res in zip(todo, ex.map(lambda x: resolve_repo(x["path"]), todo)):
+            for p, res in zip(todo, ex.map(resolve_repo, todo)):
                 if not res:
-                    SKIPPED.append((s.get("title") or "?", s["path"]))
-                    NEW_SKIPS.append(s["path"])
+                    NEW_IGNORED.append(p)
                     continue
                 slug, base = res
-                reg[slug] = {"path": s["path"], "group": s.get("group") or "",
-                             "orc": s["id"], "base": base}
+                cur = reg.get(slug)
+                if cur and cur["path"].rstrip("/") in CLONE_PREFER:
+                    continue
+                if cur and p.rstrip("/") not in CLONE_PREFER \
+                        and cur["path"] < p:
+                    continue
+                reg[slug] = {"path": p, "base": base}
     return reg
 
 
@@ -277,6 +298,16 @@ def pr_detail(slug, number):
     return d
 
 
+def pr_review_comments(detail):
+    """REST review comments for the PR in `detail` (gh pr view has none)."""
+    url = (detail or {}).get("url") or ""
+    m = re.search(r"github\.com/([^/]+/[^/]+)/pull/(\d+)", url)
+    if not m:
+        return []
+    return gh_json(["api", f"repos/{m.group(1)}/pulls/{m.group(2)}/comments"
+                    "?per_page=100"], default=[]) or []
+
+
 def new_feedback(detail, since):
     """Reviews/comments newer than `since` that autopilot did not itself write.
 
@@ -285,6 +316,7 @@ def new_feedback(detail, since):
     library mandates is the discriminator."""
     out = []
     since = since or ""
+    review_comments = None
     for r in (detail or {}).get("reviews") or []:
         when = r.get("submittedAt") or ""
         body = r.get("body") or ""
@@ -297,6 +329,18 @@ def new_feedback(detail, since):
         state_ = r.get("state") or ""
         if state_ not in ("CHANGES_REQUESTED", "COMMENTED", "APPROVED"):
             continue
+        # A reply on a review thread arrives as an empty-body COMMENTED
+        # review; the agent's signature is then only in the inline comment.
+        # Without this check the agent's own reply re-triggers FEEDBACK every
+        # tick, forever. Review comments are fetched once per PR, lazily.
+        if not body.strip() and state_ == "COMMENTED":
+            if review_comments is None:
+                review_comments = pr_review_comments(detail)
+            mine = [c for c in review_comments
+                    if (c.get("created_at") or "") == when]
+            if mine and all(AGENT_MARKER in (c.get("body") or "")
+                            for c in mine):
+                continue
         # A bare approval is "ship it", not feedback. Only an approval that
         # carries an actual note is worth waking the agent for.
         if state_ == "APPROVED" and not body.strip():
@@ -354,11 +398,12 @@ def scan(state, refresh=False):
     me = whoami(state)
     sessions = aoe_sessions()
     live = aoe_live()
-    reg = build_registry(sessions, state.get("registry", {}), refresh,
-                         state.get("skipped_paths", []))
+    reg = build_registry(state.get("registry", {}), refresh,
+                         state.get("ignored_paths", []))
     state["registry"] = reg
-    state["skipped_paths"] = sorted(
-        set(state.get("skipped_paths", [])) | set(NEW_SKIPS))
+    state["ignored_paths"] = sorted(
+        (set() if refresh else set(state.get("ignored_paths", [])))
+        | set(NEW_IGNORED))
 
     path_to_slug = {v["path"].rstrip("/"): k for k, v in reg.items()}
     session_paths = {s["id"]: s.get("path") for s in sessions}
@@ -515,8 +560,12 @@ def scan(state, refresh=False):
             fb = new_feedback(d, it.get("feedback_seen"))
             if fb:
                 who, when, kind, snippet = fb[-1]
+                # since= is the newest feedback's timestamp: it is what
+                # mark-feedback must be given to advance the watermark past
+                # it. Printing the old watermark here made the documented
+                # flow a no-op.
                 rows.append(("FEEDBACK", k,
-                             f"mode=fix {smeta} since={it['feedback_seen']} "
+                             f"mode=fix {smeta} since={when} "
                              f"{who} {kind} \"{snippet}\""))
                 continue
 
@@ -830,7 +879,7 @@ def render_prompt(name, subs):
         elif subs.get("ISSUE"):
             subs["KEY"] = f"{subs['REPO']}!{subs['ISSUE']}"
     subs.setdefault("REVIEW_CMD", os.environ.get("REVIEW_CMD", "/review"))
-    if name in ("review-comment", "re-review"):
+    if name in ("review-comment", "re-review", "review-stack"):
         subs.setdefault("REVIEW_LEVEL",
                         os.environ.get("REVIEW_LEVEL_COMMENT", "medium"))
     subs.setdefault("REVIEW_LEVEL", os.environ.get("REVIEW_LEVEL", "high"))
@@ -872,10 +921,11 @@ def spawn(state, key_, branch, title, new_branch, question=None):
     slug, num, kind = split_key(key_)
     reg = state.get("registry", {})
     if slug not in reg:
-        raise SystemExit(f"{slug} is not in the registry -- no local clone with an "
-                         f"orchestrator session. Clone it and create one first.")
+        raise SystemExit(f"{slug} is not in the registry -- no local clone under "
+                         f"CLONE_ROOTS ({' '.join(CLONE_ROOTS)}). Clone it first.")
     r = reg[slug]
-    path, base, orc, group = r["path"], r["base"], r["orc"], r["group"]
+    path, base = r["path"], r["base"]
+    group = f"{AUTOPILOT_GROUP}/{slug.split('/', 1)[1]}"
     mode = resolve_mode(slug, num, kind, me)
 
     code, _, err = sh(["git", "fetch", "origin"], cwd=path, timeout=180)
@@ -894,7 +944,7 @@ def spawn(state, key_, branch, title, new_branch, question=None):
     args = ["aoe", "add", path, "-w", branch]
     if new_branch:
         args += ["-b", "--base-branch", base]
-    args += ["-P", orc, "-t", title, "-l"]
+    args += ["-g", group, "-t", title, "-l"]
     # --extra-args, not --model: `aoe add --model` is ACP-only and is silently
     # dropped for a tmux session, which would leave config.sh claiming one
     # model while the worker quietly ran another.
@@ -905,9 +955,6 @@ def spawn(state, key_, branch, title, new_branch, question=None):
     code, out, err = sh(args, timeout=300)
     if code != 0:
         raise SystemExit(f"aoe add failed: {err or out}")
-
-    if group:
-        sh(["aoe", "group", "move", title, f"{group}/worktrees"], timeout=60)
 
     sess = find_session(path, branch)
     if not sess:
@@ -924,7 +971,7 @@ def spawn(state, key_, branch, title, new_branch, question=None):
     save(state)
 
     print(f"spawned {key_} mode={mode} branch={branch} session={sess['id']} "
-          f"group={group}/worktrees model={model or 'default'}")
+          f"group={group} model={model or 'default'}")
     print(f"next: send the '{tmpl}' prompt to session {sess['id']}")
     print(f"PROMPT_TEMPLATE={tmpl} BASE={base} REPO={slug}")
     return 0
@@ -992,9 +1039,6 @@ def render(rows, active, nrepos, state, untracked=0):
         print("(nothing actionable)")
     for kind, k, extra in rows:
         print(f"{kind:<9}{k:<38}{extra}")
-    for title, path in SKIPPED:
-        print(f"{'SKIPPED':<9}{title:<38}{path} -> gh repo view failed "
-              "(not a repo, renamed, or no access)")
 
 
 READ_ONLY = {"render", "status", "siblings"}
@@ -1083,6 +1127,29 @@ def dispatch(cmd, args, state):
             return 0
         print(f"unknown item {k}", file=sys.stderr)
         return 1
+    if cmd == "detach":
+        # detach <key>: park an item without losing its work. Archives the
+        # aoe session (tmux torn down, worktree and branch kept) and drops the
+        # item from state, so it holds no slot and its PR/issue is proposed
+        # again like anything else. Reverse by hand: `aoe session unarchive`
+        # then `track`.
+        k = args[1]
+        it = state["items"].get(k)
+        if not it:
+            print(f"unknown item {k}", file=sys.stderr)
+            return 1
+        sess = it.get("session")
+        if sess:
+            code, out, err = sh(["aoe", "session", "archive", sess])
+            if code != 0:
+                print(f"aoe session archive failed: {err or out}",
+                      file=sys.stderr)
+                return 1
+        state["items"].pop(k)
+        save(state)
+        print(f"detached {k} session={sid(sess)} branch={it.get('branch')} "
+              "-> archived, worktree kept, untracked")
+        return 0
     if cmd == "untrack":
         for k in args[1:]:
             state["items"].pop(k, None)
@@ -1162,7 +1229,7 @@ def dispatch(cmd, args, state):
 
     print(f"unknown command: {cmd}", file=sys.stderr)
     print("usage: scan.sh [scan|refresh|status|pause|resume|decline|undecline|"
-          "track|untrack|set-phase|mark-reviewed|claim-round|heartbeat|"
+          "track|untrack|detach|set-phase|mark-reviewed|claim-round|heartbeat|"
           "reset-rounds|"
           "mark-merged|"
           "render|spawn|"
