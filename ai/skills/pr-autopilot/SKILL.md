@@ -222,6 +222,8 @@ its own CI, claims its own review rounds (`scan.sh claim-round`, which the
 script caps), runs each review in a fresh subagent, and messages you when it
 stops. You do not prompt it again after the first prompt.
 
+The agent sends it with `$A report`, which also records it on the item (as
+`last_report`) for the dashboard, so a report survives a send that failed.
 Its report arrives in your session as a line starting `AUTOPILOT <key> <state>`:
 
 | state | What it means | You do |
@@ -255,3 +257,6 @@ if an agent says `ready` and the table disagrees, the table wins.
    whole loop; a second message lands mid-flight and races its own work.
 7. One `aoe send` per session per tick. Two messages in one tick race each other.
 8. Report in the Tick report layout above. Do not paste prompt bodies back.
+9. **`$A snapshot` is the dashboard's, not yours.** It is a read-only scan that
+   saves nothing, so acting on its rows would skip the state transitions the
+   real tick records. Ticks always use `$A scan`.

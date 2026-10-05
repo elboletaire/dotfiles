@@ -5,6 +5,7 @@ Reads GitHub + aoe, diffs against a small state file, prints a compact table of
 actionable rows. Deterministic; no model involved. See SKILL.md for how the
 rows are acted on.
 """
+import copy
 import fcntl
 import json
 import os
@@ -43,6 +44,16 @@ STALE_HOURS = int(os.environ.get("STALE_HOURS", "48"))
 ISSUE_MAX_AGE_DAYS = int(os.environ.get("ISSUE_MAX_AGE_DAYS", "120"))
 STATE_FILE = os.environ.get(
     "STATE_FILE", os.path.expanduser("~/.local/state/pr-autopilot/state.json"))
+# Both live next to the state file and exist for the dashboard: the event log
+# is appended by every mutating command, the snapshot is the last read-only
+# scan rendered as JSON.
+EVENTS_FILE = os.path.join(os.path.dirname(STATE_FILE), "events.jsonl")
+SNAPSHOT_FILE = os.path.join(os.path.dirname(STATE_FILE), "snapshot.json")
+EVENTS_MAX_BYTES = 512 * 1024
+EVENTS_KEEP = 1000
+# aoe session the orchestrator runs in. Empty means "whichever session last
+# ran a scan", recorded by the scan itself.
+AUTOPILOT_ORCH = os.environ.get("AUTOPILOT_ORCH", "")
 
 AGENT_MARKER = "controlled by elboletaire"
 FEEDBACK_IGNORE = set(
@@ -112,6 +123,32 @@ def locked():
     finally:
         fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
         fh.close()
+
+
+def log_event(kind, key_=None, **fields):
+    """Append one line to the event log the dashboard tails.
+
+    Called from mutating commands, which all hold the state lock, so the
+    trim below cannot race another writer. A failed write never fails the
+    command: the log is a convenience, the state file is the truth.
+    """
+    ev = {"at": int(time.time()), "kind": kind}
+    if key_:
+        ev["key"] = key_
+    ev.update({k: v for k, v in fields.items() if v is not None})
+    try:
+        os.makedirs(os.path.dirname(EVENTS_FILE), exist_ok=True)
+        with open(EVENTS_FILE, "a") as fh:
+            fh.write(json.dumps(ev, sort_keys=True) + "\n")
+        if os.path.getsize(EVENTS_FILE) > EVENTS_MAX_BYTES:
+            with open(EVENTS_FILE) as fh:
+                keep = fh.readlines()[-EVENTS_KEEP:]
+            tmp = f"{EVENTS_FILE}.tmp.{os.getpid()}"
+            with open(tmp, "w") as fh:
+                fh.writelines(keep)
+            os.replace(tmp, EVENTS_FILE)
+    except OSError:
+        pass
 
 
 def whoami(state):
@@ -394,7 +431,12 @@ def key(slug, num, kind="pr"):
     return f"{slug}{SEP[kind]}{num}"
 
 
-def scan(state, refresh=False):
+def scan(state, refresh=False, info=None):
+    """Reconcile and return the table rows.
+
+    `info`, when given, is filled with what the rows only summarise -- full
+    titles, URLs and the tracked PRs' details -- for the dashboard snapshot.
+    """
     me = whoami(state)
     sessions = aoe_sessions()
     live = aoe_live()
@@ -437,6 +479,11 @@ def scan(state, refresh=False):
                    for k, v in items.items() if v.get("pr")}
         results = {k: f.result() for k, f in jobs.items()}
         details = {k: f.result() for k, f in tracked.items()}
+
+    meta = {}
+    if info is not None:
+        info["details"] = details
+        info["meta"] = meta
 
     rows = []
     active = 0
@@ -709,6 +756,8 @@ def scan(state, refresh=False):
         branch = pr.get("headRefName")
         author = (pr.get("author") or {}).get("login", "?")
         title = (pr.get("title") or "")[:52]
+        meta[k] = {"title": pr.get("title"), "url": pr.get("url"),
+                   "author": author, "mode": mode, "item_kind": "pr"}
         if slug not in reg:
             rows.append(("UNCLONED", k, f"mode={mode} {author} \"{title}\""))
             continue
@@ -720,6 +769,8 @@ def scan(state, refresh=False):
         if k in seen:
             continue
         seen.add(k)
+        meta[k] = {"title": iss.get("title"), "url": iss.get("url"),
+                   "mode": "fix", "item_kind": "issue"}
         if iss["repo"] not in reg:
             rows.append(("UNCLONED", k, f"mode=fix issue \"{iss['title'][:52]}\""))
         else:
@@ -969,6 +1020,8 @@ def spawn(state, key_, branch, title, new_branch, question=None):
         item["question"] = question
     state["items"][key_] = item
     save(state)
+    log_event("spawn", key_, mode=mode, branch=branch, session=sess["id"],
+              title=title)
 
     print(f"spawned {key_} mode={mode} branch={branch} session={sess['id']} "
           f"group={group} model={model or 'default'}")
@@ -1019,6 +1072,7 @@ def cleanup(state, key_):
         state["handled_merges"].append(key_)
     state["items"].pop(key_, None)
     save(state)
+    log_event("cleanup", key_)
     print(f"cleaned up {key_}")
     slug = key_.split("#")[0].split("!")[0]
     print_siblings(state, slug)
@@ -1030,18 +1084,141 @@ ORDER = ["MERGED", "REVIEW", "FEEDBACK", "BOOTING", "WORKING", "STALLED",
          "PROPOSE", "UNCLONED", "STALE", "UNKNOWN"]
 
 
+def row_order(r):
+    return (ORDER.index(r[0]) if r[0] in ORDER else 99, r[1])
+
+
 def render(rows, active, nrepos, state, untracked=0):
     extra = f"   UNTRACKED {untracked}" if untracked else ""
     print(f"PAUSED {'yes' if state.get('paused') else 'no'}   "
           f"REPOS {nrepos}   ACTIVE {active}/{MAX_ACTIVE}{extra}")
-    rows.sort(key=lambda r: (ORDER.index(r[0]) if r[0] in ORDER else 99, r[1]))
+    rows.sort(key=row_order)
     if not rows:
         print("(nothing actionable)")
     for kind, k, extra in rows:
         print(f"{kind:<9}{k:<38}{extra}")
 
 
-READ_ONLY = {"render", "status", "siblings"}
+ROW_TITLE = re.compile(r'"(.*)"')
+ROW_FIELD = re.compile(r"(\w+)=(\S+)")
+# Item fields the dashboard shows; the rest of an item is bookkeeping.
+SNAPSHOT_ITEM_FIELDS = ("mode", "branch", "session", "pr", "driver", "phase",
+                        "review_rounds", "last_seen", "last_note",
+                        "last_report", "added", "question", "reviewed_sha")
+
+
+def parse_extra(extra):
+    """A row's free-text tail -> {fields, title, note}.
+
+    The quoted title goes first: it may itself contain `=` or `->`."""
+    out = {}
+    m = ROW_TITLE.search(extra)
+    if m:
+        out["title"] = m.group(1)
+        extra = extra[:m.start()] + extra[m.end():]
+    head, _, note = extra.partition(" -> ")
+    out["fields"] = dict(ROW_FIELD.findall(head))
+    if note.strip():
+        out["note"] = note.strip()
+    return out
+
+
+def snapshot(state):
+    """Run a scan on a throwaway copy of the state and publish it as JSON.
+
+    Nothing is saved: the orchestrator's scan owns every state transition
+    (feedback watermarks, re-keys, untracking), and a dashboard refreshing
+    every two minutes must never consume one of them before it does.
+    """
+    work = copy.deepcopy(state)
+    info = {}
+    rows, active, nrepos, untracked = scan(work, info=info)
+    rows.sort(key=row_order)
+    items = work.get("items", {})
+    out = []
+    for kind, k, extra in rows:
+        r = {"kind": kind, "key": k, "extra": extra}
+        r.update(parse_extra(extra))
+        it = items.get(k)
+        if it:
+            r["item"] = {f: it[f] for f in SNAPSHOT_ITEM_FIELDS
+                         if it.get(f) is not None}
+        d = info["details"].get(k)
+        m = info["meta"].get(k)
+        if d:
+            r.update(title=d.get("title"), url=d.get("url"),
+                     checks=checks_of(d), head=(d.get("headRefOid") or "")[:7],
+                     draft=bool(d.get("isDraft")))
+        elif m:
+            r.update({f: v for f, v in m.items() if v is not None})
+        out.append(r)
+    snap = {"generated_at": int(time.time()),
+            "paused": bool(state.get("paused")),
+            "repos": nrepos, "active": active, "max_active": MAX_ACTIVE,
+            "untracked": untracked, "max_rounds": MAX_REVIEW_ROUNDS,
+            "stall_min": AGENT_STALL_MIN,
+            "last_tick": state.get("last_tick"),
+            "orch": orchestrator_target(state),
+            "rows": out}
+    os.makedirs(os.path.dirname(SNAPSHOT_FILE), exist_ok=True)
+    tmp = f"{SNAPSHOT_FILE}.tmp.{os.getpid()}"
+    with open(tmp, "w") as fh:
+        json.dump(snap, fh, indent=2, sort_keys=True)
+    os.replace(tmp, SNAPSHOT_FILE)
+    return snap
+
+
+def orchestrator_target(state):
+    """Where agent reports and dashboard commands are sent."""
+    return AUTOPILOT_ORCH or state.get("orch") or "Autopilot"
+
+
+REPORT_STATES = ("ready", "capped", "blocked", "failed", "stalled")
+
+
+def report(state, args):
+    """report <key> <state> <sha> <message...> [--to <session>]
+
+    Records the agent's final report on its item, then forwards it to the
+    orchestrator as the `AUTOPILOT <key> <state> <sha> <message>` line it
+    already parses. Recording first means a report survives a failed send,
+    and the dashboard can show it without reading the orchestrator's chat.
+    """
+    to = None
+    if "--to" in args:
+        i = args.index("--to")
+        to = args[i + 1] if i + 1 < len(args) else None
+        args = args[:i] + args[i + 2:]
+    if len(args) < 4:
+        print("usage: report <key> <state> <sha> <message...> [--to <session>]",
+              file=sys.stderr)
+        return 1
+    k = resolve_key(state, args[1])
+    st, sha, msg = args[2], args[3], " ".join(args[4:])
+    if st not in REPORT_STATES:
+        print(f"bad report state {st!r} (want {'|'.join(REPORT_STATES)})",
+              file=sys.stderr)
+        return 1
+    now = int(time.time())
+    it = state["items"].get(k)
+    if it is not None:
+        it["last_report"] = {"state": st, "sha": sha, "msg": msg[:300],
+                             "at": now}
+        it["last_seen"] = now
+        save(state)
+    log_event("report", k, state=st, sha=sha[:7], msg=msg[:300])
+    target = to or orchestrator_target(state)
+    line = f"AUTOPILOT {args[1]} {st} {sha} {msg}".rstrip()
+    code, out, err = sh(["aoe", "send", target, line], timeout=60)
+    if code != 0:
+        print(f"recorded, but sending to {target} failed: {err or out}",
+              file=sys.stderr)
+        return 2
+    print(f"reported {k} {st} -> {target}")
+    return 0
+
+
+READ_ONLY = {"render", "status", "siblings", "snapshot"}
 
 
 def main():
@@ -1058,9 +1235,25 @@ def main():
 def dispatch(cmd, args, state):
     if cmd in ("scan", "refresh"):
         rows, active, n, untracked = scan(state, refresh=(cmd == "refresh"))
+        state["last_tick"] = int(time.time())
+        # The orchestrator is whoever runs the tick; remembering it here lets
+        # `report` and the dashboard reach it without being told.
+        if os.environ.get("AOE_INSTANCE_ID"):
+            state["orch"] = os.environ["AOE_INSTANCE_ID"]
         save(state)
         render(rows, active, n, state, untracked)
+        counts = {}
+        for kind, _, _ in rows:
+            counts[kind] = counts.get(kind, 0) + 1
+        log_event("tick", active=active, counts=counts)
         return 0
+    if cmd == "snapshot":
+        snap = snapshot(state)
+        if "--quiet" not in args:
+            print(json.dumps(snap, indent=2, sort_keys=True))
+        return 0
+    if cmd == "report":
+        return report(state, args)
     if cmd == "render":
         # render <template> KEY=VAL ...
         subs = dict(kv.split("=", 1) for kv in args[2:] if "=" in kv)
@@ -1090,6 +1283,7 @@ def dispatch(cmd, args, state):
     if cmd in ("pause", "resume"):
         state["paused"] = cmd == "pause"
         save(state)
+        log_event(cmd)
         print(f"paused={state['paused']}")
         return 0
     if cmd == "decline":
@@ -1097,6 +1291,8 @@ def dispatch(cmd, args, state):
             if k not in state["declined"]:
                 state["declined"].append(k)
         save(state)
+        for k in args[1:]:
+            log_event("decline", k)
         print("declined:", " ".join(args[1:]))
         return 0
     if cmd == "undecline":
@@ -1112,6 +1308,7 @@ def dispatch(cmd, args, state):
                              "pr": pr, "reviewed_sha": None, "phase": "working",
                              "added": int(time.time())}
         save(state)
+        log_event("track", k, mode=mode, branch=branch, session=session)
         print(f"tracked {k} mode={mode} branch={branch} session={sid(session)}")
         return 0
     if cmd == "ack-push":
@@ -1147,12 +1344,14 @@ def dispatch(cmd, args, state):
                 return 1
         state["items"].pop(k)
         save(state)
+        log_event("detach", k, branch=it.get("branch"))
         print(f"detached {k} session={sid(sess)} branch={it.get('branch')} "
               "-> archived, worktree kept, untracked")
         return 0
     if cmd == "untrack":
         for k in args[1:]:
             state["items"].pop(k, None)
+            log_event("untrack", k)
         save(state)
         print("untracked:", " ".join(args[1:]))
         return 0
@@ -1161,6 +1360,7 @@ def dispatch(cmd, args, state):
         if k in state["items"]:
             state["items"][k]["phase"] = phase
             save(state)
+            log_event("phase", k, phase=phase)
             print(f"{k} phase={phase}")
         else:
             print(f"unknown item {k}", file=sys.stderr)
@@ -1172,6 +1372,7 @@ def dispatch(cmd, args, state):
             state["items"][k]["feedback_seen"] = when
             state["items"][k]["review_rounds"] = 0
             save(state)
+            log_event("feedback", k, since=when)
             print(f"{k} feedback_seen={when} rounds=0")
         return 0
     if cmd == "mark-reviewed":
@@ -1182,6 +1383,7 @@ def dispatch(cmd, args, state):
             it["phase"] = "fixing"
             it["review_rounds"] = int(it.get("review_rounds", 0)) + 1
             save(state)
+            log_event("reviewed", k, sha=sha[:7], round=it["review_rounds"])
             print(f"{k} reviewed={sha[:7]} "
                   f"round={it['review_rounds']}/{MAX_REVIEW_ROUNDS}")
         return 0
@@ -1193,6 +1395,7 @@ def dispatch(cmd, args, state):
             return 1
         n = int(it.get("review_rounds", 0))
         if n >= MAX_REVIEW_ROUNDS:
+            log_event("capped", k, round=n)
             print(f"CAPPED rounds={n}/{MAX_REVIEW_ROUNDS}")
             return 3
         n += 1
@@ -1200,6 +1403,7 @@ def dispatch(cmd, args, state):
         it["phase"] = "fixing"
         it["last_seen"] = int(time.time())
         save(state)
+        log_event("round", k, round=n)
         print(f"PROCEED round={n}/{MAX_REVIEW_ROUNDS}")
         return 0
     if cmd == "heartbeat":
@@ -1209,12 +1413,14 @@ def dispatch(cmd, args, state):
             if len(args) > 2:
                 state["items"][k]["last_note"] = " ".join(args[2:])[:200]
             save(state)
+            log_event("heartbeat", k, note=state["items"][k].get("last_note"))
             print(f"{k} last_seen=now")
         return 0
     if cmd == "reset-rounds":
         for k in args[1:]:
             if k in state["items"]:
                 state["items"][k]["review_rounds"] = 0
+                log_event("reset-rounds", k)
                 print(f"{k} rounds=0/{MAX_REVIEW_ROUNDS}")
         save(state)
         return 0
@@ -1223,6 +1429,7 @@ def dispatch(cmd, args, state):
             if k not in state["handled_merges"]:
                 state["handled_merges"].append(k)
             state["items"].pop(k, None)
+            log_event("merged", k)
         save(state)
         print("merged:", " ".join(args[1:]))
         return 0
@@ -1233,7 +1440,7 @@ def dispatch(cmd, args, state):
           "reset-rounds|"
           "mark-merged|"
           "render|spawn|"
-          "investigate]", file=sys.stderr)
+          "investigate|snapshot|report]", file=sys.stderr)
     return 1
 
 

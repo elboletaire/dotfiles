@@ -116,14 +116,19 @@ guessing at intent, or the change needs a decision only a human can make.
 
 ### Reporting
 
-Every stop ends with exactly one message to the orchestrator:
+Every stop ends with exactly one report:
 
 ```
-aoe send {{ORCH}} "AUTOPILOT {{KEY}} <ready|capped|blocked|failed|stalled> <sha> <one line>"
+$A report "{{KEY}}" <ready|capped|blocked|failed|stalled> <sha> "<one line>" --to {{ORCH}}
 ```
 
-The first line must be that one line -- the orchestrator reads it as a status,
-and a human reads it as a summary. Put any detail on the lines after it.
+It records the report on your item (the dashboard shows it) and sends the
+orchestrator the `AUTOPILOT {{KEY}} <state> <sha> <one line>` message it
+reads. The first line of the message must be that one line -- the
+orchestrator reads it as a status, and a human reads it as a summary. Put any
+detail on the lines after it, inside the same quotes. Exit 2 means the report
+was recorded but the send failed: retry the send once with
+`aoe send {{ORCH}} "AUTOPILOT ..."`, never the whole report.
 
 If you are going to be working for more than half an hour without pushing and
 without a CI wait in flight, call

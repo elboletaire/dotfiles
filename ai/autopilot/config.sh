@@ -80,6 +80,15 @@ STALE_HOURS=48
 # ancient org issue ever assigned to you shows up as a candidate.
 ISSUE_MAX_AGE_DAYS=120
 
+# aoe session (id or title) the orchestrator runs in, where agent reports and
+# dashboard commands are sent. Empty means "whichever session last ran a scan",
+# which the scan records itself -- leave it empty unless that guesses wrong.
+AUTOPILOT_ORCH=""
+
+# How often the dashboard re-reads GitHub (a read-only scan), in seconds. Agent
+# state and autopilot events update instantly; only PR/CI data waits for this.
+DASHBOARD_REFRESH_SECS=120
+
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/pr-autopilot"
 STATE_FILE="$STATE_DIR/state.json"
 PROMPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/prompts"
