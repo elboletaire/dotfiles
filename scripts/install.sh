@@ -144,9 +144,52 @@ install_aoe() {
   fi
 }
 
+install_herdr() {
+  # herdr: terminal workspace manager for coding agents. Hosts PR Autopilot's
+  # workers, orchestrator and dashboard. https://herdr.dev
+  # Pass "update" to upgrade even when herdr is already installed.
+  local mode=${1:-} agent
+
+  if [[ "$mode" != "update" ]] && command -v herdr &>/dev/null; then
+    echo "herdr already installed ($(herdr --version 2>/dev/null || echo present))"
+  elif [[ "$OS" == "Darwin" ]]; then
+    if [[ "$mode" == "update" ]]; then
+      brew upgrade herdr || brew install herdr
+    else
+      brew install herdr
+    fi
+  else
+    # AUR, like obscura-browser-bin: pacman owns the binary and its upgrades.
+    yay -S --needed --noconfirm herdr-bin
+  fi
+  command -v herdr &>/dev/null || return 0
+
+  # Agent-state hooks: what lets herdr tell working/blocked/done apart and
+  # resume conversations after a restart. Only for agents that are installed
+  # and whose integration is missing or outdated.
+  for agent in claude pi; do
+    command -v "$agent" &>/dev/null || continue
+    if ! herdr integration status 2>/dev/null | grep -q "^$agent: current"; then
+      herdr integration install "$agent"
+    fi
+  done
+}
+
+install_uv() {
+  # uv runs PR Autopilot's dashboard with its Python deps (rich) without
+  # touching the system Python. Installed only when missing: uv installed by
+  # astral's script updates itself (`uv self update`).
+  command -v uv &>/dev/null && return 0
+  if [[ "$OS" == "Darwin" ]]; then
+    brew install uv
+  else
+    sudo pacman -S --needed --noconfirm uv
+  fi
+}
+
 link_herdr_plugin() {
   # PR Autopilot's herdr plugin (Autopilot workspace + live dashboard).
-  # Only linked when herdr is installed; herdr itself is not installed here.
+  # Only linked when herdr is installed (install_herdr).
   # Relinks when it points anywhere else (e.g. a worktree it was tested from).
   local root="$dotfiles/ai/autopilot/herdr" id="elboletaire.autopilot" current
   command -v herdr &>/dev/null || return 0
@@ -657,8 +700,9 @@ install_packages() {
     if ! brew update; then
       echo "Cannot update Homebrew. ${aborting}" && exit 1
     fi
-    # curl, zsh, vim, and which are all pre-installed on macOS; only vivid needs Homebrew.
-    if ! brew install vivid; then
+    # curl, zsh, vim, and which are all pre-installed on macOS; vivid and jq
+    # need Homebrew.
+    if ! brew install vivid jq; then
       echo "Packages installation unsuccessful. ${aborting}" && exit 1
     fi
   else
@@ -667,23 +711,11 @@ install_packages() {
       echo "Cannot update pacman. ${aborting}" && exit 1
     fi
     # Install common required packages. We don't install git, as it's the way to
-    # install the dotfiles. base-devel is needed to build AUR packages below.
-    if ! sudo pacman -S --needed --noconfirm base-devel curl zsh vivid vim which; then
+    # install the dotfiles.
+    if ! sudo pacman -S --noconfirm yay curl zsh vivid vim which jq; then
       echo "Packages installation unsuccessful. ${aborting}" && exit 1
     fi
-    # yay is an AUR helper, and the AUR is not an official repo, so pacman
-    # cannot install it: bootstrap it with makepkg the first time around.
-    if ! command -v yay &>/dev/null; then
-      local yay_src
-      yay_src="$(mktemp -d)"
-      if ! git clone --depth 1 https://aur.archlinux.org/yay-bin.git "$yay_src" ||
-        ! (cd "$yay_src" && makepkg -si --noconfirm); then
-        rm -rf "$yay_src"
-        echo "Could not bootstrap yay. ${aborting}" && exit 1
-      fi
-      rm -rf "$yay_src"
-    fi
-    if ! yay -S --needed --noconfirm obscura-browser-bin; then
+    if ! yay -S --noconfirm obscura-browser-bin; then
       echo "Could not install AUR packages. ${aborting}" && exit 1
     fi
   fi
@@ -695,6 +727,8 @@ do_install() {
   install_ai_agents         # claude-code and pi need node from the step above
   install_apm || return 1   # apm manages skills
   install_aoe
+  install_herdr             # after install_ai_agents: wires agent-state hooks
+  install_uv
   git submodule update --init --recursive
   symlink
   symlink_config
@@ -713,6 +747,8 @@ do_update() {
   install_ai_agents
   install_apm || return 1
   install_aoe update
+  install_herdr update
+  install_uv
   symlink
   symlink_config
   install_rtk update
@@ -728,6 +764,8 @@ do_update_ai() {
   install_ai_agents
   install_apm || return 1
   install_aoe update
+  install_herdr update
+  install_uv
   install_rtk update
   update_apm_skills || return 1
   symlink_ai || return 1

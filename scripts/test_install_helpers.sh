@@ -1011,4 +1011,49 @@ fi
 rm -f "$MOCK_HERDR"
 
 echo ""
+echo "=== Test 25: install_herdr installs, upgrades and wires only missing integrations ==="
+MOCK_BIN="$TESTDIR/bin"
+for tool in herdr yay brew claude pi; do
+  cat > "$MOCK_BIN/$tool" <<MOCK
+#!/bin/bash
+echo "$tool \$*" >> "$TESTDIR/tools.log"
+if [ "$tool \$1 \$2" = "herdr integration status" ]; then
+  printf 'pi: not installed (x)\nclaude: current (v10) (y)\ncodex: current (v8) (z)\n'
+fi
+MOCK
+  chmod +x "$MOCK_BIN/$tool"
+done
+OS_SAVED="${OS:-}"
+OS=Linux
+
+: > "$TESTDIR/tools.log"
+install_herdr >/dev/null
+if grep -q "^yay" "$TESTDIR/tools.log"; then
+  fail "install_herdr ran yay although herdr is already installed"
+else
+  pass "skips the package install when herdr is present"
+fi
+if grep -q "^herdr integration install pi$" "$TESTDIR/tools.log" &&
+   ! grep -q "^herdr integration install claude" "$TESTDIR/tools.log"; then
+  pass "installs only the integrations that are not current"
+else
+  fail "wrong integration installs: $(grep 'integration install' "$TESTDIR/tools.log" | tr '\n' ';')"
+fi
+
+: > "$TESTDIR/tools.log"
+install_herdr update >/dev/null
+grep -q "^yay -S --needed --noconfirm herdr-bin$" "$TESTDIR/tools.log" \
+  && pass "update upgrades herdr-bin through yay" \
+  || fail "update did not run yay for herdr-bin"
+
+OS=Darwin
+: > "$TESTDIR/tools.log"
+install_herdr update >/dev/null
+grep -q "^brew upgrade herdr$" "$TESTDIR/tools.log" \
+  && pass "update upgrades herdr through brew on macOS" \
+  || fail "macOS update did not run brew upgrade herdr"
+OS="$OS_SAVED"
+for tool in herdr yay brew claude pi; do rm -f "$MOCK_BIN/$tool"; done
+
+echo ""
 echo "=== ALL TESTS COMPLETE ==="
