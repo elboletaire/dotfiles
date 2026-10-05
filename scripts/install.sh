@@ -144,6 +144,33 @@ install_aoe() {
   fi
 }
 
+link_herdr_plugin() {
+  # PR Autopilot's herdr plugin (Autopilot workspace + live dashboard).
+  # Only linked when herdr is installed; herdr itself is not installed here.
+  # Relinks when it points anywhere else (e.g. a worktree it was tested from).
+  local root="$dotfiles/ai/autopilot/herdr" id="elboletaire.autopilot" current
+  command -v herdr &>/dev/null || return 0
+  current=$(herdr plugin list --json 2>/dev/null | python3 -c '
+import json, sys
+try:
+    plugins = json.load(sys.stdin)["result"]["plugins"]
+except Exception:
+    plugins = []
+print(next((p["plugin_root"] for p in plugins if p["plugin_id"] == sys.argv[1]), ""))
+' "$id")
+  if [[ "$current" == "$root" ]]; then
+    return 0
+  fi
+  if [[ -n "$current" ]]; then
+    herdr plugin unlink "$id" >/dev/null || return 0
+  fi
+  if herdr plugin link "$root" >/dev/null; then
+    echo "Linked herdr plugin $id -> $root"
+  else
+    echo "WARNING: could not link the herdr plugin (is a herdr server running?)" >&2
+  fi
+}
+
 install_rtk() {
   # rtk (Rust Token Killer): CLI proxy that compresses command output before it
   # reaches the assistant. https://github.com/rtk-ai/rtk
@@ -673,6 +700,7 @@ do_install() {
   symlink_config
   install_rtk               # wires hooks into claude and pi, which must exist first
   symlink_ai || return 1    # config symlinks + APM skills global install
+  link_herdr_plugin
   chsh -s "$(which zsh)"
   vim -c 'PluginInstall' -c 'qa!'
   echo "dotfiles installation was successful"
@@ -690,6 +718,7 @@ do_update() {
   install_rtk update
   update_apm_skills || return 1
   symlink_ai || return 1
+  link_herdr_plugin
   echo "dotfiles update complete"
 }
 
@@ -702,6 +731,7 @@ do_update_ai() {
   install_rtk update
   update_apm_skills || return 1
   symlink_ai || return 1
+  link_herdr_plugin
   echo "AI stack update complete"
 }
 

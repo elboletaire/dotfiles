@@ -1,0 +1,46 @@
+# PR Autopilot inside herdr: an "Autopilot" workspace with the orchestrator on
+# the left and the live dashboard on the right, plus the popups the dashboard
+# opens. Link it with `herdr plugin link ~/.dotfiles/ai/autopilot/herdr`.
+id = "elboletaire.autopilot"
+name = "PR Autopilot"
+version = "0.1.0"
+min_herdr_version = "0.9.3"
+platforms = ["linux", "macos"]
+description = "Live PR Autopilot dashboard next to its orchestrator"
+
+# Build (or focus) the Autopilot workspace.
+[[actions]]
+id = "open"
+title = "Open PR Autopilot"
+contexts = ["workspace"]
+command = ["bash", "open.sh"]
+
+# The dashboard over whatever you are doing; q closes it.
+[[actions]]
+id = "peek"
+title = "Peek at the PR Autopilot dashboard"
+contexts = ["workspace"]
+command = ["bash", "-c", "exec \"${HERDR_BIN_PATH:-herdr}\" plugin pane open --plugin elboletaire.autopilot --entrypoint dashboard --placement overlay"]
+
+[[panes]]
+id = "dashboard"
+title = "Autopilot"
+placement = "split"
+command = ["bash", "../dashboard.sh"]
+
+# Opened by the dashboard: an agent's aoe session, and a shell in its worktree.
+[[panes]]
+id = "attach"
+title = "Agent"
+placement = "popup"
+width = "92%"
+height = "88%"
+command = ["bash", "-c", "exec aoe session attach \"$AP_SESSION\""]
+
+[[panes]]
+id = "shell"
+title = "Worktree shell"
+placement = "popup"
+width = "92%"
+height = "88%"
+command = ["bash", "-c", "exec \"${SHELL:-bash}\" -l"]

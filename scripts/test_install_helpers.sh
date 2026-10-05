@@ -966,4 +966,49 @@ else
 fi
 
 echo ""
+echo "=== Test 24: link_herdr_plugin links, keeps and relinks the autopilot plugin ==="
+MOCK_HERDR="$TESTDIR/bin/herdr"
+HERDR_STATE="$TESTDIR/herdr-linked"
+cat > "$MOCK_HERDR" <<MOCK
+#!/bin/bash
+echo "herdr \$*" >> "$TESTDIR/herdr.log"
+case "\$1 \$2" in
+  "plugin list")
+    if [ -s "$HERDR_STATE" ]; then
+      printf '{"result":{"plugins":[{"plugin_id":"elboletaire.autopilot","plugin_root":"%s"}]}}' "\$(cat "$HERDR_STATE")"
+    else
+      printf '{"result":{"plugins":[]}}'
+    fi ;;
+  "plugin link") echo "\$3" > "$HERDR_STATE" ;;
+  "plugin unlink") : > "$HERDR_STATE" ;;
+esac
+MOCK
+chmod +x "$MOCK_HERDR"
+want="$DOTFILES/ai/autopilot/herdr"
+
+: > "$TESTDIR/herdr.log"
+link_herdr_plugin >/dev/null
+[ "$(cat "$HERDR_STATE")" = "$want" ] && pass "links the plugin when absent" \
+  || fail "plugin not linked to $want"
+
+: > "$TESTDIR/herdr.log"
+link_herdr_plugin >/dev/null
+if grep -q "plugin link\|plugin unlink" "$TESTDIR/herdr.log"; then
+  fail "re-ran link/unlink although already linked to the right root"
+else
+  pass "leaves an already-correct link alone"
+fi
+
+echo "/somewhere/.worktrees/feat-herdr/ai/autopilot/herdr" > "$HERDR_STATE"
+: > "$TESTDIR/herdr.log"
+link_herdr_plugin >/dev/null
+if grep -q "plugin unlink elboletaire.autopilot" "$TESTDIR/herdr.log" &&
+   [ "$(cat "$HERDR_STATE")" = "$want" ]; then
+  pass "relinks a plugin that points at another checkout"
+else
+  fail "did not relink from a stale root"
+fi
+rm -f "$MOCK_HERDR"
+
+echo ""
 echo "=== ALL TESTS COMPLETE ==="

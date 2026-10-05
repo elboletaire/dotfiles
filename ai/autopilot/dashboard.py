@@ -16,6 +16,7 @@ It never acts on the table: the orchestrator does. The only things it sends
 are the ones you ask for (go/no to the orchestrator, pause/resume).
 Run it through dashboard.sh so config.sh is loaded.
 """
+import fcntl
 import json
 import os
 import select
@@ -38,6 +39,7 @@ STATE_FILE = os.environ.get(
 STATE_DIR = os.path.dirname(STATE_FILE)
 EVENTS_FILE = os.path.join(STATE_DIR, "events.jsonl")
 SNAPSHOT_FILE = os.path.join(STATE_DIR, "snapshot.json")
+SNAPSHOT_LOCK = SNAPSHOT_FILE + ".lock"
 REFRESH_SECS = int(os.environ.get("DASHBOARD_REFRESH_SECS", "120"))
 MAX_REVIEW_ROUNDS = int(os.environ.get("MAX_REVIEW_ROUNDS", "3"))
 AGENT_STALL_MIN = int(os.environ.get("AGENT_STALL_MIN", "35"))
@@ -153,6 +155,7 @@ class Model:
         self.backend = backend
         self.lock = threading.Lock()
         self.snap = read_json(SNAPSHOT_FILE)
+        self.snap_mtime = 0
         self.snap_err = None
         self.snap_running = False
         self.snap_started = 0
@@ -168,7 +171,19 @@ class Model:
     # -- sources
 
     def poll_files(self):
-        """state.json and events.jsonl: cheap stat()s, run every loop."""
+        """state.json, events.jsonl and snapshot.json: cheap stat()s, run
+        every loop. The snapshot is re-read here rather than only after our
+        own refresh, so every open dashboard shows whichever refresh ran."""
+        try:
+            m = os.stat(SNAPSHOT_FILE).st_mtime
+        except OSError:
+            m = 0
+        if m != self.snap_mtime:
+            snap = read_json(SNAPSHOT_FILE)
+            if snap is not None:
+                with self.lock:
+                    self.snap, self.snap_mtime = snap, m
+                self.changed.set()
         try:
             m = os.stat(STATE_FILE).st_mtime
         except OSError:
@@ -207,23 +222,35 @@ class Model:
                 self.kick.set()
             self.changed.set()
 
-    def refresh_snapshot(self):
-        self.snap_running, self.snap_started = True, time.time()
-        self.changed.set()
-        code, _, err = sh([sys.executable, os.path.join(DIR, "scan.py"),
-                           "snapshot", "--quiet"], timeout=600)
-        snap = read_json(SNAPSHOT_FILE)
-        with self.lock:
-            if code == 0 and snap:
-                self.snap, self.snap_err = snap, None
-            else:
-                self.snap_err = (err or "snapshot failed").splitlines()[-1][:120]
-            self.snap_running = False
+    def refresh_snapshot(self, force=False):
+        """Run a read-only scan, unless another dashboard (the pane and a
+        peek overlay, say) is already running one or ran one recently: they
+        all read the same snapshot.json, so one refresh serves them all."""
+        if not force:
+            gen = (read_json(SNAPSHOT_FILE) or {}).get("generated_at") or 0
+            if time.time() - gen < REFRESH_SECS - 5:
+                return
+        os.makedirs(STATE_DIR, exist_ok=True)
+        with open(SNAPSHOT_LOCK, "w") as lk:
+            try:
+                fcntl.flock(lk.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError:
+                return
+            self.snap_running, self.snap_started = True, time.time()
+            self.changed.set()
+            code, _, err = sh([sys.executable, os.path.join(DIR, "scan.py"),
+                               "snapshot", "--quiet"], timeout=600)
+            with self.lock:
+                self.snap_err = None if code == 0 else \
+                    (err or "snapshot failed").splitlines()[-1][:120]
+                self.snap_running = False
         self.changed.set()
 
     def github_loop(self):
+        force = False
         while True:
-            self.refresh_snapshot()
+            self.refresh_snapshot(force)
+            force = False
             deadline = time.time() + REFRESH_SECS
             while time.time() < deadline:
                 if self.kick.wait(timeout=max(0.1, deadline - time.time())):
@@ -231,6 +258,7 @@ class Model:
                     wait = KICK_DEBOUNCE - (time.time() - self.snap_started)
                     if wait > 0:
                         time.sleep(wait)
+                    force = True
                     break
 
     def agents_loop(self):
@@ -753,7 +781,7 @@ def main():
     if "--once" in args:
         # One frame on stdout, for checking the layout without a TTY.
         if "--refresh" in args:
-            model.refresh_snapshot()
+            model.refresh_snapshot(force=True)
         model.poll_files()
         model.live = backend.live()
         model.sessions = backend.sessions()
