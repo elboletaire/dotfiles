@@ -34,6 +34,10 @@ from rich.table import Table
 from rich.text import Text
 
 DIR = os.path.dirname(os.path.abspath(__file__))
+# scan.py's host layer (aoe + herdr) is the one source of truth for where an
+# agent runs and how to reach it.
+sys.path.insert(0, DIR)
+import scan  # noqa: E402
 STATE_FILE = os.environ.get(
     "STATE_FILE", os.path.expanduser("~/.local/state/pr-autopilot/state.json"))
 STATE_DIR = os.path.dirname(STATE_FILE)
@@ -46,8 +50,11 @@ AGENT_STALL_MIN = int(os.environ.get("AGENT_STALL_MIN", "35"))
 PLUGIN_ID = "elboletaire.autopilot"
 IN_HERDR = os.environ.get("HERDR_ENV") == "1"
 
-LIVE_SECS = 3          # aoe ps
-SESSIONS_SECS = 30     # aoe list (titles and worktree paths)
+LIVE_SECS = 3          # aoe ps / herdr agent list
+SESSIONS_SECS = 30     # aoe list / herdr workspaces (titles, worktree paths)
+META_SOURCE = "autopilot"
+META_TTL_MS = 10 * 60 * 1000   # sidebar tokens vanish if the dashboard dies
+META_EVERY = 180               # re-push unchanged tokens before they expire
 KICK_DEBOUNCE = 15     # min seconds between event-triggered GitHub refreshes
 CONFIRM_SECS = 4       # window for the second press of g / n / P
 
@@ -119,31 +126,42 @@ def split_key(key):
 
 # ----------------------------------------------------------------- backend
 
-class AoeBackend:
-    """Where the agents live. Swapped for herdr when the workers move."""
+class Hosts:
+    """Where the agents live: aoe sessions and herdr workspaces, through
+    scan.py so the dashboard and the orchestrator agree on both."""
 
     def live(self):
-        code, out, _ = sh(["aoe", "ps", "--json"], timeout=20)
-        try:
-            rows = json.loads(out) if code == 0 and out else []
-        except json.JSONDecodeError:
-            rows = []
-        return {r["session"]: r for r in rows if r.get("session")}
+        return scan.all_live()
 
     def sessions(self):
-        code, out, _ = sh(["aoe", "list", "--json"], timeout=20)
-        try:
-            rows = json.loads(out) if code == 0 and out else []
-        except json.JSONDecodeError:
-            rows = []
-        return {r["id"]: r for r in rows if r.get("id")}
+        return {r["id"]: r for r in scan.all_sessions()[0]}
 
-    def send(self, target, text):
-        code, out, err = sh(["aoe", "send", target, text], timeout=60)
-        return code == 0, err or out
+    def send(self, address, text):
+        return scan.send_to(address, text)
+
+    def focus(self, session, live):
+        """Bring a herdr agent forward. False for aoe sessions, which are
+        opened by attaching instead."""
+        if not scan.HERDR_WS.match(session or ""):
+            return False
+        target = (live.get(session) or {}).get("pane")
+        args = ["agent", "focus", target] if target else \
+            ["workspace", "focus", session]
+        return scan.herdr(args)[0] == 0
 
     def attach_cmd(self, session):
         return ["aoe", "session", "attach", session]
+
+    def publish(self, entries):
+        """Autopilot's view of each herdr agent, as pane metadata tokens the
+        herdr sidebar renders ($ap_kind, $ap_pr, ...; see herdr/README.md).
+        Agents in aoe have no herdr pane, so nothing is sent for them."""
+        for pane, tokens in entries:
+            args = ["pane", "report-metadata", pane, "--source", META_SOURCE,
+                    "--ttl-ms", str(META_TTL_MS)]
+            for k, v in tokens.items():
+                args += ["--token", f"{k}={v}"] if v else ["--clear-token", k]
+            scan.herdr(args, timeout=10)
 
 
 # ------------------------------------------------------------------- model
@@ -276,8 +294,28 @@ class Model:
             self.changed.set()
             time.sleep(LIVE_SECS)
 
+    def publish_loop(self):
+        """Mirror each herdr agent's row into the herdr sidebar: on change,
+        and again before the tokens' TTL runs out."""
+        last, last_at = {}, 0
+        while True:
+            time.sleep(5)
+            data, _ = self.build()
+            cur = {}
+            for section in ("needs", "orch", "running", "done"):
+                for e in data[section]:
+                    if e["pane"]:
+                        cur[e["pane"]] = sidebar_tokens(e, section)
+            stale = time.time() - last_at > META_EVERY
+            push = [(p, t) for p, t in cur.items() if stale or last.get(p) != t]
+            if push:
+                self.backend.publish(push)
+            if stale:
+                last_at = time.time()
+            last = cur
+
     def start(self):
-        for fn in (self.github_loop, self.agents_loop):
+        for fn in (self.github_loop, self.agents_loop, self.publish_loop):
             threading.Thread(target=fn, daemon=True).start()
 
     # -- view
@@ -387,6 +425,8 @@ class Model:
         else:
             pick_kind = "your PR"
         sinfo = sessions.get(sess, {}) if sess else {}
+        pr = it.get("pr") or (split_key(key)[1] if split_key(key)[2] == "pr"
+                              else None)
         return {"kind": kind, "key": key, "title": row.get("title") or
                 it.get("branch") or "", "url": row.get("url"),
                 "checks": row.get("checks"), "draft": row.get("draft"),
@@ -394,12 +434,30 @@ class Model:
                 "rounds": it.get("review_rounds"), "driver": it.get("driver"),
                 "quiet": quiet, "note": note, "needs": needs,
                 "pick_kind": pick_kind, "path": sinfo.get("path"),
-                "branch": it.get("branch")}
+                "branch": it.get("branch"), "pr": pr,
+                "pane": ag.get("pane")}
 
     def orch_target(self, state, sessions):
-        t = os.environ.get("AUTOPILOT_ORCH") or state.get("orch") or "Autopilot"
-        title = (sessions.get(t) or {}).get("title")
-        return t, title or t
+        """-> (address, label). Addresses are "herdr:<agent>" or
+        "aoe:<session>"; a bare one predates herdr and is aoe."""
+        addr = scan.orchestrator_target(state)
+        kind, sep, target = addr.partition(":")
+        if not sep:
+            kind, target = "aoe", addr
+        title = (sessions.get(target) or {}).get("title")
+        return f"{kind}:{target}", title or target
+
+
+def sidebar_tokens(e, section):
+    """Row -> the $ap_* tokens herdr/README.md's sidebar layout shows."""
+    kind = e["kind"].lower()
+    rnd = f"{e['rounds'] or 0}/{MAX_REVIEW_ROUNDS}" \
+        if e["rounds"] is not None or e["driver"] == "agent" else ""
+    return {"ap_kind": ("🔴 " if section == "needs" else "") + kind,
+            "ap_pr": f"#{e['pr']}" if e["pr"] else "",
+            "ap_rounds": rnd,
+            "ap_ci": CI_GLYPH.get(e["checks"] or "", ("", ""))[0],
+            "ap_note": (e["note"] or "")[:48]}
 
 
 # -------------------------------------------------------------------- view
@@ -670,8 +728,7 @@ class Dashboard:
                                      os.path.join(DIR, "scan.py"), verb])
                 self.say(out or err)
         elif key == "a":
-            _, hdr = self.m.build()
-            self.attach(hdr["orch"][0], live, term)
+            self.open_orch(live, term)
         elif not e:
             return True
         elif key in ("\r", "\n"):
@@ -696,9 +753,25 @@ class Dashboard:
         return True
 
     def attach(self, session, live, term):
+        """A herdr agent is brought forward in place; an aoe session is
+        attached, in a popup when inside herdr."""
+        with self.m.lock:
+            agents = dict(self.m.live)
+        if self.m.backend.focus(session, agents):
+            return
         if self.popup("attach", {"AP_SESSION": session}):
             return
         term.suspend(live, self.m.backend.attach_cmd(session))
+
+    def open_orch(self, live, term):
+        _, hdr = self.m.build()
+        kind, _, target = hdr["orch"][0].partition(":")
+        if kind == "herdr":
+            ok = scan.herdr(["agent", "focus", target])[0] == 0
+            if not ok:
+                self.say(f"no herdr agent named {target}")
+            return
+        self.attach(target, live, term)
 
     def shell(self, path, live, term):
         if self.popup("shell", {}, cwd=path):
@@ -775,7 +848,7 @@ class Terminal:
 
 def main():
     args = sys.argv[1:]
-    backend = AoeBackend()
+    backend = Hosts()
     model = Model(backend)
 
     if "--once" in args:
