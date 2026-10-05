@@ -929,10 +929,10 @@ REAL_LOCKFILE="$(cd "$(dirname "$0")/.." && pwd)/ai/apm.lock.yaml"
 if [ -f "$REAL_LOCKFILE" ]; then
   names=$(_tracked_skill_names "$REAL_LOCKFILE")
   count=$(echo "$names" | wc -l)
-  if [ "$count" -eq 16 ]; then
-    pass "Real lockfile: exactly 16 skill names extracted"
+  if [ "$count" -eq 14 ]; then
+    pass "Real lockfile: exactly 14 skill names extracted"
   else
-    fail "Real lockfile: expected exactly 16 skill names, got $count"
+    fail "Real lockfile: expected exactly 14 skill names, got $count"
   fi
 else
   pass "Real lockfile not available at $REAL_LOCKFILE; synthetic test already passed"
@@ -948,21 +948,21 @@ fi
 echo ""
 echo "=== Test 23: real manifest/lock contain the exact pinned migration set ==="
 expected_names=$(printf '%s\n' \
-  aoe brainstorming context7 effective-print-design \
-  executing-plans find-skills git-commit github-issues graphic-designer impeccable \
+  aoe brainstorming context7 \
+  executing-plans find-skills git-commit github-issues herdr \
   obscura-browser skill-creator systematic-debugging \
   test-driven-development using-superpowers writing-plans | sort)
 real_names=$(_tracked_skill_names "$REAL_LOCKFILE")
 if [ "$real_names" = "$expected_names" ]; then
-  pass "Real lockfile contains exactly the 16 migrated skill names"
+  pass "Real lockfile contains exactly the 14 pinned skill names"
 else
   fail "Real lockfile skill set differs from the expected migration set"
 fi
 REAL_MANIFEST="$(dirname "$REAL_LOCKFILE")/apm.yml"
-if [ "$(grep -c '^[[:space:]]*ref: [0-9a-f]\{40\}$' "$REAL_MANIFEST")" -eq 16 ]; then
-  pass "Manifest pins all 16 dependencies to full commit SHAs"
+if [ "$(grep -c '^[[:space:]]*ref: [0-9a-f]\{40\}$' "$REAL_MANIFEST")" -eq 14 ]; then
+  pass "Manifest pins all 14 dependencies to full commit SHAs"
 else
-  fail "Manifest must contain 16 full-SHA ref pins"
+  fail "Manifest must contain 14 full-SHA ref pins"
 fi
 
 echo ""

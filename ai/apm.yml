@@ -57,3 +57,7 @@ dependencies:
       path: contrib/hermes-skill
       alias: aoe
       ref: be309177fd4529266edd47ce4ac40ca7cc4ee98c
+    - git: https://github.com/herdrdev/herdr.git
+      path: skills/herdr
+      alias: herdr
+      ref: 7b116c05bfda646af39d2524c54e70c751f57ee8

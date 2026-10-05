@@ -181,6 +181,24 @@ dependencies:
     .claude/skills/github-issues/references/sub-issues.md: sha256:333339143e4a4ef0dfeb575cf0f18da2ca78d6388e2b9ba4b77daad7c1ce29a8
     .claude/skills/github-issues/references/templates.md: sha256:8202c0277a34033acd44ed960a236f31a5b7a74d98769dffac497f2267279fed
   content_hash: sha256:2e88a5d1a7acf845e450c42a07fad522c42a39ebda98c57fa08bb904d53710cc
+- repo_url: herdrdev/herdr
+  name: herdr
+  host: github.com
+  resolved_commit: 7b116c05bfda646af39d2524c54e70c751f57ee8
+  resolved_ref: 7b116c05bfda646af39d2524c54e70c751f57ee8
+  version: unknown
+  virtual_path: skills/herdr
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/herdr
+  - .agents/skills/herdr/SKILL.md
+  - .claude/skills/herdr
+  - .claude/skills/herdr/SKILL.md
+  deployed_file_hashes:
+    .agents/skills/herdr/SKILL.md: sha256:b16ba0d9a22adbaf259d2022cd323801f8e51d530c94cb0cd23a69069292506b
+    .claude/skills/herdr/SKILL.md: sha256:b16ba0d9a22adbaf259d2022cd323801f8e51d530c94cb0cd23a69069292506b
+  content_hash: sha256:66715d76e5947497431ec0db32f2693b9c916ad799c3f32b99e6174b4b9c607f
 - repo_url: intellectronica/agent-skills
   name: context7
   host: github.com
@@ -775,6 +793,24 @@ deployments:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
   content_hash: sha256:8202c0277a34033acd44ed960a236f31a5b7a74d98769dffac497f2267279fed
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/herdr
+  runtime: null
+  scope: project
+  owners:
+  - herdrdev/herdr/skills/herdr
+  active_owner: herdrdev/herdr/skills/herdr
+  content_hash: null
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/herdr/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - herdrdev/herdr/skills/herdr
+  active_owner: herdrdev/herdr/skills/herdr
+  content_hash: sha256:b16ba0d9a22adbaf259d2022cd323801f8e51d530c94cb0cd23a69069292506b
 - kind: project-relative
   target: agent-skills
   value: .agents/skills/obscura-browser
@@ -1558,6 +1594,24 @@ deployments:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
   content_hash: sha256:8202c0277a34033acd44ed960a236f31a5b7a74d98769dffac497f2267279fed
+- kind: project-relative
+  target: claude
+  value: .claude/skills/herdr
+  runtime: null
+  scope: project
+  owners:
+  - herdrdev/herdr/skills/herdr
+  active_owner: herdrdev/herdr/skills/herdr
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/herdr/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - herdrdev/herdr/skills/herdr
+  active_owner: herdrdev/herdr/skills/herdr
+  content_hash: sha256:b16ba0d9a22adbaf259d2022cd323801f8e51d530c94cb0cd23a69069292506b
 - kind: project-relative
   target: claude
   value: .claude/skills/obscura-browser
