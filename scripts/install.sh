@@ -4,6 +4,8 @@ declare -r dotfiles=~/.dotfiles
 declare -r oldfiles=~/old_dotfiles
 declare -r exclude=("README.md" "LICENSE" "scripts" "git" "config" "ai")
 declare -r aborting="Aborting dotfiles installation..."
+# When set, link_ai replaces existing paths instead of moving them to $oldfiles.
+no_backup=0
 OS=$(uname -s)
 
 backup_dotfile() {
@@ -193,6 +195,11 @@ link_herdr_plugin() {
   # Relinks when it points anywhere else (e.g. a worktree it was tested from).
   local root="$dotfiles/ai/autopilot/herdr" id="elboletaire.autopilot" current
   command -v herdr &>/dev/null || return 0
+  # Plugin commands need a live server and exit 0 even when there is none.
+  if herdr status server 2>/dev/null | grep -q "not running"; then
+    echo "herdr server not running; skipping the autopilot plugin link"
+    return 0
+  fi
   current=$(herdr plugin list --json 2>/dev/null | python3 -c '
 import json, sys
 try:
@@ -253,8 +260,12 @@ link_ai() {
     return
   fi
   if [ -e "$dest" ] || [ -L "$dest" ]; then
-    mkdir -p "$oldfiles"
-    mv -v "$dest" "$oldfiles/"
+    if [ "$no_backup" -eq 1 ]; then
+      rm -rf "$dest"
+    else
+      mkdir -p "$oldfiles"
+      mv -v "$dest" "$oldfiles/"
+    fi
   fi
   ln -s "$src" "$dest"
 }
@@ -800,6 +811,16 @@ do_update_ai() {
   echo "AI stack update complete"
 }
 
+do_install_ai_config() {
+  # Config-only: relink prompts, instructions and agents from ai/ and install
+  # the pinned skills. No agents, node or tooling installs, no ref bumps, and
+  # no ~/old_dotfiles backups since everything relinked is tracked in git.
+  no_backup=1
+  symlink_ai || return 1
+  link_herdr_plugin
+  echo "AI config install complete"
+}
+
 # Library guard: when sourced (e.g. from tests), stop here.
 # The case block only runs when executed directly.
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
@@ -810,5 +831,6 @@ case "${1:-install}" in
   install) do_install || exit 1 ;;
   update)  do_update || exit 1 ;;
   ai)      do_update_ai || exit 1 ;;
-  *) echo "usage: $(basename "$0") [install|update|ai]" && exit 1 ;;
+  ai-config) do_install_ai_config || exit 1 ;;
+  *) echo "usage: $(basename "$0") [install|update|ai|ai-config]" && exit 1 ;;
 esac

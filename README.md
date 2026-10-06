@@ -13,6 +13,14 @@ git clone https://github.com/elboletaire/dotfiles .dotfiles && cd .dotfiles
 ./scripts/install.sh
 ~~~
 
+To refresh only the AI config (prompts, instructions, agents and the pinned
+skills from `ai/`) without installing agents or tooling, and without backing
+anything up to `~/old_dotfiles`:
+
+~~~bash
+./scripts/install.sh ai-config
+~~~
+
 ## AI skills
 
 Skills are managed via [APM](https://github.com/microsoft/apm) (Agent Package Manager).

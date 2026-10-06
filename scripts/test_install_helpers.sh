@@ -981,10 +981,22 @@ case "\$1 \$2" in
     fi ;;
   "plugin link") echo "\$3" > "$HERDR_STATE" ;;
   "plugin unlink") : > "$HERDR_STATE" ;;
+  "status server")
+    if [ -e "$TESTDIR/herdr-down" ]; then echo "Status: not running"; else echo "Status: running"; fi ;;
 esac
 MOCK
 chmod +x "$MOCK_HERDR"
 want="$DOTFILES/ai/autopilot/herdr"
+
+touch "$TESTDIR/herdr-down"
+: > "$TESTDIR/herdr.log"
+link_herdr_plugin >/dev/null
+if grep -q "plugin " "$TESTDIR/herdr.log"; then
+  fail "ran plugin commands although no herdr server is running"
+else
+  pass "skips the plugin link when no herdr server is running"
+fi
+rm -f "$TESTDIR/herdr-down"
 
 : > "$TESTDIR/herdr.log"
 link_herdr_plugin >/dev/null
@@ -1093,6 +1105,28 @@ set_login_shell
   || pass "reads the login shell through dscl on macOS"
 OS="$OS_SAVED"
 unset -f command getent dscl
+
+echo ""
+echo "=== Test: link_ai skips ~/old_dotfiles when no_backup is set ==="
+mkdir -p "$DOTFILES/ai/prompts" "$HOME/.nobackup/commands"
+echo stale > "$HOME/.nobackup/commands/old.md"
+rm -rf "$oldfiles"
+no_backup=1
+link_ai "$DOTFILES/ai/prompts" "$HOME/.nobackup/commands"
+no_backup=0
+[ "$(readlink "$HOME/.nobackup/commands")" = "$DOTFILES/ai/prompts" ] \
+  && pass "replaces the existing directory with the symlink" \
+  || fail "did not link $HOME/.nobackup/commands"
+[ ! -e "$oldfiles" ] \
+  && pass "leaves no ~/old_dotfiles behind" \
+  || fail "created $oldfiles despite no_backup"
+
+mkdir -p "$HOME/.backup/commands"
+link_ai "$DOTFILES/ai/prompts" "$HOME/.backup/commands"
+[ -d "$oldfiles/commands" ] \
+  && pass "still backs up to ~/old_dotfiles by default" \
+  || fail "default link_ai no longer backs up"
+rm -rf "$oldfiles"
 
 echo ""
 echo "=== ALL TESTS COMPLETE ==="
