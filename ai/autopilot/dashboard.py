@@ -644,8 +644,8 @@ class Dashboard:
             t.append(f" {msg}", style="bold cyan")
             t.append("\n")
         keys = [("↑↓/jk", "move"), ("⏎", "open agent"), ("t", "shell"),
-                ("o", "browser"), ("g/n", "go/no"), ("a", "orchestrator"),
-                ("r", "refresh"), ("d", "done"), ("P", "pause"), ("q", "quit")]
+                ("o", "browser"), ("g/n", "go/no"), ("z", "detach"),
+                ("a", "orchestrator"), ("r", "refresh"), ("d", "done"), ("P", "pause"), ("q", "quit")]
         for k, what in keys:
             t.append(f" {k}", style="bold")
             t.append(f" {what} ", style="dim")
@@ -750,6 +750,15 @@ class Dashboard:
                 self.to_orch(f"{verb} {e['key']}")
         elif key in ("g", "n"):
             self.say("go/no only applies to Pick next rows")
+        elif key == "z":
+            if e["key"] not in ((self.m.state or {}).get("items") or {}):
+                self.say("detach only applies to tracked items")
+            elif self.ask("z", e["key"], f"press z again to detach {e['key']} "
+                          "(worktree kept, untracked)"):
+                code, out, err = sh([sys.executable,
+                                     os.path.join(DIR, "scan.py"), "detach",
+                                     e["key"]])
+                self.say(out or err)
         return True
 
     def attach(self, session, live, term):

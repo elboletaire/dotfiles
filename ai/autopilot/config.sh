@@ -93,8 +93,9 @@ AUTOPILOT_BACKEND="herdr"
 AUTOPILOT_ORCH=""
 
 # Folder the herdr plugin starts the orchestrator in. Claude asks once whether
-# to trust it; ~/.dotfiles already is, and holds this skill.
-AUTOPILOT_ORCH_CWD="$HOME/.dotfiles"
+# to trust it. ~/src holds the clones on every workstation; the skill itself
+# is global, so it works from any folder.
+AUTOPILOT_ORCH_CWD="$HOME/src"
 
 # How often the dashboard re-reads GitHub (a read-only scan), in seconds. Agent
 # state and autopilot events update instantly; only PR/CI data waits for this.

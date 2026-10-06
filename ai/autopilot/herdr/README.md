@@ -34,7 +34,7 @@ command = "elboletaire.autopilot.peek"
 ```
 
 `open` starts the orchestrator as a fresh claude in `AUTOPILOT_ORCH_CWD`
-(`~/.dotfiles`); type `/pr-autopilot` in it to start ticking. If the recorded
+(`~/src`); type `/pr-autopilot` in it to start ticking. If the recorded
 orchestrator is still an aoe session, the left pane attaches to it instead.
 
 Show autopilot's state on each worker's row in the herdr sidebar (the
@@ -81,6 +81,7 @@ dashboards share one refresh.
 | `o` | PR or issue in the browser |
 | `g` / `n` | on a Pick next row: send `go <key>` / `no <key>` to the orchestrator (press twice) |
 | `P` | pause / resume autopilot (press twice) |
+| `z` | detach a tracked item: closes its workspace or archives its aoe session, keeps the worktree, stops tracking it (press twice) |
 | `r` | refresh from GitHub now |
-| `d` | show / hide done rows |
+| `d` | show / hide done rows (DONE, GONE) |
 | `q` | quit |
