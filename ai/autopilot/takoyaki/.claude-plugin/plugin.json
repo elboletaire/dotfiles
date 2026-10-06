@@ -1,0 +1,7 @@
+{
+  "name": "autopilot-takoyaki",
+  "version": "0.1.0",
+  "author": { "name": "elboletaire" },
+  "description": "An octopus cooking takoyaki above the PR Autopilot orchestrator's prompt, reacting to autopilot events",
+  "types": "./types/index.d.ts"
+}
