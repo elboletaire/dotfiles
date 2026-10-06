@@ -1116,7 +1116,9 @@ def render_prompt(name, subs):
     if name in ("review-comment", "re-review", "review-stack"):
         subs.setdefault("REVIEW_LEVEL",
                         os.environ.get("REVIEW_LEVEL_COMMENT", "medium"))
-    subs.setdefault("REVIEW_LEVEL", os.environ.get("REVIEW_LEVEL", "high"))
+    subs.setdefault("REVIEW_LEVEL", os.environ.get("REVIEW_LEVEL", "xhigh"))
+    subs.setdefault("REVIEW_LEVEL_FOLLOWUP",
+                    os.environ.get("REVIEW_LEVEL_FOLLOWUP", "high"))
     # Shared fragments are spliced in FIRST: they carry their own {{REPO}},
     # {{PR}} and {{BRANCH}} placeholders, and if they were substituted in the
     # same pass as everything else those would survive the pass and then be

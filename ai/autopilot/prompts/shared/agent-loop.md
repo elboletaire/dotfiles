@@ -58,9 +58,12 @@ comment and silently truncates the argument.
    ```
 
    - **exit 3, `CAPPED`** -> you are out of rounds. Post **one** PR comment
-     summarising what you changed across all rounds and what you deliberately
-     left alone, report `capped`, and stop. Do not review again. Do not push
-     again.
+     summarising what you changed across all rounds, with two separate
+     lists: **Blocking, still open** (CONFIRMED blocking findings you could
+     not close, or "none") and **Left alone, non-blocking** (CONFIRMED
+     findings you deliberately did not fix). The human merges on that first
+     list, so never fold a blocking finding into the second. Report
+     `capped`, and stop. Do not review again. Do not push again.
    - **exit 0, `PROCEED round=N/M`** -> go to 4.
 
    Never skip this call and never act on a round you were not granted. The cap
@@ -73,14 +76,44 @@ comment and silently truncates the argument.
    `model: {{COLD_REVIEW_MODEL}}` for both passes -- the review is where the
    thinking happens, so it is pinned regardless of what this session runs on.
 
+   Round 1 is the one full review of the whole PR. Every later round reviews
+   only what your own fixes changed since round 1 -- re-reviewing the whole PR
+   each round just finds fresh nits in the previous round's fixes, forever.
+
+   **Round 1: record the base first.** Before pass 1, save the head you are
+   reviewing, so later rounds know where your fixes start:
+
+   ```
+   git rev-parse HEAD > "$(git rev-parse --git-dir)/autopilot-review-base"
+   ```
+
    **Pass 1 -- candidates (nothing is changed).** Give the subagent only the
    PR number and branch -- no history, no summary of what you already did, no
-   defence of your earlier choices:
+   defence of your earlier choices.
+
+   *Round 1* -- the whole PR:
 
    > Run `{{REVIEW_CMD}} {{REVIEW_LEVEL}} {{PR}}` on branch `{{BRANCH}}`,
    > without `--fix` and without `--comment`. Return a numbered list of
    > candidate findings: file, line, the claimed defect, and whether it would
    > block a merge. Change nothing and post nothing.
+
+   *Round 2 and later* -- only the fix diff. Read the base back with
+   `cat "$(git rev-parse --git-dir)/autopilot-review-base"`. If a rebase has
+   rewritten it (`git merge-base --is-ancestor <base> HEAD` fails), use the
+   commit on `HEAD` with the same subject line instead; if there is none,
+   review the commits you made after round 1 by name. Give the subagent the
+   range and the list of findings those commits were meant to fix:
+
+   > On {{REPO}} PR #{{PR}} (branch `{{BRANCH}}`, worktree <path>), review
+   > **only** `git diff <base>..HEAD` at `{{REVIEW_LEVEL_FOLLOWUP}}` depth --
+   > the rest of the PR was already reviewed. These commits were meant to
+   > fix: <numbered list of the CONFIRMED findings, file:line and defect>.
+   > Check that each one is actually fixed, and that the diff introduces no
+   > new defect -- security and correctness first. Do not raise findings on
+   > code outside the diff. Return a numbered list of candidate findings:
+   > file, line, the claimed defect, and whether it would block a merge.
+   > Change nothing and post nothing.
 
    This pass casts a wide net, so some candidates are false positives.
 
@@ -103,12 +136,17 @@ comment and silently truncates the argument.
 5. **Nothing CONFIRMED** -> the review found nothing. Go to 6. Rejected
    candidates cost no fix cycle and no push; that is the point of pass 2.
 
-   **Something CONFIRMED** -> fix only the CONFIRMED findings, in this
-   session. Run the full test suite and linter, commit with conventional
-   messages, push, and return to 1.
+   **Something CONFIRMED** -> in round 1, fix every CONFIRMED finding. From
+   round 2 on, fix only CONFIRMED findings that would block a merge --
+   security, correctness, data loss, a broken build or test. A non-blocking
+   one (wording, style, a hardening nicety) is not worth another round: note
+   it for the final comment and leave the code alone. If nothing blocking is
+   left, go to 6. Otherwise run the full test suite and linter, commit with
+   conventional messages, push, and return to 1.
 
-6. **The review found nothing** -> report `ready` and stop. That is success,
-   not failure.
+6. **The review found nothing blocking** -> if you set aside non-blocking
+   findings, post **one** PR comment listing them under **Left alone,
+   non-blocking**. Report `ready` and stop. That is success, not failure.
 
 **Stop and report immediately, without burning a round, if:** a rebase conflict
 needs a judgement call, a test fails for a reason you cannot fix without

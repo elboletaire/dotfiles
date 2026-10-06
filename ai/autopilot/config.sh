@@ -29,7 +29,11 @@ ISSUE_ORGS="vocdoni"
 # Slash command for review. `/review` is a verified alias of `/code-review`
 # (aliases:["review"] in the 2.1.267 bundle); both work.
 REVIEW_CMD="/review"
-REVIEW_LEVEL="high"          # review-fix loop on your own PRs: recall, fixes are tested locally
+REVIEW_LEVEL="xhigh"         # review-fix loop, round 1: the one full review of the whole PR
+# Rounds 2+ review only the diff the loop's own fixes produced since round 1,
+# so a narrow pass is cheap. A full re-review every round kept finding new
+# nits in its own fixes and always burned the whole MAX_REVIEW_ROUNDS budget.
+REVIEW_LEVEL_FOLLOWUP="high"
 # Public reviews of someone else's PR: high recall for pass 1 (candidates, never
 # posted), then a fresh subagent verifies each one and only CONFIRMED findings
 # are posted. Posting pass 1 directly put unverified candidates on GitHub.
