@@ -162,16 +162,16 @@ guessing at intent, or the change needs a decision only a human can make.
 Every stop ends with exactly one report:
 
 ```
-$A report "{{KEY}}" <ready|capped|blocked|failed|stalled> <sha> "<one line>" --to {{ORCH}}
+$A report "{{KEY}}" <ready|capped|blocked|failed|stalled> <sha> "<one line>"
 ```
 
-It records the report on your item (the dashboard shows it) and sends the
-orchestrator the `AUTOPILOT {{KEY}} <state> <sha> <one line>` message it
-reads. The first line of the message must be that one line -- the
+It records the report on your item (the dashboard shows it) and queues the
+`AUTOPILOT {{KEY}} <state> <sha> <one line>` message in the orchestrator's
+inbox. The first line of the message must be that one line -- the
 orchestrator reads it as a status, and a human reads it as a summary. Put any
-detail on the lines after it, inside the same quotes. Exit 2 means the report
-was recorded but not delivered: run the same `$A report` once more. If that
-fails too, stop -- the dashboard already shows your report.
+detail on the lines after it, inside the same quotes. Never message the
+orchestrator any other way (`herdr agent prompt`, `aoe send`): that types
+into its pane, over whatever the user is writing there.
 
 If you are going to be working for more than half an hour without pushing and
 without a CI wait in flight, call

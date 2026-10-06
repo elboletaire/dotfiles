@@ -257,9 +257,31 @@ its own CI, claims its own review rounds (`scan.sh claim-round`, which the
 script caps), runs each review in a fresh subagent, and messages you when it
 stops. You do not prompt it again after the first prompt.
 
-The agent sends it with `$A report`, which also records it on the item (as
-`last_report`) for the dashboard, so a report survives a send that failed.
-Its report arrives in your session as a line starting `AUTOPILOT <key> <state>`:
+The agent sends it with `$A report`, which records it on the item (as
+`last_report`, which the dashboard shows) and queues it in your **inbox**.
+Nothing is ever typed into your pane: a typed prompt lands on whatever the
+user is half-way through writing there and sends it.
+
+### The inbox and its doorbell
+
+Two kinds of message queue in the inbox: agent reports, as a line starting
+`AUTOPILOT <key> <state>`, and dashboard requests, as `REQUEST <command>`
+(the dashboard's `g`/`n` keys send `REQUEST go <key>` / `REQUEST no <key>`).
+
+- **Keep the doorbell armed.** On the first tick of a session, and again
+  whenever its Monitor expires or you find none running, start
+  `Monitor` with `command: "$A doorbell"`, `timeout_ms: 1800000`,
+  `description: "autopilot inbox"`. It emits one line per report or request.
+  Never arm a second one while one is running.
+- **On a doorbell event, and at the start of every tick**, run `$A inbox`. It
+  prints every pending message, oldest first, and clears them. A doorbell
+  with an empty inbox is normal (a repeat after the log is trimmed); do
+  nothing.
+- Handle `AUTOPILOT` lines with the table below. Handle a `REQUEST` exactly as
+  if the user had typed that command to you (`go`, `no`, ...), with the same
+  rules, wind-down included.
+
+A report reads:
 
 | state | What it means | You do |
 |---|---|---|

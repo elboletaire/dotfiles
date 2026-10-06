@@ -1424,6 +1424,8 @@ def render(rows, active, nrepos, state, untracked=0):
     wd = wind_down()
     if wd:
         extra += f"   WIND_DOWN {wd} (from {WIND_DOWN_AT})"
+    if state.get("inbox"):
+        extra += f"   INBOX {len(state['inbox'])} (run inbox)"
     print(f"PAUSED {'yes' if state.get('paused') else 'no'}   "
           f"REPOS {nrepos}   ACTIVE {active}/{MAX_ACTIVE}{extra}")
     rows.sort(key=row_order)
@@ -1579,15 +1581,15 @@ REPORT_STATES = ("ready", "capped", "blocked", "failed", "stalled")
 def report(state, args):
     """report <key> <state> <sha> <message...> [--to <session>]
 
-    Records the agent's final report on its item, then forwards it to the
-    orchestrator as the `AUTOPILOT <key> <state> <sha> <message>` line it
-    already parses. Recording first means a report survives a failed send,
-    and the dashboard can show it without reading the orchestrator's chat.
+    Records the agent's final report on its item and queues it in the
+    orchestrator's inbox as the `AUTOPILOT <key> <state> <sha> <message>`
+    line it already parses. The dashboard shows it from the item.
+
+    `--to` is accepted and ignored: agents spawned before the inbox still
+    pass it.
     """
-    to = None
     if "--to" in args:
         i = args.index("--to")
-        to = args[i + 1] if i + 1 < len(args) else None
         args = args[:i] + args[i + 2:]
     if len(args) < 4:
         print("usage: report <key> <state> <sha> <message...> [--to <session>]",
@@ -1606,15 +1608,43 @@ def report(state, args):
                              "at": now}
         it["last_seen"] = now
         save(state)
+    # Into the orchestrator's inbox, never typed into its pane: a typed
+    # prompt lands on whatever the user is half-way through writing there
+    # and sends it. The log line below is what its Monitor wakes on.
+    to_inbox(state, f"AUTOPILOT {args[1]} {st} {sha} {msg}".rstrip())
     log_event("report", k, state=st, sha=sha[:7], msg=msg[:300])
-    target = to or orchestrator_target(state)
-    line = f"AUTOPILOT {args[1]} {st} {sha} {msg}".rstrip()
-    ok, err = send_to(target, line)
-    if not ok:
-        print(f"recorded, but sending to {target} failed: {err}",
-              file=sys.stderr)
-        return 2
-    print(f"reported {k} {st} -> {target}")
+    print(f"reported {k} {st} -> inbox")
+    return 0
+
+
+INBOX_MAX = 200
+
+
+def to_inbox(state, text):
+    """Queue one message for the orchestrator. Caller holds the lock."""
+    box = state.setdefault("inbox", [])
+    box.append({"at": int(time.time()), "text": text})
+    del box[:-INBOX_MAX]
+    save(state)
+
+
+def inbox(state):
+    """Print and clear the orchestrator's pending messages, oldest first.
+
+    Agent reports print as the `AUTOPILOT <key> <state> <sha> <message>` line
+    they always were; dashboard requests as `REQUEST <command>`. Continuation
+    lines are indented, so every message starts at column 0."""
+    box = state.get("inbox") or []
+    if not box:
+        print("(inbox empty)")
+        return 0
+    for m in box:
+        first, *rest = m["text"].splitlines() or [""]
+        print(f"{time.strftime('%H:%M', time.localtime(m['at']))} {first}")
+        for line in rest:
+            print(f"    {line}")
+    state["inbox"] = []
+    save(state)
     return 0
 
 
@@ -1655,6 +1685,19 @@ def dispatch(cmd, args, state):
         return 0
     if cmd == "report":
         return report(state, args)
+    if cmd == "inbox":
+        return inbox(state)
+    if cmd == "request":
+        # A command from the dashboard (go/no/re-review/investigate...),
+        # queued for the orchestrator the same way agent reports are.
+        text = " ".join(args[1:]).strip()
+        if not text:
+            print("usage: request <command...>", file=sys.stderr)
+            return 1
+        to_inbox(state, f"REQUEST {text}")
+        log_event("request", text=text[:200])
+        print(f"queued for the orchestrator: {text}")
+        return 0
     if cmd == "send":
         # send <key> <text...>: prompt the item's agent, wherever it runs.
         return send_item(state, args[1], " ".join(args[2:]))
@@ -1875,7 +1918,7 @@ def dispatch(cmd, args, state):
           "reset-rounds|"
           "mark-merged|"
           "render|spawn|"
-          "investigate|snapshot|report|send|reboot|wind-down]", file=sys.stderr)
+          "investigate|snapshot|report|inbox|request|send|reboot|wind-down]", file=sys.stderr)
     return 1
 
 

@@ -713,10 +713,12 @@ class Dashboard:
         return False
 
     def to_orch(self, text):
-        _, hdr = self.m.build()
-        target, title = hdr["orch"]
-        ok, err = self.m.backend.send(target, text)
-        self.say(f"sent '{text}' to {title}" if ok else f"send failed: {err}")
+        """Queue a command in the orchestrator's inbox. Typing it into its
+        pane would also send whatever the user is half-way through there."""
+        code, out, err = sh([sys.executable, os.path.join(DIR, "scan.py"),
+                             "request", text])
+        self.say(f"queued '{text}' for the orchestrator" if code == 0
+                 else f"queue failed: {(err or out)[:100]}")
 
     def popup(self, entrypoint, env, cwd=None):
         """Open one of the plugin's popups; False when not inside herdr."""
