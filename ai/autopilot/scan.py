@@ -25,6 +25,8 @@ CLONE_PREFER = [os.path.expanduser(p).rstrip("/")
                 for p in os.environ.get("CLONE_PREFER", "").split()]
 AUTOPILOT_GROUP = os.environ.get("AUTOPILOT_GROUP", "Autopilot")
 MAX_ACTIVE = int(os.environ.get("MAX_ACTIVE", "6"))
+# Local HH:MM from which ticks remind the user to close work, not start it.
+WIND_DOWN_AT = os.environ.get("WIND_DOWN_AT", "").strip()
 MAX_REVIEW_ROUNDS = int(os.environ.get("MAX_REVIEW_ROUNDS", "3"))
 AGENT_STALL_MIN = int(os.environ.get("AGENT_STALL_MIN", "35"))
 # A review-only PR whose author pushed after our review but never re-requested
@@ -1410,8 +1412,18 @@ def row_order(r):
     return (ORDER.index(r[0]) if r[0] in ORDER else 99, r[1])
 
 
+def wind_down():
+    """'yes'/'no' against WIND_DOWN_AT in local time, None when unset."""
+    if not WIND_DOWN_AT:
+        return None
+    return "yes" if time.strftime("%H:%M") >= WIND_DOWN_AT.zfill(5) else "no"
+
+
 def render(rows, active, nrepos, state, untracked=0):
     extra = f"   UNTRACKED {untracked}" if untracked else ""
+    wd = wind_down()
+    if wd:
+        extra += f"   WIND_DOWN {wd} (from {WIND_DOWN_AT})"
     print(f"PAUSED {'yes' if state.get('paused') else 'no'}   "
           f"REPOS {nrepos}   ACTIVE {active}/{MAX_ACTIVE}{extra}")
     rows.sort(key=row_order)
@@ -1606,7 +1618,7 @@ def report(state, args):
     return 0
 
 
-READ_ONLY = {"render", "status", "siblings", "snapshot"}
+READ_ONLY = {"render", "status", "siblings", "snapshot", "wind-down"}
 
 
 def main():
@@ -1671,6 +1683,9 @@ def dispatch(cmd, args, state):
         return 0
     if cmd == "cleanup":
         return cleanup(state, args[1])
+    if cmd == "wind-down":
+        print(f"WIND_DOWN {wind_down() or 'off'} (from {WIND_DOWN_AT or '-'})")
+        return 0
     if cmd == "status":
         print(json.dumps(state, indent=2, sort_keys=True))
         return 0
@@ -1860,7 +1875,7 @@ def dispatch(cmd, args, state):
           "reset-rounds|"
           "mark-merged|"
           "render|spawn|"
-          "investigate|snapshot|report|send|reboot]", file=sys.stderr)
+          "investigate|snapshot|report|send|reboot|wind-down]", file=sys.stderr)
     return 1
 
 

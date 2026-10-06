@@ -31,6 +31,21 @@ If the header says `PAUSED yes`:
   opens with one banner line: `⏸️ PAUSED since <date> -- held: <what the
   table would have acted on>`. The user must never find out hours later.
 
+If the header says `WIND_DOWN yes` (local time is past `WIND_DOWN_AT` in
+config.sh, 15:00 by default), the day is winding down:
+
+- **Every tick report** opens with one banner line, right before the
+  headline: `🌇 Past <time> -- close what's open, don't start anything new.`
+  Then, if there is any, one line naming what closes work fastest: `READY`
+  items to merge, `CAPPED` ones to decide. Nothing else changes: cleanups,
+  rebases, `FEEDBACK` and review rounds on tracked items carry on as usual.
+- **A `go` needs a second yes.** Before spawning anything on a `go` -- typed
+  or sent by the dashboard's `g` -- or on a `/investigate`, run `$A wind-down`. If it says `yes`, spawn
+  nothing yet. Ask once, naming each item with its title: `🌇 It's past <time>
+  -- start <item> "<title>" anyway? (yes / no)`. Spawn only on an explicit yes
+  to that question; anything else leaves it in Pick next. `no <#>` and every
+  other command need no confirmation.
+
 ## Readable output (ADHD-ready)
 
 The user is juggling many PRs across many repos and reads this on a phone or

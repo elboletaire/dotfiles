@@ -60,6 +60,11 @@ MODEL_COLD_REVIEW=opus       # the Agent-tool review pass inside the loop
 # cap queue as PROPOSE rows instead of spawning.
 MAX_ACTIVE=6
 
+# Local time (HH:MM) from which the day winds down: every tick reminds you to
+# close what is open rather than start anything new, and a "go" asks for
+# confirmation before spawning. Empty disables it.
+WIND_DOWN_AT="15:00"
+
 # How many self-review rounds autopilot runs on one PR before it stops and
 # hands back. Each round is one review-fix pass; the counter increments on
 # mark-reviewed, resets when a human leaves a GitHub review (mark-feedback) or
