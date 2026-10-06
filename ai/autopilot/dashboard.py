@@ -369,7 +369,8 @@ class Model:
             elif e["driver"] == "agent" and e["agent"] == "running" \
                     and kind not in ORCH_ROWS:
                 e["needs"] = False
-                e["note"] = f"working again · was {kind.lower()}"
+                if kind not in RUN_ROWS:
+                    e["note"] = f"working again · was {kind.lower()}"
                 out["running"].append(e)
             elif e["needs"]:
                 out["needs"].append(e)
@@ -410,11 +411,19 @@ class Model:
         rep = it.get("last_report") or {}
         # A report is current until the agent shows a later sign of life.
         rep_live = bool(rep) and rep.get("at", 0) >= (it.get("last_seen") or 0)
-        needs = (kind in NEEDS_ROWS
+        # scan.py's STALLED rule, applied live: the snapshot can be two
+        # minutes behind, and the red Quiet column used to say "stalled"
+        # while the row still sat under Running.
+        stalled = (it.get("driver") == "agent" and kind in RUN_ROWS | {"NEW"}
+                   and quiet is not None and quiet >= AGENT_STALL_MIN * 60
+                   and agent_state != "running")
+        needs = (kind in NEEDS_ROWS or stalled
                  or (rep_live and rep.get("state") in REPORT_NEEDS)
                  or (agent_state == "waiting" and kind not in DONE_ROWS))
         if rep_live:
             note = f"{rep.get('state')}: {rep.get('msg') or ''}"
+        elif stalled:
+            note = "agent not reporting"
         elif kind in ORCH_ROWS:
             note = f"next tick: {ORCH_ROWS[kind]}"
         elif kind == "NEW":
@@ -439,7 +448,7 @@ class Model:
         return {"kind": kind, "key": key, "title": row.get("title") or
                 it.get("branch") or "", "url": row.get("url"),
                 "checks": row.get("checks"), "draft": row.get("draft"),
-                "session": sess, "agent": agent_state,
+                "session": sess, "agent": agent_state, "stalled": stalled,
                 "rounds": it.get("review_rounds"), "driver": it.get("driver"),
                 "quiet": quiet, "note": note, "needs": needs,
                 "pick_kind": pick_kind, "path": sinfo.get("path"),
@@ -590,8 +599,7 @@ class Dashboard:
             ci = Text(*CI_GLYPH.get(e["checks"] or "", ("", "")))
             rnd = f"{e['rounds'] or 0}/{MAX_REVIEW_ROUNDS}" \
                 if e["rounds"] is not None or e["driver"] == "agent" else ""
-            stalled = e["driver"] == "agent" and e["quiet"] and \
-                e["quiet"] >= AGENT_STALL_MIN * 60
+            stalled = e["stalled"] or e["kind"] == "STALLED"
             quiet = Text(ago(e["quiet"]), style="red" if stalled else "")
             tb.add_row("▶" if sel else "", short(e["key"]),
                        ("[draft] " if e["draft"] else "") + (e["title"] or ""),
