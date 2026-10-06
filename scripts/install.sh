@@ -733,6 +733,21 @@ install_packages() {
   fi
 }
 
+set_login_shell() {
+  # chsh asks for a password, so only run it when the account's login shell
+  # (not $SHELL, which can be stale) isn't zsh yet. Compared by name, since
+  # /bin/zsh and /usr/bin/zsh are the same shell.
+  local zsh current
+  zsh=$(command -v zsh) || return 0
+  if [[ "$OS" == "Darwin" ]]; then
+    current=$(dscl . -read ~/ UserShell 2>/dev/null | awk '{ print $2 }')
+  else
+    current=$(getent passwd "$USER" | cut -d: -f7)
+  fi
+  [[ "${current##*/}" == zsh ]] && return 0
+  chsh -s "$zsh"
+}
+
 do_install() {
   install_packages
   install_nvm               # must come before anything that needs node/npx/npm
@@ -747,7 +762,7 @@ do_install() {
   install_rtk               # wires hooks into claude and pi, which must exist first
   symlink_ai || return 1    # config symlinks + APM skills global install
   link_herdr_plugin
-  chsh -s "$(which zsh)"
+  set_login_shell
   vim -c 'PluginInstall' -c 'qa!'
   echo "dotfiles installation was successful"
 }

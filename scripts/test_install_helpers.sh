@@ -1056,4 +1056,43 @@ OS="$OS_SAVED"
 for tool in herdr yay brew claude pi; do rm -f "$MOCK_BIN/$tool"; done
 
 echo ""
+echo "=== Test 26: set_login_shell only runs chsh when the login shell is not zsh ==="
+ZSH_PATH=$(command -v zsh || echo /usr/bin/zsh)
+command() { [ "$1 $2" = "-v zsh" ] && echo "$ZSH_PATH" || builtin command "$@"; }
+chsh() { echo "chsh $*" >> "$TESTDIR/tools.log"; }
+OS_SAVED="${OS:-}"
+OS=Linux
+
+getent() { echo "me:x:1000:1000::/home/me:$ZSH_PATH"; }
+: > "$TESTDIR/tools.log"
+set_login_shell
+[ -s "$TESTDIR/tools.log" ] \
+  && fail "ran chsh although the login shell is already zsh" \
+  || pass "skips chsh when the login shell is already zsh"
+
+getent() { echo "me:x:1000:1000::/home/me:/bin/zsh"; }
+: > "$TESTDIR/tools.log"
+set_login_shell
+[ -s "$TESTDIR/tools.log" ] \
+  && fail "ran chsh for /bin/zsh, the same shell under another path" \
+  || pass "treats zsh under another path as already set"
+
+getent() { echo "me:x:1000:1000::/home/me:/bin/bash"; }
+: > "$TESTDIR/tools.log"
+set_login_shell
+grep -q "^chsh -s $ZSH_PATH$" "$TESTDIR/tools.log" \
+  && pass "runs chsh when the login shell is not zsh" \
+  || fail "did not run chsh for a bash login shell"
+
+OS=Darwin
+dscl() { echo "UserShell: $ZSH_PATH"; }
+: > "$TESTDIR/tools.log"
+set_login_shell
+[ -s "$TESTDIR/tools.log" ] \
+  && fail "ran chsh on macOS although the login shell is already zsh" \
+  || pass "reads the login shell through dscl on macOS"
+OS="$OS_SAVED"
+unset -f command getent dscl
+
+echo ""
 echo "=== ALL TESTS COMPLETE ==="
