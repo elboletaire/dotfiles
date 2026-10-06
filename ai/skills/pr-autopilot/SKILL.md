@@ -42,10 +42,8 @@ between tasks. Every reply, not just tick reports, follows these rules:
   No multi-sentence cells. Long explanations go under a `<details>` block.
 - **Max 5 rows in 🔴 Needs you.** Oldest unanswered first. The rest collapse
   into one line: `+N more waiting on you (say "all")`.
-- **Pick next only when it changed.** If the PROPOSE set and order are
-  identical to the last table shown, replace the table with one line:
-  `⚪ N to pick -- unchanged, say "list" to show`. Always show it on `list`,
-  `status`, or when a row was added or removed.
+- **The dashboard holds the tables, not the chat.** Never reprint them on a
+  tick; show them only when the user says `status` or `list`.
 - **Say what changed since last tick** in ✅ or a single `Δ` line, never
   make the user diff two tables.
 - **Repeat the item's title** every time it is mentioned, never only the
@@ -56,12 +54,28 @@ between tasks. Every reply, not just tick reports, follows these rules:
 
 ## Tick report
 
-Every tick ends with the same fixed layout, so the user can scan it in five
-seconds. Tables, not prose. Omit a section when it is empty. Never truncate
-titles, and use the GitHub title as-is instead of paraphrasing it.
+The live dashboard (`dashboard.sh`, or the herdr Autopilot workspace) shows
+the full state and updates by itself, so a tick reply is only what the
+dashboard cannot say: what you did and what just changed.
 
 1. **Headline**: one line of counts, e.g.
    `🔴 1 needs you · 🟡 3 running · ⚪ 19 to pick · 4/6 slots`.
+2. **✅ Did this tick**: one bullet per action taken (cleanup, rebase sent,
+   spawn, track).
+3. **🆕 New for you**: only items that entered 🔴 Needs you since the last
+   tick, one line each with the title and your move. Items already flagged
+   on an earlier tick stay on the dashboard, not here.
+
+Omit a section when it is empty; a tick with nothing done and nothing new is
+the headline alone. Never truncate titles, and use the GitHub title as-is
+instead of paraphrasing it.
+
+### Full report (`status` / `list` only)
+
+When the user asks for `status` or `list`, use this fixed layout instead.
+Tables, not prose. Omit a section when it is empty.
+
+1. **Headline**: as above.
 2. **🔴 Needs you**: `CAPPED`, `READY`, `PUSHED` (label it **stale**), `STALLED` that is a real stall,
    `CLOSED`, agent `blocked`/`failed` reports, and `state=idle` sessions over
    1h. Columns: `Item | What | Why it's here | Your move`. "Your move" is one
@@ -78,8 +92,10 @@ titles, and use the GitHub title as-is instead of paraphrasing it.
    duplicate of tracked work) in the Kind cell, never below the table.
 6. **Footer**: one line with the next tick time, then `go <#>` / `no <#>`.
 
-`go <#>` and `no <#>` resolve against the most recent Pick next table you
-showed. GitHub numbers ("go 1807") still work. Report `UNCLONED` and
+`go <#>` and `no <#>` resolve against the current scan's `PROPOSE` order,
+which is the dashboard's `#` column. Repeat the resolved item's title in the
+reply so a mismatch shows. GitHub numbers ("go 1807") and item keys (which
+the dashboard's `g`/`n` keys send) still work. Report `UNCLONED` and
 `UNKNOWN` as one-line notes under the footer.
 
 ## What each row means
