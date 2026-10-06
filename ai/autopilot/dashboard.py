@@ -69,7 +69,7 @@ PICK_ROWS = {"PROPOSE"}
 NOTE_ROWS = {"UNCLONED", "STALE", "UNKNOWN"}
 REPORT_NEEDS = {"blocked", "failed", "stalled", "capped"}
 # Events after which the GitHub view is worth refreshing early.
-KICK_EVENTS = {"report", "spawn", "cleanup", "tick", "track", "detach",
+KICK_EVENTS = {"report", "spawn", "sent", "cleanup", "tick", "track", "detach",
                "untrack", "decline", "merged"}
 
 AGENT_GLYPH = {"running": ("◐", "yellow"), "waiting": ("⏸", "bold red"),
@@ -351,8 +351,9 @@ class Model:
             # Cleaned up, detached or untracked since the snapshot.
             if tracked_kind and it is None and kind != "GONE":
                 continue
-            # Picked or declined since the snapshot.
-            if kind in PICK_ROWS and (key in items or key in declined):
+            # Picked or declined since the snapshot. `it`, not `key in items`:
+            # an issue re-keyed to its PR is only in its item's prev_keys.
+            if kind in PICK_ROWS and (it is not None or key in declined):
                 continue
             e = self.entry(row, cur_key, it, live, sessions, now, me)
             seen.add(cur_key)
@@ -362,6 +363,14 @@ class Model:
                 out["pick"].append(e)
             elif kind in DONE_ROWS:
                 out["done"].append(e)
+            # herdr's live state is seconds old; the snapshot can be minutes
+            # old. An agent mid-turn -- prompted by the orchestrator or by
+            # hand -- is running, whatever its last report or row says.
+            elif e["driver"] == "agent" and e["agent"] == "running" \
+                    and kind not in ORCH_ROWS:
+                e["needs"] = False
+                e["note"] = f"working again · was {kind.lower()}"
+                out["running"].append(e)
             elif e["needs"]:
                 out["needs"].append(e)
             elif kind in ORCH_ROWS:
@@ -435,7 +444,7 @@ class Model:
                 "quiet": quiet, "note": note, "needs": needs,
                 "pick_kind": pick_kind, "path": sinfo.get("path"),
                 "branch": it.get("branch"), "pr": pr,
-                "pane": ag.get("pane")}
+                "pane": ag.get("pane"), "open": bool(sess and sess in sessions)}
 
     def orch_target(self, state, sessions):
         """-> (address, label). Addresses are "herdr:<agent>" or
@@ -468,6 +477,7 @@ class Dashboard:
         self.console = console
         self.sel_key = None
         self.show_done = False
+        self.hidden_done = 0
         self.flash = ("", 0)
         self.confirm = None   # (action, key, deadline)
         self.selectable = []
@@ -489,9 +499,17 @@ class Dashboard:
         parts.append(self.items_table("⏭  Next tick (orchestrator)",
                                       data["orch"], "blue"))
         parts.append(self.items_table("🟡 Running", data["running"], "yellow"))
+        # Done rows that still hold a workspace or session stay listed, so
+        # they can be opened or detached (z) without toggling d first.
+        still_open = [e for e in data["done"] if e["open"]]
+        parts.append(self.items_table("💤 Done, session still open (z detaches)",
+                                      still_open, "green"))
         if self.show_done:
-            parts.append(self.items_table("✔  Done / waiting on others",
-                                          data["done"], "green"))
+            parts.append(self.items_table(
+                "✔  Done / waiting on others",
+                [e for e in data["done"] if not e["open"]], "green"))
+        self.hidden_done = 0 if self.show_done else \
+            len(data["done"]) - len(still_open)
         used = sum(self.height(p) for p in parts)
         room = self.console.height - used - 16
         parts.append(self.pick_table(data["pick"], max(3, room)))
@@ -499,6 +517,9 @@ class Dashboard:
             parts.append(self.notes(data["notes"]))
         parts.append(self.activity(now))
         parts.append(self.footer(data, now))
+        # move() navigates by key, so a key listed twice would send ↓ back
+        # to its first copy and trap the cursor. Keep the first of each.
+        self.selectable = list(dict.fromkeys(self.selectable))
         if self.sel_key not in self.selectable:
             self.sel_key = self.selectable[0] if self.selectable else None
         return Group(*[p for p in parts if p is not None])
@@ -645,7 +666,9 @@ class Dashboard:
             t.append("\n")
         keys = [("↑↓/jk", "move"), ("⏎", "open agent"), ("t", "shell"),
                 ("o", "browser"), ("g/n", "go/no"), ("z", "detach"),
-                ("a", "orchestrator"), ("r", "refresh"), ("d", "done"), ("P", "pause"), ("q", "quit")]
+                ("a", "orchestrator"), ("r", "refresh"),
+                ("d", f"done (+{self.hidden_done} hidden)" if self.hidden_done
+                 else "done"), ("P", "pause"), ("q", "quit")]
         for k, what in keys:
             t.append(f" {k}", style="bold")
             t.append(f" {what} ", style="dim")

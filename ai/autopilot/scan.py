@@ -807,11 +807,34 @@ def scan(state, refresh=False, info=None):
         # never sends it a review prompt -- it only watches for the agent
         # going quiet, because a dead agent and a working one look identical
         # from here.
-        if it.get("driver") == "agent" and rounds < MAX_REVIEW_ROUNDS:
+        #
+        # Its state comes from what the agent says, not from the counter:
+        # claim-round counts a round when it starts, so rounds == MAX while
+        # the last round is still running. Only a `capped` report or a
+        # refused claim means it stopped, and only a `ready` report for this
+        # head means it is done (the agent never calls mark-reviewed). A
+        # report is current until the agent shows a later sign of life.
+        if it.get("driver") == "agent":
+            rep = it.get("last_report") or {}
+            if rep.get("at", 0) < int(it.get("last_seen") or 0) or \
+                    live.get(sess, {}).get("state") == "running":
+                rep = {}
+            if rep.get("state") == "capped" or it.get("capped_at"):
+                rows.append(("CAPPED", k,
+                             f"mode={it['mode']} {smeta} head={head[:7]} "
+                             f"rounds={rounds}/{MAX_REVIEW_ROUNDS} "
+                             "-> agent stopped at the cap; you decide"))
+                continue
+            if rep.get("state") == "ready" and rep.get("sha") \
+                    and head.startswith(rep["sha"]):
+                rv = head   # falls through to READY below
             if not rv or not head.startswith(rv):
                 quiet = (int(time.time()) - int(it.get("last_seen")
                          or it.get("added") or 0)) // 60
-                if quiet >= AGENT_STALL_MIN:
+                # Mid-turn (a long review subagent, say) sends no heartbeat
+                # but is plainly alive.
+                if quiet >= AGENT_STALL_MIN and \
+                        live.get(sess, {}).get("state") != "running":
                     rows.append(("STALLED", k,
                                  f"mode={it['mode']} {smeta} head={head[:7]} "
                                  f"rounds={rounds}/{MAX_REVIEW_ROUNDS} "
@@ -918,7 +941,10 @@ def scan(state, refresh=False, info=None):
                                      "-> you merge"))
 
     # ---- candidates
-    seen = set(items) | declined
+    # prev_keys too: an issue re-keyed to its PR is still being worked on, and
+    # proposing it again would let "go N" spawn a second agent on it.
+    seen = set(items) | declined | {pk for it in items.values()
+                                    for pk in it.get("prev_keys") or []}
     cand = {}
 
     for slug in HOME_REPOS:
@@ -1494,6 +1520,9 @@ def send_item(state, k, text):
             return 4
         print(f"{k}: send to {addr} failed: {err}", file=sys.stderr)
         return 1
+    # A new prompt makes the agent's last report history.
+    it["last_seen"] = int(time.time())
+    save(state)
     log_event("sent", k, text=text.strip().splitlines()[0][:80] if text.strip()
               else "")
     print(f"sent to {k} ({addr})")
@@ -1756,6 +1785,7 @@ def dispatch(cmd, args, state):
         if k in state["items"]:
             state["items"][k]["feedback_seen"] = when
             state["items"][k]["review_rounds"] = 0
+            state["items"][k].pop("capped_at", None)
             save(state)
             log_event("feedback", k, since=when)
             print(f"{k} feedback_seen={when} rounds=0")
@@ -1780,6 +1810,10 @@ def dispatch(cmd, args, state):
             return 1
         n = int(it.get("review_rounds", 0))
         if n >= MAX_REVIEW_ROUNDS:
+            # The scan shows CAPPED from here even if the agent dies before
+            # its `capped` report; reset-rounds and mark-feedback clear it.
+            it["capped_at"] = int(time.time())
+            save(state)
             log_event("capped", k, round=n)
             print(f"CAPPED rounds={n}/{MAX_REVIEW_ROUNDS}")
             return 3
@@ -1805,6 +1839,7 @@ def dispatch(cmd, args, state):
         for k in args[1:]:
             if k in state["items"]:
                 state["items"][k]["review_rounds"] = 0
+                state["items"][k].pop("capped_at", None)
                 log_event("reset-rounds", k)
                 print(f"{k} rounds=0/{MAX_REVIEW_ROUNDS}")
         save(state)

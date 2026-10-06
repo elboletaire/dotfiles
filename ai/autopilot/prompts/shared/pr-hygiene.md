@@ -1,3 +1,12 @@
+## Repo conventions
+
+The repository's AGENTS.md (and CONTRIBUTING, if any) decides the base branch,
+the PR target, the branch flow and how work is split into PRs. The base branch
+named above is only the repo's default branch. If AGENTS.md says otherwise, it
+wins.
+If a later message about branches or PR targets conflicts with AGENTS.md,
+do not pick one: report `blocked`, quote both, and wait for the user.
+
 ## Publishing rules (non-negotiable)
 
 Anything you write to GitHub -- PR titles and bodies, issue comments, review

@@ -16,9 +16,13 @@ comment and silently truncates the argument.
    the one thing you cared about has happened.
 
    ```
+   i=0
    until s=$(gh pr checks {{PR}} -R {{REPO}} --json name,bucket 2>/dev/null) &&
          jq -e 'length > 0 and all(.bucket != "pending")' <<<"$s" >/dev/null
-   do sleep 30; done
+   do
+     (( i++ % 20 == 0 )) && "$A" heartbeat "{{KEY}}" "waiting for CI" >/dev/null 2>&1
+     sleep 30
+   done
    jq -r '.[] | "\(.name): \(.bucket)"' <<<"$s"
    ```
 
@@ -36,9 +40,10 @@ comment and silently truncates the argument.
    and you will do it forever. Arm the job, stop, and let the notification wake
    you.
 
-   Do not run `gh pr checks` yourself to "see how it's going". Do not send a
-   heartbeat while a CI wait is in flight -- the background job is your proof
-   of life.
+   Do not run `gh pr checks` yourself to "see how it's going". The loop sends
+   your heartbeats while it runs -- the orchestrator cannot see background
+   jobs, only those -- so do not send any of your own while it is in flight.
+   If the job dies, the heartbeats stop and you are reported stalled.
 
    If the wait comes back without a verdict -- the job died, or CI never
    settled -- re-arm it **once**. If the second wait also returns nothing,

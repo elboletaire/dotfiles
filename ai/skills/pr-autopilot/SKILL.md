@@ -283,3 +283,10 @@ if an agent says `ready` and the table disagrees, the table wins.
 9. **`$A snapshot` is the dashboard's, not yours.** It is a read-only scan that
    saves nothing, so acting on its rows would skip the state transitions the
    real tick records. Ticks always use `$A scan`.
+10. **Repo conventions belong to the repo, not to you.** Each repo's AGENTS.md
+    decides its base branch, PR target, branch flow (`main`/`develop`/`stage`/
+    `lts`...) and how work is split into PRs. Never add your own guidance on
+    any of these to a prompt or relay, and never "correct" an agent on them.
+    A user request is relayed verbatim, with nothing of yours added. If
+    something looks off, ask the user. Do not reason from what a branch name
+    suggests: merging to `main` does not mean production everywhere.
