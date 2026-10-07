@@ -289,8 +289,12 @@ Two kinds of message queue in the inbox: agent reports, as a line starting
   with an empty inbox is normal (a repeat after the log is trimmed); do
   nothing.
 - Handle `AUTOPILOT` lines with the table below. Handle a `REQUEST` exactly as
-  if the user had typed that command to you (`go`, `no`, ...), with the same
-  rules, wind-down included.
+  if the user had typed that command to you (`go`, `no`, `re-review`,
+  `/investigate`, ...), with the same rules, wind-down included. A trailing
+  `(confirmed past wind-down)` is the user's confirmation, not part of the
+  command: strip it before acting, and never pass it into an investigation's
+  question. The dashboard runs `reset-rounds`, `ack-push`, `detach`, `pause`
+  and `resume` itself, so those reach you only as events, never as requests.
 
 A report reads:
 

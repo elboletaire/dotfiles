@@ -13,7 +13,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LABEL="Autopilot"
 ORCH_AGENT="autopilot"             # scan.py's ORCH_AGENT
 PROMPTER_AGENT="autopilot-prompter"
-COMMS_RATIO=0.3                    # the communications pane's share of the column
+COMMS_RATIO=0.35                   # the communications pane's share: room for the takoyaki band
 
 # Split the orchestrator's pane down and start the prompter in the new pane.
 add_prompter() {

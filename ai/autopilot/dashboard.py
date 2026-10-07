@@ -57,6 +57,9 @@ META_TTL_MS = 10 * 60 * 1000   # sidebar tokens vanish if the dashboard dies
 META_EVERY = 180               # re-push unchanged tokens before they expire
 KICK_DEBOUNCE = 15     # min seconds between event-triggered GitHub refreshes
 CONFIRM_SECS = 4       # window for the second press of g / n / P
+PROMPTER_AGENT = "autopilot-prompter"   # herdr/open.sh's prompter pane
+# Appended to a request the user already confirmed past WIND_DOWN_AT.
+CONFIRMED = "(confirmed past wind-down)"
 
 # Rows by who has the next move. Agent reports and blocked agents are moved
 # into NEEDS on top of these; see build().
@@ -672,11 +675,23 @@ class Dashboard:
         elif msg and now - at < 6:
             t.append(f" {msg}", style="bold cyan")
             t.append("\n")
-        keys = [("↑↓/jk", "move"), ("⏎", "open agent"), ("t", "shell"),
-                ("o", "browser"), ("g/n", "go/no"), ("z", "detach"),
-                ("a", "orchestrator"), ("r", "refresh"),
-                ("d", f"done (+{self.hidden_done} hidden)" if self.hidden_done
-                 else "done"), ("P", "pause"), ("q", "quit")]
+        # The row's own decisions first, then what works everywhere.
+        sel = next((e for rows in data.values() for e in rows
+                    if e["key"] == self.sel_key), None)
+        kind = sel["kind"] if sel else None
+        tracked = sel and sel["key"] in ((self.m.state or {}).get("items") or {})
+        keys = [("g/n", "go/no")] if kind == "PROPOSE" else []
+        if kind == "CAPPED":
+            keys.append(("R", "another round"))
+        if kind == "PUSHED":
+            keys += [("v", "re-review"), ("x", "ack")]
+        if tracked:
+            keys.append(("z", "detach"))
+        keys += [("↑↓/jk", "move"), ("⏎", "open agent"), ("t", "shell"),
+                 ("o", "browser"), ("i", "investigate"), ("a", "prompter"),
+                 ("r", "refresh"),
+                 ("d", f"done (+{self.hidden_done} hidden)" if self.hidden_done
+                  else "done"), ("P", "pause"), ("q", "quit")]
         for k, what in keys:
             t.append(f" {k}", style="bold")
             t.append(f" {what} ", style="dim")
@@ -762,6 +777,8 @@ class Dashboard:
                 self.say(out or err)
         elif key == "a":
             self.open_orch(live, term)
+        elif key == "i":
+            self.investigate(live, term)
         elif not e:
             return True
         elif key in ("\r", "\n"):
@@ -776,6 +793,12 @@ class Dashboard:
                 self.say("no worktree for this row")
         elif key == "o":
             self.browse(e)
+        elif key == "g" and e["kind"] == "PROPOSE" and scan.wind_down() == "yes":
+            # Past WIND_DOWN_AT the second press is the confirmation, so the
+            # orchestrator never has to ask in its own pane.
+            if self.ask("g", e["key"], f"🌇 past {scan.WIND_DOWN_AT} -- press g "
+                        f"again to start {e['key']} anyway"):
+                self.to_orch(f"go {e['key']} {CONFIRMED}")
         elif key in ("g", "n") and e["kind"] == "PROPOSE":
             verb = "go" if key == "g" else "no"
             if self.ask(key, e["key"], f"press {key} again to send "
@@ -783,16 +806,52 @@ class Dashboard:
                 self.to_orch(f"{verb} {e['key']}")
         elif key in ("g", "n"):
             self.say("go/no only applies to Pick next rows")
+        elif key == "R":
+            if e["kind"] != "CAPPED":
+                self.say("R only applies to CAPPED rows")
+            elif self.ask("R", e["key"], f"press R again to grant {e['key']} "
+                          f"another {MAX_REVIEW_ROUNDS} review rounds"):
+                self.run_scan("reset-rounds", e["key"])
+        elif key in ("v", "x"):
+            if e["kind"] != "PUSHED":
+                self.say("v/x only apply to PUSHED (stale) rows")
+            elif key == "v" and self.ask("v", e["key"], "press v again to ask "
+                                         f"for a re-review of {e['key']}"):
+                self.to_orch(f"re-review {e['key']}")
+            elif key == "x" and self.ask("x", e["key"], "press x again to ack "
+                                         f"the new commits on {e['key']}"):
+                self.run_scan("ack-push", e["key"])
         elif key == "z":
             if e["key"] not in ((self.m.state or {}).get("items") or {}):
                 self.say("detach only applies to tracked items")
             elif self.ask("z", e["key"], f"press z again to detach {e['key']} "
                           "(worktree kept, untracked)"):
-                code, out, err = sh([sys.executable,
-                                     os.path.join(DIR, "scan.py"), "detach",
-                                     e["key"]])
-                self.say(out or err)
+                self.run_scan("detach", e["key"])
         return True
+
+    def run_scan(self, *args):
+        """A scan.py command that needs no judgement, run right here."""
+        code, out, err = sh([sys.executable, os.path.join(DIR, "scan.py"),
+                             *args])
+        self.say((out or err).splitlines()[-1] if (out or err) else
+                 f"{args[0]} exit {code}")
+
+    def investigate(self, live, term):
+        """/investigate <repo> <question>, typed here and queued."""
+        repo = term.read_line(live, "Investigate -- repo (owner/repo or name): ")
+        question = repo and term.read_line(live, "Question: ")
+        if not (repo and question):
+            self.say("investigation cancelled")
+            return
+        cmd = f"/investigate {repo} {question}"
+        if scan.wind_down() == "yes":
+            ok = term.read_line(live, f"🌇 Past {scan.WIND_DOWN_AT} -- start it "
+                                "anyway? [y/N] ")
+            if ok.lower() not in ("y", "yes"):
+                self.say("investigation not started (wind-down)")
+                return
+            cmd += f" {CONFIRMED}"
+        self.to_orch(cmd)
 
     def attach(self, session, live, term):
         """A herdr agent is brought forward in place; an aoe session is
@@ -806,6 +865,10 @@ class Dashboard:
         term.suspend(live, self.m.backend.attach_cmd(session))
 
     def open_orch(self, live, term):
+        """The prompter when there is one (that is where the user types),
+        else the orchestrator itself."""
+        if scan.herdr(["agent", "focus", PROMPTER_AGENT])[0] == 0:
+            return
         _, hdr = self.m.build()
         kind, _, target = hdr["orch"][0].partition(":")
         if kind == "herdr":
@@ -872,6 +935,19 @@ class Terminal:
             return []
         data = os.read(self.fd, 64).decode(errors="ignore")
         return split_keys(data)
+
+    def read_line(self, live, prompt):
+        """One line typed by the user, with the dashboard paused around it.
+        Empty on Ctrl-C or Ctrl-D, which callers treat as cancel."""
+        live.stop()
+        termios.tcsetattr(self.fd, termios.TCSADRAIN, self.saved)
+        try:
+            return input(prompt).strip()
+        except (EOFError, KeyboardInterrupt):
+            return ""
+        finally:
+            tty.setcbreak(self.fd)
+            live.start(refresh=True)
 
     def suspend(self, live, cmd, cwd=None):
         live.stop()

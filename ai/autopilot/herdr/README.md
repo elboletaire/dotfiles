@@ -34,7 +34,13 @@ command = "elboletaire.autopilot.peek"
 ```
 
 `open` starts the orchestrator as a fresh claude in `AUTOPILOT_ORCH_CWD`
-(`~/src`); type `/pr-autopilot` in it to start ticking. If the recorded
+(`~/src`) in a small **communications** pane -- type `/pr-autopilot` in it once
+to start ticking -- and the **prompter** below it, a second claude running
+`/autopilot-prompter`. Type in the prompter: it answers from autopilot's state
+and queues your commands in the orchestrator's inbox. Agent reports and the
+dashboard's keys go to that inbox too, so nothing is ever typed into a pane
+you are writing in. On an existing workspace without a prompter, `open` adds
+one. If the recorded
 orchestrator is still an aoe session, the left pane attaches to it instead.
 
 Show autopilot's state on each worker's row in the herdr sidebar (the
@@ -76,10 +82,13 @@ dashboards share one refresh.
 |---|---|
 | `↑↓` / `jk` | move |
 | `⏎` | go to the agent (herdr), or open its aoe session (a popup in herdr; `Ctrl-b d` closes it) |
-| `a` | go to the orchestrator |
+| `a` | go to the prompter (the orchestrator if there is none) |
 | `t` | shell in the item's worktree |
 | `o` | PR or issue in the browser |
-| `g` / `n` | on a Pick next row: send `go <key>` / `no <key>` to the orchestrator (press twice) |
+| `g` / `n` | on a Pick next row: queue `go <key>` / `no <key>` for the orchestrator (press twice; past `WIND_DOWN_AT` the second press confirms starting anyway) |
+| `R` | on a CAPPED row: grant another `MAX_REVIEW_ROUNDS` review rounds (press twice) |
+| `v` / `x` | on a PUSHED (stale) row: queue a re-review / ack the new commits (press twice) |
+| `i` | start an investigation: type the repo and the question |
 | `P` | pause / resume autopilot (press twice) |
 | `z` | detach a tracked item: closes its workspace or archives its aoe session, keeps the worktree, stops tracking it (press twice) |
 | `r` | refresh from GitHub now |
