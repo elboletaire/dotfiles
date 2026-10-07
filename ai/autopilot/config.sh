@@ -16,12 +16,6 @@ CLONE_ROOTS="$HOME/src/vocdoni $HOME/src/davinci"
 # so pick the clone your existing worktrees hang off.
 CLONE_PREFER="$HOME/src/vocdoni/ui-scaffold"
 
-# aoe only (herdr groups worktree workspaces under their repo's on its own):
-# every session autopilot spawns goes into <AUTOPILOT_GROUP>/<repo-name>, where
-# repo-name is the slug's repo part (vocdoni/vocdoni-sdk -> vocdoni-sdk). A new
-# repo gets its own subgroup on first spawn; nothing to configure.
-AUTOPILOT_GROUP="Autopilot"
-
 # Orgs whose issues are candidates when assigned to you. Add "elboletaire" here
 # if you want issue candidates from your personal repos (manga-downloader etc).
 ISSUE_ORGS="vocdoni"
@@ -90,13 +84,8 @@ STALE_HOURS=48
 # ancient org issue ever assigned to you shows up as a candidate.
 ISSUE_MAX_AGE_DAYS=120
 
-# Where new work sessions are spawned: "herdr" (a workspace per worktree,
-# grouped under its repo's, with a named claude agent) or "aoe". Each item
-# remembers its own backend, so items already running in aoe finish there.
-AUTOPILOT_BACKEND="herdr"
-
 # Address of the orchestrator, where agent reports and dashboard commands are
-# sent: "herdr:<agent name>" or "aoe:<session id or title>". Empty means
+# sent: "herdr:<agent name>". Empty means
 # "whichever agent last ran a scan", which the scan records itself -- leave it
 # empty unless that guesses wrong.
 AUTOPILOT_ORCH=""

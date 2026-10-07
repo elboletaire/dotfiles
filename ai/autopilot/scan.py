@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """PR Autopilot reconciler.
 
-Reads GitHub + aoe, diffs against a small state file, prints a compact table of
+Reads GitHub + herdr, diffs against a small state file, prints a compact table of
 actionable rows. Deterministic; no model involved. See SKILL.md for how the
 rows are acted on.
 """
@@ -10,7 +10,6 @@ import fcntl
 import json
 import os
 import re
-import shlex
 import shutil
 import subprocess
 import sys
@@ -23,7 +22,6 @@ ISSUE_ORGS = os.environ.get("ISSUE_ORGS", "").split()
 CLONE_ROOTS = os.environ.get("CLONE_ROOTS", "").split()
 CLONE_PREFER = [os.path.expanduser(p).rstrip("/")
                 for p in os.environ.get("CLONE_PREFER", "").split()]
-AUTOPILOT_GROUP = os.environ.get("AUTOPILOT_GROUP", "Autopilot")
 MAX_ACTIVE = int(os.environ.get("MAX_ACTIVE", "6"))
 # Local HH:MM from which ticks remind the user to close work, not start it.
 WIND_DOWN_AT = os.environ.get("WIND_DOWN_AT", "").strip()
@@ -54,12 +52,9 @@ EVENTS_FILE = os.path.join(os.path.dirname(STATE_FILE), "events.jsonl")
 SNAPSHOT_FILE = os.path.join(os.path.dirname(STATE_FILE), "snapshot.json")
 EVENTS_MAX_BYTES = 512 * 1024
 EVENTS_KEEP = 1000
-# Address of the orchestrator ("herdr:<agent>" or "aoe:<session>"). Empty
-# means "whichever agent last ran a scan", recorded by the scan itself.
+# Address of the orchestrator ("herdr:<agent>"). Empty means "whichever agent
+# last ran a scan", recorded by the scan itself.
 AUTOPILOT_ORCH = os.environ.get("AUTOPILOT_ORCH", "")
-# Where new sessions are spawned: "herdr" or "aoe". Items remember their own
-# backend, so switching this never strands work already running elsewhere.
-BACKEND = os.environ.get("AUTOPILOT_BACKEND", "herdr")
 # herdr agent name the orchestrator runs under.
 ORCH_AGENT = "autopilot"
 
@@ -168,58 +163,13 @@ def whoami(state):
 
 # --------------------------------------------------------------- agent hosts
 #
-# Items run in aoe (tmux) or herdr; `backend` on the item says which, and an
-# item without one predates herdr and is aoe. Session ids cannot collide:
-# aoe's are 16 hex chars, herdr's are workspace ids (`w12`), which survive a
-# herdr restart where pane ids and agent names may not.
+# Every item runs in herdr. Its `session` is the herdr workspace id (`w12`),
+# which survives a herdr restart where pane ids and agent names may not.
 
 HERDR_WS = re.compile(r"^w[0-9A-Za-z]{1,8}$")
-# herdr agent states in aoe's vocabulary, which the scan logic speaks.
+# herdr agent states in the vocabulary the scan logic speaks.
 HERDR_STATE = {"working": "running", "blocked": "waiting", "idle": "idle",
                "done": "idle", "unknown": "unknown"}
-
-
-def backend_of(it):
-    return (it or {}).get("backend") or "aoe"
-
-
-def gh_or_aoe(args):
-    code, out, _ = sh(args)
-    if code != 0 or not out:
-        return None
-    try:
-        return json.loads(out)
-    except json.JSONDecodeError:
-        return None
-
-
-def aoe_sessions():
-    """[{id,title,path,group,worktree:{branch,main_repo_path,base_branch}|None}],
-    or None when aoe could not be asked."""
-    if not shutil.which("aoe"):
-        return []
-    rows = gh_or_aoe(["aoe", "list", "--json"])
-    if rows is None:
-        return None
-    out = []
-    for r in rows:
-        if r.get("state") not in (None, "live"):
-            continue
-        wt = r.get("worktree")
-        if isinstance(wt, str):
-            try:
-                wt = json.loads(wt)
-            except json.JSONDecodeError:
-                wt = None
-        r["worktree"] = wt if isinstance(wt, dict) else None
-        r["backend"] = "aoe"
-        out.append(r)
-    return out
-
-
-def aoe_live():
-    rows = gh_or_aoe(["aoe", "ps", "--json"]) if shutil.which("aoe") else []
-    return {r["session"]: r for r in rows or [] if r.get("session")}
 
 
 def herdr(args, timeout=60):
@@ -241,8 +191,8 @@ def herdr_error(data):
 
 
 def herdr_sessions():
-    """herdr worktree workspaces, shaped like aoe_sessions() rows; None when
-    herdr could not be asked."""
+    """herdr worktree workspaces as [{id,title,path,worktree:{branch,
+    main_repo_path}}]; None when herdr could not be asked."""
     if not shutil.which("herdr"):
         return []
     code, data, _ = herdr(["workspace", "list"])
@@ -294,30 +244,20 @@ def herdr_live():
 
 
 def all_sessions():
-    """-> (sessions, backends that answered). An item whose backend did not
-    answer must not be taken for removed: that would untrack live work every
-    time aoe or the herdr server hiccups."""
-    out, ok = [], set()
-    for name, fn in (("aoe", aoe_sessions), ("herdr", herdr_sessions)):
-        rows = fn()
-        if rows is not None:
-            ok.add(name)
-            out += rows
-    return out, ok
+    """-> (sessions, herdr answered). When herdr did not answer, no item may
+    be taken for removed: that would untrack live work every time the herdr
+    server hiccups."""
+    rows = herdr_sessions()
+    return (rows or []), rows is not None
 
 
 def all_live():
-    live = aoe_live()
-    live.update(herdr_live())
-    return live
+    return herdr_live()
 
 
 def session_age(s, live):
-    """Seconds since the session did anything. aoe knows; for herdr the last
-    commit on the worktree's branch stands in."""
-    age = live.get(s["id"], {}).get("age_secs")
-    if age is not None:
-        return age
+    """Seconds since the session did anything: the last commit on the
+    worktree's branch stands in."""
     code, out, _ = sh(["git", "log", "-1", "--format=%ct"], cwd=s.get("path"))
     if code == 0 and out.isdigit():
         return int(time.time()) - int(out)
@@ -337,23 +277,16 @@ def herdr_target(it):
 
 
 def address_of(it):
-    if backend_of(it) == "herdr":
-        t = herdr_target(it)
-        return f"herdr:{t}" if t else None
-    return f"aoe:{it.get('session')}" if it.get("session") else None
+    t = herdr_target(it)
+    return f"herdr:{t}" if t else None
 
 
 def send_to(address, text):
-    """-> (ok, error code or message). An address without a prefix is an aoe
-    session, as every address was before herdr."""
-    kind, sep, target = (address or "").partition(":")
-    if not sep:
-        kind, target = "aoe", address
-    if kind == "herdr":
-        code, data, raw = herdr(["agent", "prompt", target, text], timeout=120)
-        return (True, "") if code == 0 else (False, herdr_error(data) or raw)
-    code, out, err = sh(["aoe", "send", target, text], timeout=60)
-    return code == 0, err or out
+    """-> (ok, error code or message). Addresses are "herdr:<agent or pane>";
+    a bare one is taken as the agent itself."""
+    target = address.split(":", 1)[1] if address.startswith("herdr:") else address
+    code, data, raw = herdr(["agent", "prompt", target, text], timeout=120)
+    return (True, "") if code == 0 else (False, herdr_error(data) or raw)
 
 
 def current_orch():
@@ -370,8 +303,6 @@ def current_orch():
             if not name and herdr(["agent", "rename", pane, ORCH_AGENT])[0] == 0:
                 name = ORCH_AGENT
             return f"herdr:{name or pane}"
-    if os.environ.get("AOE_INSTANCE_ID"):
-        return f"aoe:{os.environ['AOE_INSTANCE_ID']}"
     return None
 
 
@@ -677,12 +608,12 @@ def scan(state, refresh=False, info=None):
         sess = it.get("session")
         smeta = f"session={sid(sess)}"
 
-        # The user removed the session by hand (trashed in aoe, workspace
-        # closed in herdr). Stop tracking it so it frees its slot; a merged
-        # PR still goes through MERGED below so its cleanup and fan-out
-        # happen. Only when its backend answered: silence is not removal.
+        # The user closed the session's workspace by hand. Stop tracking it
+        # so it frees its slot; a merged PR still goes through MERGED below
+        # so its cleanup and fan-out happen. Only when herdr answered:
+        # silence is not removal.
         if sess and sess not in session_paths \
-                and backend_of(it) in answered and not (
+                and answered and not (
                 it.get("pr") and d and d.get("state") == "MERGED"):
             items.pop(k)
             rows.append(("GONE", k, f"{smeta} removed outside autopilot "
@@ -1015,7 +946,7 @@ def scan(state, refresh=False, info=None):
             continue
         rows.append(("STALE", path_to_slug[mp],
                      f"branch={br} session={sid(s['id'])} "
-                     f"host={s.get('backend', 'aoe')} nopr "
+                     "nopr "
                      f"idle={age // 3600}h"))
 
     # Sessions running on this machine that autopilot did not start. They are
@@ -1204,10 +1135,7 @@ def spawn(state, key_, branch, title, new_branch, question=None):
         kind, "review-fix" if mode == "fix" else "review-comment")
     model = MODEL_FOR.get(tmpl, "")
 
-    if BACKEND == "herdr":
-        host = spawn_herdr(key_, path, base, branch, title, new_branch, model)
-    else:
-        host = spawn_aoe(slug, path, base, branch, title, new_branch, model)
+    host = spawn_herdr(key_, path, base, branch, title, new_branch, model)
 
     item = {"mode": mode, "branch": branch, "pr": num if kind == "pr" else None,
             "reviewed_sha": None, "phase": "working", "added": int(time.time()),
@@ -1222,7 +1150,6 @@ def spawn(state, key_, branch, title, new_branch, question=None):
 
     where = " ".join(f"{k}={v}" for k, v in host.items()
                      if k not in ("session", "warning", "backend"))
-    where = f"backend={host['backend']} {where}"
     print(f"spawned {key_} mode={mode} branch={branch} "
           f"session={item['session']} {where} model={model or 'default'}")
     if host.get("warning"):
@@ -1232,31 +1159,8 @@ def spawn(state, key_, branch, title, new_branch, question=None):
     return 0
 
 
-def spawn_aoe(slug, path, base, branch, title, new_branch, model):
-    group = f"{AUTOPILOT_GROUP}/{slug.split('/', 1)[1]}"
-    args = ["aoe", "add", path, "-w", branch]
-    if new_branch:
-        args += ["-b", "--base-branch", base]
-    args += ["-g", group, "-t", title, "-l"]
-    # --extra-args, not --model: `aoe add --model` is ACP-only and is silently
-    # dropped for a tmux session, which would leave config.sh claiming one
-    # model while the worker quietly ran another.
-    if model:
-        # aoe splices extra-args into a zsh launch script unquoted, so a
-        # bracketed id like opus[1m] would die as a failed glob.
-        args += ["--extra-args", f"--model {shlex.quote(model)}"]
-    code, out, err = sh(args, timeout=300)
-    if code != 0:
-        raise SystemExit(f"aoe add failed: {err or out}")
-    sess = find_session(path, branch)
-    if not sess:
-        raise SystemExit("session created but could not be located by branch; "
-                         "check `aoe list --json`")
-    return {"backend": "aoe", "session": sess["id"], "group": group}
-
-
 def worktree_dir(repo, branch):
-    """<repo>/.worktrees/<branch with / as ->, the layout aoe used."""
+    """<repo>/.worktrees/<branch with / as ->."""
     return os.path.join(repo.rstrip("/"), ".worktrees", branch.replace("/", "-"))
 
 
@@ -1378,7 +1282,7 @@ def cleanup(state, key_):
         print(f"{key_} is not tracked; nothing to clean up", file=sys.stderr)
         return 1
     sess = it.get("session")
-    if sess and backend_of(it) == "herdr":
+    if sess:
         code, _, raw = herdr(["worktree", "remove", "--workspace", sess,
                               "--force"], timeout=180)
         wt = it.get("worktree")
@@ -1388,10 +1292,6 @@ def cleanup(state, key_):
                                 cwd=wt, timeout=180)
             raw = err or out
         print(f"herdr worktree remove {sess}: {'ok' if code == 0 else raw}")
-    elif sess:
-        code, out, err = sh(["aoe", "remove", sess, "--delete-worktree",
-                             "--force"], timeout=180)
-        print(f"aoe remove {sid(sess)}: {'ok' if code == 0 else (err or out)}")
     if key_ not in state["handled_merges"]:
         state["handled_merges"].append(key_)
     state["items"].pop(key_, None)
@@ -1506,8 +1406,7 @@ def snapshot(state):
 
 def orchestrator_target(state):
     """Where agent reports and dashboard commands are sent."""
-    return AUTOPILOT_ORCH or state.get("orch") or (
-        f"herdr:{ORCH_AGENT}" if BACKEND == "herdr" else "aoe:Autopilot")
+    return AUTOPILOT_ORCH or state.get("orch") or f"herdr:{ORCH_AGENT}"
 
 
 def item_or_exit(state, k):
@@ -1545,29 +1444,20 @@ def send_item(state, k, text):
 
 def reboot(state, k):
     """Give an item's agent a fresh conversation for its next review prompt,
-    then mark it booting. aoe restarts the session without its id; herdr
-    clears the conversation in place, keeping the pinned model."""
+    then mark it booting. herdr clears the conversation in place, keeping
+    the pinned model."""
     k, it = item_or_exit(state, k)
-    if backend_of(it) == "herdr":
-        target = herdr_target(it)
-        if not target:
-            print(f"{k}: no live agent in workspace {it.get('session')}",
-                  file=sys.stderr)
-            return 1
-        ok, err = send_to(f"herdr:{target}", "/clear")
-        if not ok:
-            print(f"{k}: /clear failed: {err}", file=sys.stderr)
-            return 4 if err == "agent_blocked" else 1
-        herdr(["agent", "wait", target, "--until", "idle", "--timeout",
-               "60000"], timeout=90)
-    else:
-        sess = it.get("session")
-        sh(["aoe", "session", "set-session-id", sess, ""])
-        code, out, err = sh(["aoe", "session", "stop", sess])
-        if code != 0:
-            print(f"{k}: aoe session stop failed: {err or out}",
-                  file=sys.stderr)
-            return 1
+    target = herdr_target(it)
+    if not target:
+        print(f"{k}: no live agent in workspace {it.get('session')}",
+              file=sys.stderr)
+        return 1
+    ok, err = send_to(f"herdr:{target}", "/clear")
+    if not ok:
+        print(f"{k}: /clear failed: {err}", file=sys.stderr)
+        return 4 if err == "agent_blocked" else 1
+    herdr(["agent", "wait", target, "--until", "idle", "--timeout",
+           "60000"], timeout=90)
     it["phase"] = "booting"
     save(state)
     log_event("reboot", k)
@@ -1756,20 +1646,23 @@ def dispatch(cmd, args, state):
         # track <key> <mode> <branch> <session> [pr]
         k, mode, branch, session = args[1:5]
         pr = int(args[5]) if len(args) > 5 else None
+        if not HERDR_WS.match(session):
+            print(f"{session} is not a herdr workspace id (like w12)",
+                  file=sys.stderr)
+            return 1
         state["items"][k] = {"mode": mode, "branch": branch, "session": session,
                              "pr": pr, "reviewed_sha": None, "phase": "working",
                              "added": int(time.time())}
-        if HERDR_WS.match(session):
-            # A herdr workspace id. Name its agent so it can be addressed.
-            it = state["items"][k]
-            it["backend"] = "herdr"
-            occupant = herdr_live().get(session) or {}
-            if occupant.get("agent"):
-                it["agent"] = occupant["agent"]
-            elif occupant.get("pane"):
-                name = agent_name(k)
-                if herdr(["agent", "rename", occupant["pane"], name])[0] == 0:
-                    it["agent"] = name
+        # Name its agent so it can be addressed.
+        it = state["items"][k]
+        it["backend"] = "herdr"
+        occupant = herdr_live().get(session) or {}
+        if occupant.get("agent"):
+            it["agent"] = occupant["agent"]
+        elif occupant.get("pane"):
+            name = agent_name(k)
+            if herdr(["agent", "rename", occupant["pane"], name])[0] == 0:
+                it["agent"] = name
         save(state)
         log_event("track", k, mode=mode, branch=branch, session=session)
         print(f"tracked {k} mode={mode} branch={branch} session={sid(session)}")
@@ -1788,35 +1681,27 @@ def dispatch(cmd, args, state):
         print(f"unknown item {k}", file=sys.stderr)
         return 1
     if cmd == "detach":
-        # detach <key>: park an item without losing its work. Archives the
-        # aoe session (tmux torn down, worktree and branch kept) and drops the
+        # detach <key>: park an item without losing its work. Closes its herdr
+        # workspace (agent stopped, worktree and branch kept) and drops the
         # item from state, so it holds no slot and its PR/issue is proposed
-        # again like anything else. Reverse by hand: `aoe session unarchive`
-        # then `track`.
+        # again like anything else. Reverse by hand: `herdr worktree open
+        # --path <worktree>`, start claude in it, then `track`.
         k = args[1]
         it = state["items"].get(k)
         if not it:
             print(f"unknown item {k}", file=sys.stderr)
             return 1
         sess = it.get("session")
-        if sess and backend_of(it) == "herdr":
-            # Closing the workspace stops the agent and keeps the checkout;
-            # `herdr worktree open --path <worktree>` brings it back.
+        if sess:
             code, _, raw = herdr(["workspace", "close", sess])
             if code != 0:
                 print(f"herdr workspace close failed: {raw}", file=sys.stderr)
-                return 1
-        elif sess:
-            code, out, err = sh(["aoe", "session", "archive", sess])
-            if code != 0:
-                print(f"aoe session archive failed: {err or out}",
-                      file=sys.stderr)
                 return 1
         state["items"].pop(k)
         save(state)
         log_event("detach", k, branch=it.get("branch"))
         print(f"detached {k} session={sid(sess)} branch={it.get('branch')} "
-              f"-> {'workspace closed' if backend_of(it) == 'herdr' else 'archived'}"
+              "-> workspace closed"
               f", worktree kept{' at ' + it['worktree'] if it.get('worktree') else ''}"
               ", untracked")
         return 0

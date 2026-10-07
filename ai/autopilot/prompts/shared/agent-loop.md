@@ -170,7 +170,7 @@ It records the report on your item (the dashboard shows it) and queues the
 inbox. The first line of the message must be that one line -- the
 orchestrator reads it as a status, and a human reads it as a summary. Put any
 detail on the lines after it, inside the same quotes. Never message the
-orchestrator any other way (`herdr agent prompt`, `aoe send`): that types
+orchestrator any other way (`herdr agent prompt`): that types
 into its pane, over whatever the user is writing there.
 
 If you are going to be working for more than half an hour without pushing and

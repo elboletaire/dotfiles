@@ -29,7 +29,7 @@ orchestrator: follow them only where this file says so.
   `send`, `reboot`, `track`, `untrack`, `detach`, `decline`, `pause`, `resume`,
   `reset-rounds`, `ack-push`, `mark-*`, `claim-round`, `report`. Queue a
   request instead (below).
-- `herdr agent prompt`, `aoe send`, or any other way of typing into another
+- `herdr agent prompt`, or any other way of typing into another
   agent's pane, the orchestrator's included.
 - Changing code in a worktree, or pushing, commenting or merging on GitHub.
 

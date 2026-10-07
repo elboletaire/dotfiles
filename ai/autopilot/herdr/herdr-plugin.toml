@@ -28,14 +28,16 @@ title = "Autopilot"
 placement = "split"
 command = ["bash", "../dashboard.sh"]
 
-# Opened by the dashboard: an agent's aoe session, and a shell in its worktree.
+# Opened by the dashboard: a work agent (b), and a shell in its worktree (t).
+# The agent popup is a direct attach to the agent's terminal; ctrl+b q
+# detaches it, which closes the popup and leaves the agent running.
 [[panes]]
-id = "attach"
+id = "agent"
 title = "Agent"
 placement = "popup"
 width = "92%"
 height = "88%"
-command = ["bash", "-c", "exec aoe session attach \"$AP_SESSION\""]
+command = ["bash", "-c", "exec \"${HERDR_BIN_PATH:-herdr}\" agent attach \"$AP_AGENT\""]
 
 [[panes]]
 id = "shell"

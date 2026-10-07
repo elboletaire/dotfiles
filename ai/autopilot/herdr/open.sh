@@ -44,17 +44,15 @@ set -a
 # shellcheck source=../config.sh
 source "$DIR/config.sh"
 set +a
-# "herdr:<agent>" or "aoe:<session>"; a bare value predates herdr and is aoe.
+# "herdr:<agent>".
 orch="${AUTOPILOT_ORCH:-$(jq -r '.orch // empty' "$STATE_FILE" 2>/dev/null || true)}"
+name="${orch#herdr:}"
+name="${name:-$ORCH_AGENT}"
 
 # An orchestrator already running as a herdr agent elsewhere: go to it rather
 # than starting a second one.
-if [[ -z "$orch" || "$orch" == herdr:* ]]; then
-  name="${orch#herdr:}"
-  name="${name:-$ORCH_AGENT}"
-  if "$H" agent get "$name" >/dev/null 2>&1; then
-    exec "$H" agent focus "$name"
-  fi
+if "$H" agent get "$name" >/dev/null 2>&1; then
+  exec "$H" agent focus "$name"
 fi
 
 created=$("$H" workspace create --label "$LABEL" \
@@ -62,15 +60,10 @@ created=$("$H" workspace create --label "$LABEL" \
 root=$(jq -r '.result.root_pane.pane_id' <<<"$created")
 "$H" pane rename "$root" "communications" >/dev/null
 
-if [[ -n "$orch" && "$orch" != herdr:* ]]; then
-  # Still in aoe (started before the switch): this pane is a window onto it.
-  "$H" pane run "$root" "aoe session attach $(printf '%q' "${orch#aoe:}")" >/dev/null
-else
-  # A fresh claude, named so workers and the dashboard can address it. It
-  # waits for you: type /pr-autopilot to start ticking.
-  "$H" agent start "${name:-$ORCH_AGENT}" --kind claude --pane "$root" \
-    --timeout 60000 >/dev/null || true
-fi
+# A fresh claude, named so workers and the dashboard can address it. It waits
+# for you: type /pr-autopilot to start ticking.
+"$H" agent start "$name" --kind claude --pane "$root" \
+  --timeout 60000 >/dev/null || true
 
 # The dashboard first, so it takes the full height on the right; the prompter
 # then splits only the left column.

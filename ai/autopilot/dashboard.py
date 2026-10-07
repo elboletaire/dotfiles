@@ -7,7 +7,7 @@
 
 A read-only view over three sources, each refreshed at its own pace:
 
-- agent state from aoe (`aoe ps`), every few seconds;
+- agent state from herdr (`herdr agent list`), every few seconds;
 - autopilot's own state.json and events.jsonl, the moment they change;
 - GitHub, through `scan.py snapshot` (a scan that saves nothing), every
   DASHBOARD_REFRESH_SECS and right after any event that changes the table.
@@ -34,8 +34,8 @@ from rich.table import Table
 from rich.text import Text
 
 DIR = os.path.dirname(os.path.abspath(__file__))
-# scan.py's host layer (aoe + herdr) is the one source of truth for where an
-# agent runs and how to reach it.
+# scan.py's herdr layer is the one source of truth for where an agent runs and
+# how to reach it.
 sys.path.insert(0, DIR)
 import scan  # noqa: E402
 STATE_FILE = os.environ.get(
@@ -50,8 +50,8 @@ AGENT_STALL_MIN = int(os.environ.get("AGENT_STALL_MIN", "35"))
 PLUGIN_ID = "elboletaire.autopilot"
 IN_HERDR = os.environ.get("HERDR_ENV") == "1"
 
-LIVE_SECS = 3          # aoe ps / herdr agent list
-SESSIONS_SECS = 30     # aoe list / herdr workspaces (titles, worktree paths)
+LIVE_SECS = 3          # herdr agent list
+SESSIONS_SECS = 30     # herdr workspaces (titles, worktree paths)
 META_SOURCE = "autopilot"
 META_TTL_MS = 10 * 60 * 1000   # sidebar tokens vanish if the dashboard dies
 META_EVERY = 180               # re-push unchanged tokens before they expire
@@ -130,8 +130,8 @@ def split_key(key):
 # ----------------------------------------------------------------- backend
 
 class Hosts:
-    """Where the agents live: aoe sessions and herdr workspaces, through
-    scan.py so the dashboard and the orchestrator agree on both."""
+    """Where the agents live: herdr workspaces, through scan.py so the
+    dashboard and the orchestrator agree on them."""
 
     def live(self):
         return scan.all_live()
@@ -143,22 +143,15 @@ class Hosts:
         return scan.send_to(address, text)
 
     def focus(self, session, live):
-        """Bring a herdr agent forward. False for aoe sessions, which are
-        opened by attaching instead."""
-        if not scan.HERDR_WS.match(session or ""):
-            return False
+        """Bring the item's herdr agent forward, or its workspace."""
         target = (live.get(session) or {}).get("pane")
         args = ["agent", "focus", target] if target else \
             ["workspace", "focus", session]
         return scan.herdr(args)[0] == 0
 
-    def attach_cmd(self, session):
-        return ["aoe", "session", "attach", session]
-
     def publish(self, entries):
         """Autopilot's view of each herdr agent, as pane metadata tokens the
-        herdr sidebar renders ($ap_kind, $ap_pr, ...; see herdr/README.md).
-        Agents in aoe have no herdr pane, so nothing is sent for them."""
+        herdr sidebar renders ($ap_kind, $ap_pr, ...; see herdr/README.md)."""
         for pane, tokens in entries:
             args = ["pane", "report-metadata", pane, "--source", META_SOURCE,
                     "--ttl-ms", str(META_TTL_MS)]
@@ -459,14 +452,11 @@ class Model:
                 "pane": ag.get("pane"), "open": bool(sess and sess in sessions)}
 
     def orch_target(self, state, sessions):
-        """-> (address, label). Addresses are "herdr:<agent>" or
-        "aoe:<session>"; a bare one predates herdr and is aoe."""
+        """-> (address, label). Addresses are "herdr:<agent>"."""
         addr = scan.orchestrator_target(state)
-        kind, sep, target = addr.partition(":")
-        if not sep:
-            kind, target = "aoe", addr
+        target = addr.split(":", 1)[1] if addr.startswith("herdr:") else addr
         title = (sessions.get(target) or {}).get("title")
-        return f"{kind}:{target}", title or target
+        return f"herdr:{target}", title or target
 
 
 def sidebar_tokens(e, section):
@@ -687,7 +677,7 @@ class Dashboard:
             keys += [("v", "re-review"), ("x", "ack")]
         if tracked:
             keys.append(("z", "detach"))
-        keys += [("↑↓/jk", "move"), ("⏎", "open agent"), ("t", "shell"),
+        keys += [("b", "agent popup"), ("t", "shell"),
                  ("o", "browser"), ("i", "investigate"), ("a", "prompter"),
                  ("r", "refresh"),
                  ("d", f"done (+{self.hidden_done} hidden)" if self.hidden_done
@@ -786,6 +776,8 @@ class Dashboard:
                 self.attach(e["session"], live, term)
             else:
                 self.say("no session for this row")
+        elif key == "b":
+            self.agent_popup(e)
         elif key == "t":
             if e["path"] and os.path.isdir(e["path"]):
                 self.shell(e["path"], live, term)
@@ -854,15 +846,21 @@ class Dashboard:
         self.to_orch(cmd)
 
     def attach(self, session, live, term):
-        """A herdr agent is brought forward in place; an aoe session is
-        attached, in a popup when inside herdr."""
+        """Switch to the item's herdr agent, in its own workspace."""
         with self.m.lock:
             agents = dict(self.m.live)
-        if self.m.backend.focus(session, agents):
-            return
-        if self.popup("attach", {"AP_SESSION": session}):
-            return
-        term.suspend(live, self.m.backend.attach_cmd(session))
+        if not self.m.backend.focus(session, agents):
+            self.say(f"could not focus workspace {session}")
+
+    def agent_popup(self, e):
+        """The row's agent in a popup over the dashboard, without leaving it.
+        `ctrl+b q` detaches herdr's attach client, which closes the popup."""
+        target = e["pane"] or (((self.m.state or {}).get("items") or {})
+                               .get(e["key"], {}).get("agent"))
+        if not target:
+            self.say("no live agent for this row")
+        elif self.popup("agent", {"AP_AGENT": target}):
+            self.say("ctrl+b q closes the popup")
 
     def open_orch(self, live, term):
         """The prompter when there is one (that is where the user types),
@@ -870,13 +868,9 @@ class Dashboard:
         if scan.herdr(["agent", "focus", PROMPTER_AGENT])[0] == 0:
             return
         _, hdr = self.m.build()
-        kind, _, target = hdr["orch"][0].partition(":")
-        if kind == "herdr":
-            ok = scan.herdr(["agent", "focus", target])[0] == 0
-            if not ok:
-                self.say(f"no herdr agent named {target}")
-            return
-        self.attach(target, live, term)
+        target = hdr["orch"][0].split(":", 1)[1]
+        if scan.herdr(["agent", "focus", target])[0] != 0:
+            self.say(f"no herdr agent named {target}")
 
     def shell(self, path, live, term):
         if self.popup("shell", {}, cwd=path):

@@ -1,6 +1,6 @@
 ---
 name: pr-autopilot
-description: Reconcile GitHub issues and PRs against worktree agent sessions (herdr or aoe) across every repo, one tick at a time. Use when the user runs /pr-autopilot, asks to start or check the autopilot, or replies "go N" / "no N" / "pause" / "resume" / "status" to a proposal list. Drives work sessions from issue to PR to review, and on merge cleans up and fans out rebases.
+description: Reconcile GitHub issues and PRs against herdr worktree agent sessions across every repo, one tick at a time. Use when the user runs /pr-autopilot, asks to start or check the autopilot, or replies "go N" / "no N" / "pause" / "resume" / "status" to a proposal list. Drives work sessions from issue to PR to review, and on merge cleans up and fans out rebases.
 ---
 
 # PR Autopilot
@@ -129,8 +129,8 @@ the dashboard's `g`/`n` keys send) still work. Report `UNCLONED` and
 | Row | Do this |
 |---|---|
 | `MERGED` | `$A cleanup <key>` -- removes the session and its worktree, marks it handled, and then prints the fan-out set as `SIBLINGS:` lines of `<session> <branch> <pr> <base> <key>`. For each of those lines, `$A send <key> "$($A render rebase REPO=<slug> PR=<pr> BRANCH=<branch> BASE=<base>)"`. The set is already filtered to `mode=fix` and excludes the merged item; never widen it by hand. |
-| `REVIEW` | Only ever appears for `driver=orchestrator` items (legacy, and `mode=comment`). `$A reboot <key>` -- a fresh conversation for the agent (herdr clears it in place, aoe restarts the session without its id) and the item marked `booting`. That is the whole action -- the prompt goes out next tick, once the agent has actually rebooted. |
-| `BOOTING` | The row names the prompt as `template=`. Send exactly that one: `$A send <key> "$($A render <template> REPO=<slug> PR=<n> BRANCH=<branch> BASE=<base> PREV=<prev>)"` (`PREV=` only for `re-review`, taken from the row). Before sending, make sure the item's worktree (`worktree` in `$A status`, or the aoe session's path) is on the PR's current head (fetch, then `git checkout --detach origin/<branch>` when the worktree is clean). Then `$A mark-reviewed <key> <head-sha>` with the head you checked out. `re-review` is the follow-up after the author pushed: it checks that the new commits fix what we raised and break nothing else, and it is never a second full review. `review-comment` is the first review of someone else's PR. Both verify every finding in a fresh subagent before posting. |
+| `REVIEW` | Only ever appears for `driver=orchestrator` items (legacy, and `mode=comment`). `$A reboot <key>` -- a fresh conversation for the agent (herdr clears it in place) and the item marked `booting`. That is the whole action -- the prompt goes out next tick, once the agent has actually rebooted. |
+| `BOOTING` | The row names the prompt as `template=`. Send exactly that one: `$A send <key> "$($A render <template> REPO=<slug> PR=<n> BRANCH=<branch> BASE=<base> PREV=<prev>)"` (`PREV=` only for `re-review`, taken from the row). Before sending, make sure the item's worktree (`worktree` in `$A status`) is on the PR's current head (fetch, then `git checkout --detach origin/<branch>` when the worktree is clean). Then `$A mark-reviewed <key> <head-sha>` with the head you checked out. `re-review` is the follow-up after the author pushed: it checks that the new commits fix what we raised and break nothing else, and it is never a second full review. `review-comment` is the first review of someone else's PR. Both verify every finding in a fresh subagent before posting. |
 | `FEEDBACK` | A human or a review bot left a review on a PR you own. Addressing it resets the review-round budget to 0. Bot accounts in `FEEDBACK_IGNORE_AUTHORS` (default `github-actions`) never produce these rows, for reviews as well as comments -- a CI bot that reviews on every push would otherwise reset the cap forever. `$A send <key> "$($A render address-feedback REPO=<slug> PR=<pr> BRANCH=<branch> BASE=<base>)"`, then `$A mark-feedback <key> <the since= value from the row>`. Only ever appears for `mode=fix`. |
 | `STALLED` | An agent-driven item that has neither pushed nor sent a heartbeat for `AGENT_STALL_MIN` (35m). **Take no action** -- do not reboot it, do not re-prompt it. Report the branch, the quiet time and the round count, and let the user decide. It usually means the agent crashed, its background CI wait never returned, or its report never arrived. |
 | `WORKING` | Nothing. Report branch and age. A `driver=agent` row also shows `rounds=N/M quiet=Xm` -- it is running its own loop and needs nothing from you. If `age` is large and `state=idle`, say so -- the user decides. |
@@ -142,7 +142,7 @@ the dashboard's `g`/`n` keys send) still work. Report `UNCLONED` and
 | `CLOSED` | Report. The PR was closed unmerged; ask the user whether to clean up. Do not remove anything yourself. |
 | `PROPOSE` | Collect these and present them as a numbered list. **Spawn nothing until the user says so.** |
 | `UNCLONED` | Report with the clone command. Never clone, never spawn. |
-| `STALE` | Report with the removal command for its `host=` as a suggestion: `aoe remove <session> --delete-worktree --force`, or `herdr worktree remove --workspace <session> --force`. **Never run it.** |
+| `STALE` | Report with the removal command as a suggestion: `herdr worktree remove --workspace <session> --force`. **Never run it.** |
 | `UNKNOWN` | `gh pr view` failed. Report and move on; it usually resolves next tick. |
 
 ## Answering the user
@@ -153,15 +153,13 @@ the dashboard's `g`/`n` keys send) still work. Report `UNCLONED` and
 - **"re-review 452"** / **"ack 452"** -> the two answers to a stale `PUSHED` PR (see that row).
 - **"pause"** / **"resume"** -> `$A pause` / `$A resume`.
 - **"detach <#>"**, "detach this", "archive the X session" -> `$A detach <key>`.
-  It archives the aoe session, or closes the herdr workspace (agent stopped,
-  worktree and branch kept), and
-  untracks the item, so it frees its slot and its PR or issue is proposed
+  It closes the herdr workspace (agent stopped, worktree and branch kept)
+  and untracks the item, so it frees its slot and its PR or issue is proposed
   again like anything else. Use it for work the user is parking, not
-  abandoning. Reverse with `aoe session unarchive <session>`, or
-  `herdr worktree open --cwd <repo> --path <worktree>` and starting claude in
-  it, plus `$A track` with the session or workspace id.
-  When the user names a session by title rather than key, find it with
-  `herdr workspace list` / `aoe list` and match it to the row's `session=`.
+  abandoning. Reverse with `herdr worktree open --cwd <repo> --path
+  <worktree>` and starting claude in it, plus `$A track` with the workspace
+  id. When the user names a session by title rather than key, find it with
+  `herdr workspace list` and match it to the row's `session=`.
 - **"/investigate <repo> <question>"** -> spawn an investigation (below). The
   question is the user's, verbatim -- never paraphrase it into the prompt, and
   never answer it yourself. You are the orchestrator; the session investigates.
@@ -171,8 +169,7 @@ the dashboard's `g`/`n` keys send) still work. Report `UNCLONED` and
 
 You choose the branch name and session title; the script does the mechanics
 (fetch, worktree in `<repo>/.worktrees/`, a herdr workspace grouped under the
-repo's with a claude agent named `ap-<repo>-<n>` -- or, with
-`AUTOPILOT_BACKEND=aoe`, `aoe add -g Autopilot/<repo-name>` -- and tracking), **re-derives the mode itself** -- do
+repo's with a claude agent named `ap-<repo>-<n>`, and tracking), **re-derives the mode itself** -- do
 not pass a mode -- and **pins the model** from `config.sh` by the template that
 creates the session (currently `opus[1m]` for every template -- Opus with 1M
 context, so review loops do not auto-compact). The worker never inherits your model, so running autopilot
@@ -328,7 +325,7 @@ if an agent says `ready` and the table disagrees, the table wins.
 6. **Never prompt a `driver=agent` item twice.** Its first prompt carries the
    whole loop; a second message lands mid-flight and races its own work.
 7. One `$A send` per item per tick. Two messages in one tick race each other.
-   Always `$A send`, never `aoe send` or `herdr agent prompt` directly: it
+   Always `$A send`, never `herdr agent prompt` directly: it
    finds the agent wherever it runs. Exit 4 means the agent is waiting on an
    approval or a question -- nothing was sent; report it, never answer it.
 8. Report in the Tick report layout above. Do not paste prompt bodies back.

@@ -5,11 +5,9 @@ orchestrator on the left and the live dashboard (`../dashboard.sh`) on the
 right. The dashboard updates by itself -- no asking the orchestrator for the
 table.
 
-With `AUTOPILOT_BACKEND="herdr"` (config.sh, the default) every work session
-is a herdr workspace on its worktree, grouped under its repo's workspace, with
-a claude agent named `ap-<repo>-<number>`. The orchestrator is the agent named
-`autopilot`. Items spawned in aoe before the switch stay there until they are
-done; nothing needs migrating.
+Every work session is a herdr workspace on its worktree, grouped under its
+repo's workspace, with a claude agent named `ap-<repo>-<number>`. The
+orchestrator is the agent named `autopilot`.
 
 ## Setup
 
@@ -40,8 +38,7 @@ to start ticking -- and the **prompter** below it, a second claude running
 and queues your commands in the orchestrator's inbox. Agent reports and the
 dashboard's keys go to that inbox too, so nothing is ever typed into a pane
 you are writing in. On an existing workspace without a prompter, `open` adds
-one. If the recorded
-orchestrator is still an aoe session, the left pane attaches to it instead.
+one.
 
 Show autopilot's state on each worker's row in the herdr sidebar (the
 dashboard publishes these tokens; they expire ten minutes after it stops):
@@ -71,7 +68,7 @@ It needs `uv` (which provides `rich`); there is nothing else to install.
 | ✔ Done | `DONE`, `GONE` (hidden; `d` toggles) |
 | ⚪ Pick next | `PROPOSE` |
 
-Agent state comes from herdr and aoe every 3s, heartbeats, rounds and reports the moment
+Agent state comes from herdr every 3s, heartbeats, rounds and reports the moment
 they are written, and GitHub (PR state, CI) every `DASHBOARD_REFRESH_SECS`
 (config.sh, 120s) or right after an event that changes the table. Several open
 dashboards share one refresh.
@@ -81,7 +78,8 @@ dashboards share one refresh.
 | Key | Does |
 |---|---|
 | `↑↓` / `jk` | move |
-| `⏎` | go to the agent (herdr), or open its aoe session (a popup in herdr; `Ctrl-b d` closes it) |
+| `⏎` | go to the agent, in its own workspace |
+| `b` | the agent in a popup over the dashboard; `ctrl+b q` closes it and leaves the agent running |
 | `a` | go to the prompter (the orchestrator if there is none) |
 | `t` | shell in the item's worktree |
 | `o` | PR or issue in the browser |
@@ -90,7 +88,7 @@ dashboards share one refresh.
 | `v` / `x` | on a PUSHED (stale) row: queue a re-review / ack the new commits (press twice) |
 | `i` | start an investigation: type the repo and the question |
 | `P` | pause / resume autopilot (press twice) |
-| `z` | detach a tracked item: closes its workspace or archives its aoe session, keeps the worktree, stops tracking it (press twice) |
+| `z` | detach a tracked item: closes its workspace, keeps the worktree, stops tracking it (press twice) |
 | `r` | refresh from GitHub now |
 | `d` | show / hide done rows (DONE, GONE) |
 | `q` | quit |
