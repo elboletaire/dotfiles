@@ -562,11 +562,18 @@ def folder(p, path=None):
     return f
 
 
+def live(agents):
+    return any(a["state"] not in ("stopped", "error") for a in agents)
+
+
 def is_dormant(p, dormant_days, now=None):
+    """No live agent, and put to sleep (sleep_folders()) or untouched for
+    `dormant_days`."""
     now = now or time.time()
-    awake = any(a["state"] not in ("stopped", "error") for a in p["agents"])
-    return not awake and (p["last_touch"] is None
-                          or now - p["last_touch"] > dormant_days * 86400)
+    if live(p["agents"]):
+        return False
+    return (p.get("path") in p.get("slept", {}) or p["last_touch"] is None
+            or now - p["last_touch"] > dormant_days * 86400)
 
 
 def wake(p, dormant_days, now=None):
@@ -622,10 +629,192 @@ def collect(cfg):
     with ThreadPoolExecutor(WORKERS) as ex:
         projects = list(ex.map(lambda kv: scan(*kv), seeds.items()))
     match_agents(projects, agents)
+    apply_sleep(projects)
     for p in projects:
         finish(p, cfg["taller"]["dormant_days"])
     projects.sort(key=lambda p: (p["dormant"], -(p["last_touch"] or 0), p["name"]))
     return projects
+
+
+# ---------------------------------------------------------------- sleep
+#
+# A project or one worktree put to sleep from the board (`z`): its herdr
+# workspace closed and the folder listed with the time in the state file, so
+# it shows as dormant whatever its age. Anything done there afterwards (a new
+# commit or conversation, a live agent) wakes it and drops it from the file.
+
+SLEEP_GRACE = 60   # secs a fresh entry is kept even if a collect sees agents
+
+
+def sleep_file():
+    state = os.environ.get("XDG_STATE_HOME") or os.path.expanduser(
+        "~/.local/state")
+    return os.environ.get("TALLER_SLEEP") or os.path.join(
+        state, "taller", "sleep.json")
+
+
+def load_sleep():
+    """-> {folder: epoch it was put to sleep}."""
+    try:
+        with open(sleep_file()) as fh:
+            data = json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return {k: v for k, v in data.items() if isinstance(v, (int, float))} \
+        if isinstance(data, dict) else {}
+
+
+def save_sleep(data):
+    path = sleep_file()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w") as fh:
+        json.dump(data, fh, indent=1, sort_keys=True)
+    os.replace(tmp, path)
+
+
+def folder_touch(p, path):
+    """When the project (its main checkout: every folder counts) or one of
+    its worktrees was last touched."""
+    if path == p["path"]:
+        return p["last_touch"]
+    return ((p.get("exchanges") or {}).get(path) or {}).get("at")
+
+
+def apply_sleep(projects, now=None):
+    """Each project's `slept` ({folder: epoch}) from the state file, for the
+    folders still asleep; entries woken since (touched after, a live agent)
+    or of folders gone are dropped from it."""
+    now = now or time.time()
+    data = load_sleep()
+    keep = {}
+    for p in projects:
+        p["slept"] = {}
+        for path in [p["path"]] + [w["path"] for w in p["worktrees"]]:
+            at = data.get(path)
+            if at is None:
+                continue
+            touch = folder_touch(p, path)
+            agents = folder(p, path)["agents"] if path != p["path"] \
+                else p["agents"]
+            if now - at < SLEEP_GRACE or not (
+                    live(agents) or (touch and touch > at)):
+                p["slept"][path] = at
+                keep[path] = at
+    if keep != data:
+        try:
+            save_sleep(keep)
+        except OSError:
+            pass
+    return projects
+
+
+def asleep(p, path=None):
+    """Is the project (no `path`, or its own) or that worktree of it put to
+    sleep, with no live agent there now?"""
+    path = path or p["path"]
+    if path not in p.get("slept", {}):
+        return False
+    agents = p["agents"] if path == p["path"] else folder(p, path)["agents"]
+    return not live(agents)
+
+
+def sleepers(projects):
+    """[(project, worktree)] of the worktrees asleep in projects that are
+    not: they show among the dormant ones, on their own."""
+    return [(p, w) for p in projects if not p["dormant"]
+            for w in p["worktrees"] if asleep(p, w["path"])]
+
+
+def awake_worktrees(p):
+    """The worktrees listed under the project: all of them when it sleeps
+    whole, else those not asleep on their own."""
+    if p["dormant"]:
+        return list(p["worktrees"])
+    return [w for w in p["worktrees"] if not asleep(p, w["path"])]
+
+
+def sleep_plan(f, whole, agents, spaces, own=None):
+    """herdr steps that put a folder() to sleep: `whole` -- the main checkout
+    with every worktree -- or that folder alone. Closes each workspace its
+    agents run in, and the one labelled after it (the project's name, a
+    worktree's branch title); a workspace that also holds agents from
+    elsewhere keeps living, only these agents' panes close. Never `own`,
+    the board's workspace. `agents`: every herdr agent (herdr_agents()),
+    `spaces`: herdr's workspace list."""
+    if whole:
+        roots = [f["repo"]]
+        folders = [f["repo"]] + [w["path"] for w in f["worktrees"]]
+        labels = [f["repo_name"]] + [branch_title(w["branch"])
+                                     for w in f["worktrees"] if w["branch"]]
+    else:
+        roots = folders = [f["path"]]
+        labels = ([branch_title(f["branch"])] if f["branch"] else []) \
+            if f.get("worktree") else [f["name"]]
+
+    def mine(a):
+        if not any(within(a["path"], r) for r in roots):
+            return False
+        if whole or f.get("worktree"):
+            return True
+        # The main checkout alone: not its worktrees' agents.
+        return not any(within(a["path"], w["path"]) for w in f["worktrees"])
+
+    ours = [a for a in agents if a["host"] == "herdr" and mine(a)]
+    ids = [a["id"] for a in ours if a["id"]]
+    ids += [w["workspace_id"] for w in spaces if w.get("workspace_id")
+            and (checkout_of(w) in folders if checkout_of(w)
+                 else w.get("label") in labels)]
+    steps, seen = [], set()
+    for wid in ids:
+        if wid in seen or wid == own:
+            continue
+        seen.add(wid)
+        others = [a for a in agents if a["id"] == wid and not mine(a)]
+        if others:
+            steps += [["herdr", "pane", "close", a["pane"]] for a in ours
+                      if a["id"] == wid and a.get("pane")]
+        else:
+            steps.append(["herdr", "workspace", "close", wid])
+    return steps
+
+
+def put_to_sleep(f, whole, status=None):
+    """Close the herdr side of a folder() (see sleep_plan) and list it in the
+    state file. -> (ok, message)."""
+    status = status or (lambda msg: None)
+    plan = sleep_plan(f, whole, herdr_agents(), workspaces(),
+                      os.environ.get("HERDR_WORKSPACE_ID"))
+    path = f["repo"] if whole else f["path"]
+    if dry_run():
+        return True, "dry-run: " + (" ; ".join(shlex.join(a) for a in plan)
+                                    or "res a tancar") + f" ; adorm {path}"
+    for step in plan:
+        status(f"herdr {step[1]} close {step[3]}…")
+        code, data, raw = herdr(step[1:], timeout=20)
+        if code != 0 and herdr_error(data) not in ("workspace_not_found",
+                                                    "pane_not_found"):
+            return False, f"herdr {step[1]} close ha fallat: {short(raw, 160)}"
+    data = load_sleep()
+    data[path] = int(time.time())
+    save_sleep(data)
+    closed = plural_of(len(plan), "sessió tancada", "sessions tancades")
+    return True, f"{os.path.basename(path)} adormit ({closed})"
+
+
+def wake_up(path):
+    """Drop a folder from the state file. -> (ok, message)."""
+    data = load_sleep()
+    if data.pop(path, None) is None:
+        return False, "no dormia"
+    if dry_run():
+        return True, f"dry-run: desperta {path}"
+    save_sleep(data)
+    return True, f"{os.path.basename(path)} despert"
+
+
+def plural_of(n, one, many):
+    return f"{n} {one if n == 1 else many}"
 
 
 def find_project(projects, path):

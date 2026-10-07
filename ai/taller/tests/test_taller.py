@@ -116,7 +116,10 @@ class TallerCase(unittest.TestCase):
         self.herdr_running = True
         self.env = mock.patch.dict(os.environ, {
             "HOME": self.home, "PATH": self.bin + os.pathsep + os.environ["PATH"],
-            "XDG_CONFIG_HOME": os.path.join(self.home, ".config"), **GIT_ENV})
+            "XDG_CONFIG_HOME": os.path.join(self.home, ".config"),
+            "XDG_STATE_HOME": os.path.join(self.home, ".local", "state"),
+            **GIT_ENV})
+        os.environ.pop("TALLER_SLEEP", None)
         self.env.start()
         self.addCleanup(self.env.stop)
         self.addCleanup(self.tmp.cleanup)
@@ -251,6 +254,121 @@ def wt_project(self, **kw):
          "last_exchange": None}
     p.update(kw)
     return p
+
+
+class SleepTest(TallerCase):
+    proj = wt_project
+
+    def test_put_to_sleep_lists_the_folder(self):
+        self.fakes()
+        f = taller.folder(self.proj(), self.wt)
+        with mock.patch.object(taller, "herdr_agents", return_value=[]):
+            ok, msg = taller.put_to_sleep(f, whole=False)
+        self.assertTrue(ok, msg)
+        self.assertIn(self.wt, taller.load_sleep())
+        self.assertTrue(taller.sleep_file().startswith(self.home))
+
+    def test_dry_run_writes_nothing(self):
+        self.fakes()
+        with mock.patch.dict(os.environ, {"TALLER_DRY_RUN": "1"}), \
+                mock.patch.object(taller, "herdr_agents", return_value=[]):
+            ok, msg = taller.put_to_sleep(taller.folder(self.proj()), True)
+        self.assertIn("adorm " + self.alpha, msg)
+        self.assertEqual(taller.load_sleep(), {})
+
+    def test_asleep_until_touched(self):
+        now = 5000
+        taller.save_sleep({self.alpha: 2000, self.wt: 2000})
+        p = self.proj()
+        taller.apply_sleep([p], now)
+        self.assertTrue(taller.asleep(p))
+        self.assertTrue(taller.asleep(p, self.wt))
+        self.assertTrue(taller.is_dormant(p, 14, now))
+        # A conversation in the worktree afterwards wakes it, and the whole
+        # project with it (its last touch is the newest of every folder).
+        p = self.proj(last_touch=3000,
+                      exchanges={self.alpha: None, self.wt: {"at": 3000}})
+        taller.apply_sleep([p], now)
+        self.assertEqual(p["slept"], {})
+        self.assertEqual(taller.load_sleep(), {})
+
+    def test_a_live_agent_wakes_it_after_the_grace(self):
+        taller.save_sleep({self.wt: 4990})
+        working = [taller_agent("working", self.wt)]
+        p = self.proj(agents=working)
+        taller.apply_sleep([p], 5000)       # within the grace: kept
+        self.assertIn(self.wt, taller.load_sleep())
+        self.assertFalse(taller.asleep(p, self.wt))
+        p = self.proj(agents=working)
+        taller.apply_sleep([p], 5000 + taller.SLEEP_GRACE)
+        self.assertEqual(taller.load_sleep(), {})
+
+    def test_gone_folders_are_dropped(self):
+        taller.save_sleep({"/nowhere": 1})
+        taller.apply_sleep([self.proj()], 5000)
+        self.assertEqual(taller.load_sleep(), {})
+
+    def test_sleepers_and_awake_worktrees(self):
+        p = dict(self.proj(), slept={self.wt: 1}, dormant=False)
+        self.assertEqual(taller.sleepers([p]), [(p, p["worktrees"][0])])
+        self.assertEqual(taller.awake_worktrees(p), [])
+        p["dormant"] = True
+        self.assertEqual(taller.sleepers([p]), [])
+        self.assertEqual(taller.awake_worktrees(p), p["worktrees"])
+
+    def test_sleep_plan(self):
+        p = self.proj()
+        agents = [taller_agent("idle", self.alpha, "w1", "w1:p1"),
+                  taller_agent("idle", self.wt, "w2", "w2:p1"),
+                  # the board's own workspace, and one shared with another
+                  # project
+                  taller_agent("idle", self.alpha, "w9", "w9:p2"),
+                  taller_agent("idle", self.wt, "w3", "w3:p1"),
+                  taller_agent("idle", self.beta, "w3", "w3:p2")]
+        spaces = [{"workspace_id": "w1", "label": "alpha"},
+                  {"workspace_id": "w4", "label": "X"},
+                  {"workspace_id": "w5", "label": "beta"}]
+        whole = taller.sleep_plan(taller.folder(p), True, agents, spaces, "w9")
+        self.assertEqual(whole, [["herdr", "workspace", "close", "w1"],
+                                 ["herdr", "workspace", "close", "w2"],
+                                 ["herdr", "pane", "close", "w3:p1"],
+                                 ["herdr", "workspace", "close", "w4"]])
+        wt = taller.sleep_plan(taller.folder(p, self.wt), False, agents,
+                               spaces, "w9")
+        self.assertEqual(wt, [["herdr", "workspace", "close", "w2"],
+                              ["herdr", "pane", "close", "w3:p1"],
+                              ["herdr", "workspace", "close", "w4"]])
+        main = taller.sleep_plan(taller.folder(p), False, agents, spaces,
+                                 "w9")
+        self.assertEqual(main, [["herdr", "workspace", "close", "w1"]])
+
+    def test_sleep_plan_finds_herdrs_checkout_workspaces(self):
+        p = self.proj()
+        spaces = [{"workspace_id": "w6", "label": "master",
+                   "worktree": {"checkout_path": self.alpha}},
+                  {"workspace_id": "w7", "label": "renamed",
+                   "worktree": {"checkout_path": self.wt}},
+                  # labelled like the project, but beta's checkout
+                  {"workspace_id": "w8", "label": "alpha",
+                   "worktree": {"checkout_path": self.beta}}]
+        self.assertEqual(
+            taller.sleep_plan(taller.folder(p), True, [], spaces),
+            [["herdr", "workspace", "close", "w6"],
+             ["herdr", "workspace", "close", "w7"]])
+        self.assertEqual(
+            taller.sleep_plan(taller.folder(p, self.wt), False, [], spaces),
+            [["herdr", "workspace", "close", "w7"]])
+
+    def test_wake_up(self):
+        taller.save_sleep({self.wt: 1})
+        self.assertTrue(taller.wake_up(self.wt)[0])
+        self.assertEqual(taller.load_sleep(), {})
+        self.assertFalse(taller.wake_up(self.wt)[0])
+
+
+def taller_agent(state, path, wid="w1", pane="p1"):
+    return {"host": "herdr", "id": wid, "name": pane, "tool": "claude",
+            "path": path, "state": state, "pane": pane}
 
 
 class WorkspaceTest(TallerCase):

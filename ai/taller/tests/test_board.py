@@ -214,8 +214,13 @@ class ListTest(BoardCase):
                    if ln.startswith("📂 Projectes ─"))
         detail = next(i for i, ln in enumerate(lines)
                       if ln.startswith("alpha ─"))
-        # Below the list, right after its rows rather than halfway down.
-        self.assertEqual(detail - top, len(self.b.rows) + 3)
+        # The keys right after the list's rows rather than halfway down,
+        # then a blank line, then the detail.
+        foot = top + len(self.b.rows) + 3
+        self.assertIn(" ↑↓ mou ", lines[foot])
+        keys_h = len(self.b.footer().wrap(self.b.console, 150))
+        self.assertEqual(lines[foot + keys_h].strip(), "")
+        self.assertEqual(detail, foot + keys_h + 1)
         self.assertTrue(lines[top + 1].startswith(" 🔴"))   # indented by one
 
     def test_footer_follows_the_project(self):
@@ -318,6 +323,68 @@ class ActTest(BoardCase):
         self.keys("q")
         self.keys("\x1b")
         self.assertTrue(self.b.handle("q", None, None))
+
+    def herdr_all(self):
+        """Back to TallerCase's herdr, where alpha's worktree agent runs."""
+        self.herdr_out["result"]["agents"].append(
+            {"name": "alpha-wt", "agent": "claude", "agent_status": "working",
+             "workspace_id": "w2", "pane_id": "p2", "cwd": self.wt})
+        self.fakes()
+
+    def test_sleep_asks_then_closes_the_whole_project(self):
+        self.herdr_all()
+        self.go("alpha")
+        with self.dry():
+            self.keys("z")
+            self.assertIn("prem z de nou per adormir alpha i els seus 1 "
+                          "worktrees", self.b.confirm["msg"])
+            self.assertIn("treballant: alpha-wt", self.b.confirm["preview"])
+            self.keys("z")
+            self.wait()
+        msg = self.b.flash[0]
+        self.assertIn("herdr workspace close w1", msg)
+        self.assertIn("herdr workspace close w2", msg)
+        self.assertIn("adorm " + self.alpha, msg)
+
+    def test_sleep_on_a_worktree_closes_only_it(self):
+        self.herdr_all()
+        self.go_path(self.wt)
+        with self.dry():
+            self.keys("zz")
+            self.wait()
+        msg = self.b.flash[0]
+        self.assertIn("herdr workspace close w2", msg)
+        self.assertNotIn("w1", msg)
+        self.assertIn("adorm " + self.wt, msg)
+
+    def asleep_wt(self):
+        alpha = self.model.projects[0]
+        alpha["agents"] = alpha["agents"][:1]
+        alpha["slept"] = {self.wt: int(time.time())}
+
+    def test_a_sleeping_worktree_shows_among_the_dormant(self):
+        self.asleep_wt()
+        self.b.build_rows()
+        kinds = [(r[0], r[1]["name"] if r[0] != "head" else r[1])
+                 for r in self.b.rows if r[0] != "dormant"]
+        self.assertNotIn(("worktree", "alpha"), kinds)
+        self.assertIn("alpha/feat-x", self.text())
+        self.b.show_dormant = True
+        self.b.build_rows()
+        self.assertEqual(self.b.rows[-1][0], "sleeper")
+        self.go_path(self.wt)
+        self.assertIn(" z desperta ", self.text())
+
+    def test_z_wakes_a_sleeping_worktree(self):
+        import taller
+        self.asleep_wt()
+        taller.save_sleep(dict(self.model.projects[0]["slept"]))
+        self.b.show_dormant = True
+        self.go_path(self.wt)
+        self.keys("z")
+        self.assertIsNone(self.b.confirm)
+        self.assertIn("despert", self.b.flash[0])
+        self.assertEqual(taller.load_sleep(), {})
 
     def test_moving_drops_the_confirmation(self):
         self.go("beta")

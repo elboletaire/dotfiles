@@ -57,7 +57,7 @@ SIDE_MIN = 120         # from this width the detail sits beside the list
 # The Taller workspace runs the board as a column beside the orchestrator
 # (herdr/open.sh): the detail always goes below the list there.
 COLUMN = os.environ.get("TALLER_LAYOUT") == "column"
-LIST_SHARE = 0.55      # of the column's height, for the list
+LIST_SHARE = 0.65      # of the column's height, for the list
 SIDE_SHARE = 0.42      # of the width, for the detail when beside
 ENTER = ("\r", "\n")
 
@@ -324,7 +324,7 @@ def row_path(r):
     line."""
     if r[0] == "project":
         return r[1]["path"]
-    if r[0] == "worktree":
+    if r[0] in ("worktree", "sleeper"):
         return r[2]["path"]
     return None
 
@@ -366,22 +366,28 @@ class Board:
 
     def build_rows(self):
         """[("head", section, n) | ("project", p, section) |
-        ("worktree", p, worktree, section) | ("dormant", projects)], and the
-        cursor kept on a project or a worktree."""
+        ("worktree", p, worktree, section) | ("sleeper", p, worktree) |
+        ("dormant", projects, sleepers)], and the cursor kept on a project
+        or a worktree. A worktree put to sleep on its own leaves its
+        project's rows for the dormant section's."""
         projects = self.visible(self.m.snapshot())
         groups = taller.sections(projects)
+        sleepers = taller.sleepers(projects)
         rows = []
         for sec in taller.SECTIONS:
             ps = groups[sec]
-            if not ps:
+            extra = sleepers if sec == "dormant" else []
+            if not ps and not extra:
                 continue
-            rows.append(("head", sec, len(ps)))
+            rows.append(("head", sec, len(ps) + len(extra)))
             if sec == "dormant" and not (self.show_dormant or self.filter):
-                rows.append(("dormant", ps))
+                rows.append(("dormant", ps, extra))
                 continue
             for p in ps:
                 rows.append(("project", p, sec))
-                rows += [("worktree", p, w, sec) for w in p["worktrees"]]
+                rows += [("worktree", p, w, sec)
+                         for w in taller.awake_worktrees(p)]
+            rows += [("sleeper", p, w) for p, w in extra]
         self.rows = rows
         paths = self.paths()
         if self.cursor not in paths:
@@ -424,21 +430,32 @@ class Board:
         foot_h = max(1, len(foot.wrap(self.console, width)))
         body_h = max(8, height - foot_h)
         root = Layout()
+        p = self.selected()
+        if COLUMN:
+            # The keys between the list and the detail, a blank line under
+            # them; the list no taller than its rows (title line, header and
+            # a blank line), the detail gets the rest.
+            room = max(8, height - foot_h - 1)
+            list_h = max(6, int(room * LIST_SHARE))
+            list_h = min(list_h, max(6, len(self.rows) + 3))
+            root.split_column(
+                Layout(self.list_panel(width, list_h), name="list",
+                       size=list_h),
+                Layout(Padding(foot, (0, 0, 1, 0)), name="foot",
+                       size=foot_h + 1),
+                Layout(self.detail_panel(p, width, room - list_h),
+                       name="detail"))
+            return root
         root.split_column(Layout(name="body", size=body_h),
                           Layout(foot, name="foot", size=foot_h))
-        p = self.selected()
-        if width >= SIDE_MIN and not COLUMN:
+        if width >= SIDE_MIN:
             side_w = max(40, int(width * SIDE_SHARE))
             root["body"].split_row(
                 Layout(self.list_panel(width - side_w, body_h), name="list"),
                 Layout(self.detail_panel(p, side_w, body_h), name="detail",
                        size=side_w))
         else:
-            list_h = max(6, int(body_h * (LIST_SHARE if COLUMN else 0.5)))
-            if COLUMN:
-                # No taller than its rows (title line, header and a blank
-                # line): the detail gets the rest.
-                list_h = min(list_h, max(6, len(self.rows) + 3))
+            list_h = max(6, int(body_h * 0.5))
             root["body"].split_column(
                 Layout(self.list_panel(width, list_h), name="list",
                        size=list_h),
@@ -453,6 +470,8 @@ class Board:
         for i, sec in enumerate(taller.SECTIONS):
             icon, _, style = SECTION[sec]
             n = len(groups[sec])
+            if sec == "dormant":
+                n += len(taller.sleepers(projects))
             if i:
                 t.append("  ")
             t.append(f"{icon} {n}", style=style if n else "dim")
@@ -512,18 +531,24 @@ class Board:
                 tb.add_row("", Text(icon), Text(f"{label} ({r[2]})",
                                                 style=style), "", "", "", "")
             elif r[0] == "dormant":
-                names = ", ".join(p["name"] for p in r[1])
+                names = ", ".join([p["name"] for p in r[1]] + [
+                    f"{p['name']}/{os.path.basename(w['path'])}"
+                    for p, w in r[2]])
                 tb.add_row("", "", Text(f"{names}", style="dim italic",
                                         no_wrap=True, overflow="ellipsis"),
                            Text("d desplega", style="dim"), "", "", "")
-            elif r[0] == "worktree":
+            elif r[0] in ("worktree", "sleeper"):
                 p, w = r[1], r[2]
                 f = taller.folder(p, w["path"])
                 sel = w["path"] == self.cursor
-                dim = r[3] == "dormant"
-                fork = "└ " if w is p["worktrees"][-1] else "├ "
+                dim = r[0] == "sleeper" or r[3] == "dormant"
                 name = Text(no_wrap=True, overflow="ellipsis")
-                name.append(fork, style="grey50")
+                if r[0] == "sleeper":
+                    name.append(p["name"] + "/", style="grey50")
+                else:
+                    shown = taller.awake_worktrees(p)
+                    fork = "└ " if w is shown[-1] else "├ "
+                    name.append(fork, style="grey50")
                 name.append(os.path.basename(w["path"]),
                             style="bold" if sel else
                             ("grey50" if dim else ""))
@@ -711,6 +736,7 @@ class Board:
                 keys.append(("g", "git"))
             if taller.web_url(p["remote"]):
                 keys.append(("o", "web"))
+            keys.append(("z", "desperta" if self.slept(p) else "adorm"))
         if any(r[0] == "head" and r[1] == "dormant" for r in self.rows) \
                 and not self.filter:
             keys.append(("d", "amaga adormits" if self.show_dormant
@@ -777,6 +803,8 @@ class Board:
             self.git_popup(p)
         elif key == "o":
             self.open_web(p)
+        elif key == "z":
+            self.sleep(p)
         return True
 
     def handle_input(self, key):
@@ -853,6 +881,46 @@ class Board:
             return
         self.run(f"engegant un agent a {p['name']}…",
                  lambda s: taller.fresh_agent(p, self.agent_args(), s))
+
+    def slept(self, p):
+        """Is the folder() asleep: put to sleep itself, or a worktree of a
+        project put to sleep whole?"""
+        repo = next((x for x in self.m.snapshot()
+                     if x["path"] == p["repo"]), p)
+        return taller.asleep(repo, p["path"]) or (
+            p.get("worktree") is not None and taller.asleep(repo))
+
+    def sleep(self, p):
+        """z: the folder to sleep (the project row: the main checkout with
+        every worktree; a worktree row: that one alone), its herdr
+        workspaces closed -- or, asleep already, woken up."""
+        if self.slept(p):
+            path = p["path"] if p["path"] in p.get("slept", {}) else p["repo"]
+            ok, msg = taller.wake_up(path)
+            self.say(msg)
+            self.m.kick_collect.set()
+            return
+        whole = p.get("worktree") is None
+        name = self.list_name(p)
+        scope = (f"{name} i els seus {len(p['worktrees'])} worktrees"
+                 if whole and p["worktrees"] else name)
+        agents = self.project()["agents"] if whole else p["agents"]
+        notes = []
+        if agents:
+            notes.append("tanca " + ", ".join(a["name"] for a in agents)
+                         + " i el seu workspace")
+        busy = [a["name"] for a in agents if a["state"] == "working"]
+        if busy:
+            notes.append("⚠ treballant: " + ", ".join(busy))
+        dirty = p["dirty"] + (sum(w["dirty"] for w in p["worktrees"])
+                              if whole else 0)
+        if dirty:
+            notes.append(f"⚠ {dirty} fitxers sense commit (es queden)")
+        if not self.ask("sleep", "z", f"prem z de nou per adormir {scope}",
+                        preview="; ".join(notes)):
+            return
+        self.run(f"adormint {name}…",
+                 lambda s: taller.put_to_sleep(p, whole, s))
 
     def where(self, p):
         a = next((x for x in p["agents"] if x["host"] == "herdr"), None)

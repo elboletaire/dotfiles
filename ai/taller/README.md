@@ -28,7 +28,7 @@ as an overlay (`peek`), the board puts the detail beside the list, as below.
 │    💤        Adormits (11)                              ││ Commits                                       │
 │              machine-learning, …    d desplega          ││   2cd02c3 fix(arxiu): split the workspace …   │
 ╰─────────────────────────────────────────────────────────╯╰───────────────────────────────────────────────╯
- ↑↓ mou  ⏎ reprèn a herdr  n agent nou  w worktree  t terminal  o web  d adormits  / filtra  u refresca  q surt
+ ↑↓ mou  ⏎ reprèn a herdr  n agent nou  w worktree  t terminal  o web  z adorm  d adormits  / filtra  u refresca  q surt
 ```
 
 ## Run it
@@ -59,7 +59,9 @@ Four sections, a project in the first that applies:
 - **🟡 Treballant** -- an agent is working.
 - **🗂 Aparcats** -- the rest, most recently touched first.
 - **💤 Adormits** -- nothing touched (commits on any branch, conversations)
-  for `dormant_days` and no live agent: one line until `d`.
+  for `dormant_days`, or put to sleep with `z`, and no live agent: one line
+  until `d`. A worktree put to sleep on its own leaves its project's rows
+  for this section, as `<project>/<folder>`.
 
 A row: one glyph per agent (◐ working, ⏸ waiting, ✓ done, ✗ error, ○ idle,
 ■ stopped), the name, the branch, `✎N` uncommitted files, `↑N` unpushed
@@ -88,6 +90,7 @@ git every `[ui].git_secs` and right after an action.
 | `t` | a shell in the selected folder (herdr popup) |
 | `g` | its `git log --graph` and `git status` (herdr popup, `q` closes) |
 | `o` | the remote in the browser (`wslview`, `explorer.exe`, `xdg-open`) |
+| `z` | put it to sleep (second `z` confirms): on a project, the main checkout with every worktree; on a worktree, that one alone. Closes its herdr workspaces (only its agents' panes, in a workspace other agents share; never the board's own), warns about working agents and uncommitted files (they stay), and lists the folder in `$XDG_STATE_HOME/taller/sleep.json` so it shows as dormant whatever its age. Anything done there afterwards -- a commit or a conversation, or an agent started (`⏎`, `n`, `v`) -- wakes it. On something asleep, `z` wakes it right away. |
 | `d` | show/hide the dormant projects |
 | `/` | filter by name (`Esc` clears) |
 | `u` | refresh now |
@@ -120,7 +123,7 @@ overlay over anything (`peek`) and the popups the board opens (`agent`,
 "trust this folder?" for that folder answered -- continuing the newest claude
 conversation held there (it already knows its role), or, with none, a new
 one given `/taller:orchestrator`; it keeps 60% of the width, and the board runs beside
-it with `TALLER_LAYOUT=column` (the detail always below the list), its
+it with `TALLER_LAYOUT=column` (the keys between the list and the detail, always below it), its
 pane unlabelled so herdr draws no "Taller" around its own sections, which
 are title lines rather than boxes there (herdr's frame is enough). The
 orchestrator running anywhere already is only focused, and so is an
