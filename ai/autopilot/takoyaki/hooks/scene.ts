@@ -6,7 +6,7 @@ export const ROWS = 6
 const W = COLUMNS
 const H = ROWS * 2
 
-export type BallState = 'raw' | 'cooking' | 'ready' | 'capped' | 'burnt' | 'stalled'
+export type BallState = 'raw' | 'cooking' | 'ready' | 'capped' | 'done' | 'burnt' | 'stalled'
 export type Ball = { key: string; state: BallState; ageMin: number }
 
 export type Mood =
@@ -35,6 +35,7 @@ export type Scene = {
   t: number // ms
   mood: Mood
   balls: Ball[]
+  boxed: Ball[] // done, served on the shelf
   holes: number
   isWorking: boolean
   focus: number // hole the chef is working on, -1 for none
@@ -71,6 +72,7 @@ const C = {
   burntTop: 0x1d120c,
   cold: 0x9a8f78,
   coldEdge: 0x7a705c,
+  shelf: 0x9b7643,
 }
 
 export const PALETTE = {
@@ -101,6 +103,18 @@ const LEGS = [
 
 export const holeX = (i: number) => 16 + i * 4
 
+// The serving shelf in the top-right corner, well clear of the pan: one plank,
+// two rows of four takoyaki stacked on it. More than SHELF_SLOTS done items
+// still show as a full shelf.
+const SHELF_LEFT = 26
+const SHELF_RIGHT = W - 1
+const SHELF_Y = 4
+const SHELF_SLOTS = 8
+export const shelfSlot = (i: number): [number, number] => [
+  SHELF_LEFT + 1 + (i % 4) * 3,
+  i < 4 ? SHELF_Y - 2 : SHELF_Y - 4,
+]
+
 const mix = (a: number, b: number, k: number) => {
   const f = Math.max(0, Math.min(1, k))
   const ch = (s: number) =>
@@ -117,6 +131,7 @@ export function paint(scene: Scene): Uint32Array {
   }
 
   drawPan(scene, set)
+  drawShelf(scene, set)
   drawChef(scene, set)
   for (const p of scene.particles) set(p.x, p.y, p.color)
 
@@ -153,6 +168,22 @@ function drawPan(scene: Scene, set: (x: number, y: number, c: number) => void) {
   }
 }
 
+function drawShelf(scene: Scene, set: (x: number, y: number, c: number) => void) {
+  const { boxed, t } = scene
+  if (boxed.length === 0) return
+  for (let x = SHELF_LEFT; x <= SHELF_RIGHT; x++) set(x, SHELF_Y, C.shelf)
+  boxed.slice(0, SHELF_SLOTS).forEach((ball, i) => {
+    const [x, y] = shelfSlot(i)
+    const [top, mid, edge] = ballColors(ball, t)
+    set(x, y, edge)
+    set(x + 1, y, top)
+    set(x + 2, y, edge)
+    set(x, y + 1, edge)
+    set(x + 1, y + 1, mid)
+    set(x + 2, y + 1, edge)
+  })
+}
+
 function ballColors(ball: Ball, t: number): [number, number, number] {
   switch (ball.state) {
     case 'raw':
@@ -161,10 +192,17 @@ function ballColors(ball: Ball, t: number): [number, number, number] {
       const done = mix(0xf0c870, 0xc88636, ball.ageMin / 25)
       return [done, done, mix(done, 0x000000, 0.2)]
     }
+    // Waiting for the user: they flash burnt so they read as "needs you".
     case 'ready':
-      return [Math.floor(t / 700) % 2 ? C.mayo : C.sauce, C.golden, C.goldenEdge]
+      return Math.floor(t / 700) % 2
+        ? [C.burntTop, C.burnt, C.burntTop]
+        : [C.sauce, C.golden, C.goldenEdge]
     case 'capped':
-      return [C.aonori, C.golden, C.goldenEdge]
+      return Math.floor(t / 700) % 2
+        ? [C.burntTop, C.burnt, C.burntTop]
+        : [C.aonori, C.golden, C.goldenEdge]
+    case 'done':
+      return [C.sauce, C.golden, C.goldenEdge]
     case 'burnt':
       return [C.burntTop, C.burnt, C.burntTop]
     case 'stalled':

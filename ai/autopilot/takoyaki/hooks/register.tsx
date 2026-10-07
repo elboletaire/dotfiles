@@ -46,7 +46,7 @@ const DEMO: Omit<AutopilotEvent, 'at'>[] = [
 const k = {
   active: false,
   bandId: undefined as string | undefined,
-  kitchen: { balls: [], paused: false, holes: 6 } as Kitchen,
+  kitchen: { balls: [], boxed: [], paused: false, holes: 6 } as Kitchen,
   mood: 'idle' as Mood,
   moodUntil: 0,
   focus: -1,
@@ -55,7 +55,7 @@ const k = {
   lastActivity: Date.now(),
   lastFrame: Date.now(),
   cursor: { at: 0, seen: [] as string[] },
-  mtimes: { state: 0, events: 0 },
+  mtimes: { state: 0, events: 0, snapshot: 0 },
   stateDir: '',
   demo: undefined as { step: number; balls: Kitchen['balls'] } | undefined,
   isBlitting: false,
@@ -119,6 +119,7 @@ function frame(): Scene {
     t,
     mood: k.mood,
     balls: k.kitchen.balls,
+    boxed: k.kitchen.boxed,
     holes: k.kitchen.holes,
     isWorking: k.isWorking,
     focus: k.focus,
@@ -145,8 +146,9 @@ async function apply($: EngineInterface, events: AutopilotEvent[], isReplay: boo
 }
 
 async function refreshHeader($: EngineInterface) {
-  const { balls, holes, paused } = k.kitchen
-  const label = `${paused ? ' · paused' : ''}${k.demo ? ' · demo' : ''}`
+  const { balls, boxed, holes, paused } = k.kitchen
+  const served = boxed.length > 0 ? ` · ${boxed.length} on the shelf` : ''
+  const label = `${served}${paused ? ' · paused' : ''}${k.demo ? ' · demo' : ''}`
   await update($, header, () => `🐙 takoyaki kitchen · ${balls.length}/${holes} on the pan${label}`)
 }
 
@@ -155,12 +157,18 @@ async function pollFiles($: EngineInterface) {
   const stateFile = `${k.stateDir}/state.json`
   const eventsFile = `${k.stateDir}/events.jsonl`
 
+  // The snapshot says which items are done (READY, CAPPED, DONE), so a new
+  // one moves them onto the shelf even when state.json did not change.
+  const snapFile = `${k.stateDir}/snapshot.json`
   const s = await $.fs.stat(stateFile).catch(() => undefined)
-  if (s && s.mtimeMs !== k.mtimes.state) {
-    k.mtimes.state = s.mtimeMs
-    const snapshot = await $.fs.read(`${k.stateDir}/snapshot.json`).catch(() => '')
+  const sn = await $.fs.stat(snapFile).catch(() => undefined)
+  if ((s && s.mtimeMs !== k.mtimes.state) || (sn && sn.mtimeMs !== k.mtimes.snapshot)) {
+    k.mtimes.state = s?.mtimeMs ?? 0
+    k.mtimes.snapshot = sn?.mtimeMs ?? 0
+    const snapshot = await $.fs.read(snapFile).catch(() => '')
     const maxActive = Number(/"max_active":\s*(\d+)/.exec(snapshot)?.[1]) || 6
-    k.kitchen = readKitchen(await $.fs.read(stateFile), now() / 1000, maxActive)
+    const stateText = await $.fs.read(stateFile).catch(() => '')
+    k.kitchen = readKitchen(stateText, now() / 1000, maxActive, snapshot)
     await refreshHeader($)
   }
 
@@ -193,7 +201,13 @@ async function playDemo($: EngineInterface) {
     for (const b of demo.balls) if (b.key === key) b.state = next
   }
   if (ev.kind === 'merged') demo.balls = demo.balls.filter(b => b.key !== key)
-  k.kitchen = { balls: demo.balls, paused: ev.kind === 'pause', holes: 6 }
+  // Only done ones are served onto the shelf, as in the real kitchen.
+  k.kitchen = {
+    balls: demo.balls.filter(b => b.state !== 'done'),
+    boxed: demo.balls.filter(b => b.state === 'done'),
+    paused: ev.kind === 'pause',
+    holes: 6,
+  }
   await refreshHeader($)
   await apply($, [ev], false)
 }
@@ -282,8 +296,8 @@ export const register: Register = on => {
     if ((e.args ?? '').trim() === 'demo') {
       k.demo = k.demo ? undefined : { step: 0, balls: [] }
       if (!k.demo) {
-        k.mtimes = { state: 0, events: 0 }
-        k.kitchen = { balls: [], paused: false, holes: 6 }
+        k.mtimes = { state: 0, events: 0, snapshot: 0 }
+        k.kitchen = { balls: [], boxed: [], paused: false, holes: 6 }
       }
       await activate($, true)
       return {

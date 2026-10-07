@@ -73,12 +73,39 @@ test('a tracked item becomes a takoyaki whose doneness follows its report', () =
   })
   const kitchen = readKitchen(state, 400, 6)
   expect(kitchen.paused).toBe(true)
+  // A ready one waits for the user: it stays in the pan.
   expect(kitchen.balls.map(b => [b.key, b.state])).toEqual([
     ['o/r#1', 'ready'],
     ['o/r#2', 'burnt'],
     ['o/r#3', 'raw'],
   ])
+  expect(kitchen.boxed).toEqual([])
   expect(readKitchen('not json', 0).balls).toEqual([])
+})
+
+test('only done items leave the pan for the shelf', () => {
+  const items: Record<string, unknown> = {}
+  for (let i = 1; i <= 8; i++) items[`o/r#${i}`] = { added: i, session: `s${i}` }
+  const state = JSON.stringify({ items })
+  const snapshot = JSON.stringify({
+    rows: [
+      { kind: 'DONE', key: 'o/r#1' },
+      { kind: 'CAPPED', key: 'o/r#2' },
+      { kind: 'WORKING', key: 'o/r#3' },
+    ],
+  })
+  const kitchen = readKitchen(state, 100, 6, snapshot)
+  expect(kitchen.boxed.map(b => [b.key, b.state])).toEqual([['o/r#1', 'done']])
+  // CAPPED waits for the user, so it keeps its hole; the done one freed its
+  // hole, so six of the seven left still fit.
+  expect(kitchen.balls.map(b => [b.key, b.state])).toEqual([
+    ['o/r#2', 'capped'],
+    ['o/r#3', 'cooking'],
+    ['o/r#4', 'cooking'],
+    ['o/r#5', 'cooking'],
+    ['o/r#6', 'cooking'],
+    ['o/r#7', 'cooking'],
+  ])
 })
 
 test('events are read once, across a trim of the log', () => {
@@ -105,7 +132,8 @@ test('the scene packs into a full raster', () => {
   const words = paint({
     t: 0,
     mood: 'idle',
-    balls: [{ key: 'a', state: 'ready', ageMin: 0 }],
+    balls: [{ key: 'a', state: 'cooking', ageMin: 0 }],
+    boxed: [{ key: 'b', state: 'ready', ageMin: 0 }],
     holes: 6,
     isWorking: true,
     focus: 0,

@@ -20,32 +20,64 @@ export type Reaction = {
   line?: LogLine
 }
 
-export type Kitchen = { balls: Ball[]; paused: boolean; holes: number }
+// `balls` are on the pan, one per hole; `boxed` are done and out of it.
+export type Kitchen = { balls: Ball[]; boxed: Ball[]; paused: boolean; holes: number }
 
 const str = (v: unknown) => (typeof v === 'string' ? v : '')
 
-export function readKitchen(stateText: string, nowSec: number, maxActive = 6): Kitchen {
+// Scan rows (snapshot.json) that set a takoyaki's state. Only DONE (nothing
+// left for anyone, e.g. someone else's PR we approved) goes on the shelf;
+// READY and CAPPED wait for the user, so they stay in the pan, burning.
+const DONE_KINDS = new Set(['READY', 'CAPPED', 'DONE'])
+
+function doneKinds(snapshotText: string): Map<string, string> {
+  try {
+    const rows = (JSON.parse(snapshotText) as { rows?: { kind?: string; key?: string }[] }).rows
+    return new Map(
+      (rows ?? []).filter(r => r.key && DONE_KINDS.has(r.kind ?? '')).map(r => [r.key!, r.kind!]),
+    )
+  } catch {
+    return new Map()
+  }
+}
+
+const isDone = (b: Ball) => b.state === 'done'
+
+export function readKitchen(
+  stateText: string,
+  nowSec: number,
+  maxActive = 6,
+  snapshotText = '',
+): Kitchen {
   let state: Record<string, unknown>
   try {
     state = JSON.parse(stateText) as Record<string, unknown>
   } catch {
-    return { balls: [], paused: false, holes: maxActive }
+    return { balls: [], boxed: [], paused: false, holes: maxActive }
   }
+  const done = doneKinds(snapshotText)
   const items = (state.items ?? {}) as Record<string, Record<string, unknown>>
-  const balls = Object.entries(items)
+  const all = Object.entries(items)
     .map(([key, item]) => ({ key, item, added: Number(item.added) || 0 }))
     .sort((a, b) => a.added - b.added)
-    .slice(0, maxActive)
     .map(({ key, item, added }) => ({
       key,
-      state: ballState(item),
+      state: ballState(item, done.get(key)),
       ageMin: added ? Math.max(0, (nowSec - added) / 60) : 0,
     }))
 
-  return { balls, paused: state.paused === true, holes: maxActive }
+  return {
+    balls: all.filter(b => !isDone(b)).slice(0, maxActive),
+    boxed: all.filter(isDone),
+    paused: state.paused === true,
+    holes: maxActive,
+  }
 }
 
-function ballState(item: Record<string, unknown>): BallState {
+function ballState(item: Record<string, unknown>, doneKind?: string): BallState {
+  if (doneKind === 'READY') return 'ready'
+  if (doneKind === 'CAPPED') return 'capped'
+  if (doneKind === 'DONE') return 'done'
   const report = (item.last_report ?? {}) as Record<string, unknown>
   switch (str(report.state)) {
     case 'ready':
