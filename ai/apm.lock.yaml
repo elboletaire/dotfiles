@@ -1,24 +1,6 @@
 lockfile_version: '1'
 apm_version: 0.31.0
 dependencies:
-- repo_url: agent-of-empires/agent-of-empires
-  name: aoe
-  host: github.com
-  resolved_commit: be309177fd4529266edd47ce4ac40ca7cc4ee98c
-  resolved_ref: be309177fd4529266edd47ce4ac40ca7cc4ee98c
-  version: unknown
-  virtual_path: contrib/hermes-skill
-  is_virtual: true
-  package_type: claude_skill
-  deployed_files:
-  - .agents/skills/aoe
-  - .agents/skills/aoe/SKILL.md
-  - .claude/skills/aoe
-  - .claude/skills/aoe/SKILL.md
-  deployed_file_hashes:
-    .agents/skills/aoe/SKILL.md: sha256:e22bd63b650063ccf7f94c54766cb3f2b88eda0e362de50a4dfc474d454bc6d2
-    .claude/skills/aoe/SKILL.md: sha256:e22bd63b650063ccf7f94c54766cb3f2b88eda0e362de50a4dfc474d454bc6d2
-  content_hash: sha256:e91b6aebe4d1b1be7107f45a4302dcc1677872960332966dcdac0d5b585d92de
 - repo_url: anthropics/skills
   name: skill-creator
   host: github.com
@@ -496,24 +478,6 @@ dependencies:
     .claude/skills/find-skills/SKILL.md: sha256:c00eeea0e13e74fe4a9d84ba0a8542205a1b736d65f13134fe1a6647eb14976f
   content_hash: sha256:913b9d37d0d54047dd65222bb8c67b2bf04e3cb87dcad1729068d7a8b2c8c396
 deployments:
-- kind: project-relative
-  target: agent-skills
-  value: .agents/skills/aoe
-  runtime: null
-  scope: project
-  owners:
-  - agent-of-empires/agent-of-empires/contrib/hermes-skill
-  active_owner: agent-of-empires/agent-of-empires/contrib/hermes-skill
-  content_hash: null
-- kind: project-relative
-  target: agent-skills
-  value: .agents/skills/aoe/SKILL.md
-  runtime: null
-  scope: project
-  owners:
-  - agent-of-empires/agent-of-empires/contrib/hermes-skill
-  active_owner: agent-of-empires/agent-of-empires/contrib/hermes-skill
-  content_hash: sha256:e22bd63b650063ccf7f94c54766cb3f2b88eda0e362de50a4dfc474d454bc6d2
 - kind: project-relative
   target: agent-skills
   value: .agents/skills/brainstorming
@@ -1297,24 +1261,6 @@ deployments:
   - obra/superpowers/skills/writing-plans
   active_owner: obra/superpowers/skills/writing-plans
   content_hash: sha256:aa728b96aad603c8be28875a4305637f6c984aa81ffcadcb13e743202fa2a0c7
-- kind: project-relative
-  target: claude
-  value: .claude/skills/aoe
-  runtime: null
-  scope: project
-  owners:
-  - agent-of-empires/agent-of-empires/contrib/hermes-skill
-  active_owner: agent-of-empires/agent-of-empires/contrib/hermes-skill
-  content_hash: null
-- kind: project-relative
-  target: claude
-  value: .claude/skills/aoe/SKILL.md
-  runtime: null
-  scope: project
-  owners:
-  - agent-of-empires/agent-of-empires/contrib/hermes-skill
-  active_owner: agent-of-empires/agent-of-empires/contrib/hermes-skill
-  content_hash: sha256:e22bd63b650063ccf7f94c54766cb3f2b88eda0e362de50a4dfc474d454bc6d2
 - kind: project-relative
   target: claude
   value: .claude/skills/brainstorming

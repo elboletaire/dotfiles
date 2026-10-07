@@ -8,7 +8,7 @@ path = "~/src/arbre"
 # herdr agent names. The orchestrator runs in the Arxiu workspace below the
 # board: lowercase actions type their prompt into its input. Uppercase ones
 # send it to the research agent, started in a new tab of Arxiu first if it
-# isn't running. Nothing in the tree goes through aoe.
+# isn't running.
 orchestrator_agent = "arbre"
 research_agent = "investigacio"
 # Extra claude arguments for the agents Arxiu starts, e.g. ["--model", "haiku"].

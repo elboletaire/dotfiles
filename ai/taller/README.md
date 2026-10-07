@@ -2,26 +2,26 @@
 
 Every coding project the user works on, on one board, one key away from
 picking it up again: the git repositories under `[taller].roots` plus `extra`
-(minus `hide`), and any folder where an aoe or herdr agent runs, each with
+(minus `hide`), and any folder where a herdr agent runs, each with
 its uncommitted and unpushed work, its worktrees, its agents and the last
 conversation held there.
 
 It lives in herdr: the **Taller** workspace is the board alone, and the
 board acts through herdr -- it goes to a project's agent, or brings the
-project's last conversation back as a named herdr agent (the way off aoe).
+project's last conversation back as a named herdr agent.
 
 ```
 ╭─ 🛠  Taller ────────────────────────────────────────────╮╭─ .dotfiles ───────────────────────────────────╮
 │ 🔴 1  🟡 1  🗂  9  💤 11   ⚠ 3 projectes sense còpia     ││ ~/.dotfiles                                   │
 │                                                         ││ remot github:elboletaire/dotfiles  main       │
 │    🔴        Et necessita (1)                           ││                                               │
-│    ✗ᵃᵒᵉ      dsp-blueprint-editor   main      ✎1     2w ││ Agents                                        │
-│    🟡        Treballant (1)                             ││   ○ .files  claude · aoe · inactiu            │
-│    ○◐○○○ᵃᵒᵉ  arbre                  main         ⑂2 12m ││                                               │
+│    ✗         dsp-blueprint-editor   main      ✎1     2w ││ Agents                                        │
+│    🟡        Treballant (1)                             ││   ○ dotfiles  claude · inactiu                │
+│    ○◐○○○     arbre                  main         ⑂2 12m ││                                               │
 │    🗂         Aparcats (9)                               ││ Última conversa  claude · fa 13m              │
-│ ▶  ○ᵃᵒᵉ      .dotfiles              main      ✎10   13m ││   «Herdr vs AOE for pr-autopilot dashboard»   │
-│    ○ᵃᵒᵉ      photo-restore          main      ⚠      1h ││   tu    commit and push everything when …     │
-│    ○ᵃᵒᵉ      planets                master    ✎6 ⑂1  1d ││   agent Will do. When the agent finishes …    │
+│ ▶  ○         .dotfiles              main      ✎10   13m ││   «Octopilot dashboard in herdr»              │
+│    ○         photo-restore          main      ⚠      1h ││   tu    commit and push everything when …     │
+│    ○         planets                master    ✎6 ⑂1  1d ││   agent Will do. When the agent finishes …    │
 │    💤        Adormits (11)                              ││ Commits                                       │
 │              machine-learning, …    d desplega          ││   2cd02c3 fix(arxiu): split the workspace …   │
 ╰─────────────────────────────────────────────────────────╯╰───────────────────────────────────────────────╯
@@ -59,7 +59,7 @@ Four sections, a project in the first that applies:
   for `dormant_days` and no live agent: one line until `d`.
 
 A row: one glyph per agent (◐ working, ⏸ waiting, ✓ done, ✗ error, ○ idle,
-■ stopped; aoe ones dimmed and tagged ᵃᵒᵉ), the name, the branch, `✎N`
+■ stopped), the name, the branch, `✎N`
 uncommitted files (worktrees included), `↑N` unpushed commits, `⚠` no remote
 at all, `⑂N` worktrees and the last touch. The header counts the sections and
 warns about the projects with no copy elsewhere (no remote, or unpushed).
@@ -74,7 +74,7 @@ git every `[ui].git_secs` and right after an action.
 | Key | |
 |---|---|
 | `↑↓` `j/k` `PgUp/PgDn` | move |
-| `⏎` | its herdr agent (one waiting on you first): focus it. None: a second `⏎` opens the project in herdr -- a new workspace named after it (a tab, if it has one) running its last conversation again (`claude/pi --continue` where it ran) as an agent named after the project; a new claude when there is none. The aoe session holding that conversation can be stopped afterwards; while it is working it is not resumed twice. |
+| `⏎` | its herdr agent (one waiting on you first): focus it. None: a second `⏎` opens the project in herdr -- a new workspace named after it (a tab, if it has one) running its last conversation again (`claude/pi --continue` where it ran) as an agent named after the project; a new claude when there is none. |
 | `n` | a fresh claude in the project (second `n` confirms), in a new tab of its herdr workspace or a new workspace |
 | `w` | a new worktree: asks the branch, then (second `w`) `git fetch`, `git worktree add -b <branch> <repo>/.worktrees/<branch, / as ->` off the current branch, `herdr worktree open` titled after it and a claude named after it. The main checkout is never touched. |
 | `t` | a shell in the project (herdr popup) |
@@ -126,5 +126,5 @@ python3 -m unittest discover -s ai/taller/tests                  # stdlib only
 uv run --with rich python -m unittest discover -s ai/taller/tests  # + the board
 ```
 
-They build throwaway repos, transcripts and fake `aoe`/`herdr` executables
+They build throwaway repos, transcripts and a fake `herdr` executable
 under a temp HOME (with its own `.config/git/ignore`), never the real ones.

@@ -8,7 +8,7 @@ roots = ["~/src"]
 # Projects outside the roots.
 extra = ["/mnt/d/Documents/Godot/water", "~/.dotfiles"]
 # Folder names (or full paths) never shown.
-hide = ["~/src/agent-of-empires", "interviews", "foundation"]
+hide = ["interviews", "foundation"]
 # Idle for longer than this (days since the last commit or conversation) is
 # "dormant": collapsed into one line.
 dormant_days = 14

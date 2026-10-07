@@ -31,6 +31,8 @@ class BoardCase(TallerCase):
 
     def setUp(self):
         super().setUp()
+        # herdr runs only alpha's agent, so beta's name is free.
+        self.herdr_out["result"]["agents"] = self.herdr_out["result"]["agents"][:1]
         self.fakes()
         for var in ("ARXIU_DRY_RUN", "TALLER_DRY_RUN"):
             os.environ.pop(var, None)
@@ -43,9 +45,7 @@ class BoardCase(TallerCase):
                 agent("waiting", name="ha", path=self.alpha)],
                 flags=["unpushed"], ahead=1),
             project("beta", self.beta, remote=None, flags=["no_remote"],
-                    last_touch=now - 7200, agents=[
-                        agent("idle", host="aoe", name="Beta", id="a3",
-                              path=self.beta)],
+                    last_touch=now - 7200,
                     last_exchange={"tool": "claude", "path": self.beta,
                                    "user": "hola", "agent": "adéu",
                                    "title": "Salutacions", "at": now - 7200}),
@@ -60,6 +60,9 @@ class BoardCase(TallerCase):
         ]
         self.b = board.Board(self.model, Console(width=150, height=40,
                                                  force_terminal=True))
+        # An action's thread must finish while the fake herdr is still on
+        # PATH: cleanups run last-in first-out, so this one runs first.
+        self.addCleanup(self.wait)
         self.b.render()
 
     def text(self, renderable=None, width=150, height=40):
@@ -117,7 +120,6 @@ class ListTest(BoardCase):
         self.assertIn("Aparcats (2)", out)
         self.assertIn("old, older", out)
         beta = next(ln for ln in out.splitlines() if " beta " in ln)
-        self.assertIn("○ᵃᵒᵉ", beta)
         self.assertIn("⚠", beta)
         self.assertIn("sense git", next(ln for ln in out.splitlines()
                                         if " plain " in ln))
@@ -151,7 +153,7 @@ class ListTest(BoardCase):
         self.go("beta")
         out = self.text(self.b.detail_panel(self.b.project(), 70, 40), 70)
         self.assertIn("sense remot", out)
-        self.assertIn("Beta  claude · aoe · inactiu", out)
+        self.assertIn("cap · ⏎ reprèn l'última conversa a herdr", out)
         self.assertIn("«Salutacions»", out)
         self.assertIn("tu    hola", out)
         self.assertIn("agent adéu", out)
@@ -194,22 +196,12 @@ class ActTest(BoardCase):
             self.keys("\r")
             self.assertIn("prem ⏎ de nou per obrir beta a herdr: claude "
                           "--continue («Salutacions»)", self.b.confirm["msg"])
-            self.assertIn("aoe «Beta» hi segueix viva",
-                          self.b.confirm["preview"])
             self.keys("\r")
             self.wait()
         msg = self.b.flash[0]
         self.assertIn("herdr workspace create --label beta", msg)
         self.assertIn("agent start beta --kind claude", msg)
         self.assertIn("--continue", msg)
-        self.assertIn("aoe session stop a3", msg)
-
-    def test_a_busy_aoe_session_is_not_resumed_twice(self):
-        self.model.projects[1]["agents"][0]["state"] = "working"
-        self.go("beta")
-        self.keys("\r\r")
-        self.assertIsNone(self.b.confirm)
-        self.assertIn("està treballant", self.b.flash[0])
 
     def test_moving_drops_the_confirmation(self):
         self.go("beta")
@@ -258,7 +250,7 @@ class ActTest(BoardCase):
 @unittest.skipIf(board is None, "needs rich (uv run --with rich)")
 class OnceTest(TallerCase):
     """board.py --once --keys, as taller.sh would run it, on TallerCase's
-    world (fake aoe and herdr, temp HOME)."""
+    world (fake herdr, temp HOME)."""
 
     def test_frame_and_keys(self):
         self.fakes()

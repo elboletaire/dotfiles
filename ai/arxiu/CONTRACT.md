@@ -37,7 +37,7 @@ agent_actions: see below
 
 ```python
 {
-  "name": str,                 # folder name, or the aoe title when not a repo
+  "name": str,                 # folder name
   "path": str,                 # absolute, the repo root (not a worktree)
   "git": bool,
   "remote": str | None,        # "github:owner/repo", "gitlab:owner/repo", other host as-is, None = no remote
@@ -60,9 +60,9 @@ agent_actions: see below
 
 ```python
 {
-  "host": "aoe" | "herdr",
-  "id": str,                   # aoe session id or herdr workspace id
-  "name": str,                 # aoe title or herdr agent name
+  "host": "herdr",
+  "id": str,                   # herdr workspace id
+  "name": str,                 # herdr agent name
   "tool": str,                 # claude, pi, ...
   "path": str,                 # its working directory (may be a worktree)
   "state": "working" | "waiting" | "done" | "idle" | "error" | "stopped" | "unknown",
@@ -71,13 +71,12 @@ agent_actions: see below
 ```
 
 Actions (each returns `(ok: bool, message: str)`; none of them run when
-`ARXIU_DRY_RUN=1`, they return `(True, "dry-run: <command>")` instead).
-`focus` on an aoe agent returns `(False, ...)`: attach it with `attach_cmd`:
+`ARXIU_DRY_RUN=1`, they return `(True, "dry-run: <command>")` instead):
 
 ```python
-send(agent: Agent, text: str)            # aoe send / herdr agent prompt
-focus(agent: Agent)                      # herdr: agent focus; aoe: returns False, board attaches
-attach_cmd(agent: Agent) -> list[str]    # argv to attach an aoe session in the foreground
+send(agent: Agent, text: str)            # herdr agent prompt
+focus(agent: Agent)                      # herdr agent focus
+attach_cmd(agent: Agent) -> list[str]    # argv to attach the agent in the foreground
 resume_cmd(project: Project) -> list[str]  # ["env", "-C", <last_exchange path>, "claude"|"pi", "--continue"]
 list_agents() -> list[Agent]             # agents alone (~0.2s), for refreshes between full collects
 match_agents(projects, agents)           # attach a fresh agent list to the projects, in place
@@ -111,7 +110,7 @@ never `make validate`, which regenerates files first). The exact shape is in
 does not import Python. It only shows up in Claude Code sessions whose
 working directory is inside `[arbre].path` (or a worktree of it).
 
-## herdr-native tree (no aoe)
+## herdr-native tree
 
 - Agents in the tree run in herdr only. The Arxiu workspace (`herdr/open.sh`)
   holds the orchestrator, a claude agent named `[arbre].orchestrator_agent`
@@ -125,10 +124,8 @@ working directory is inside `[arbre].path` (or a worktree of it).
 - Tecla tracks investigations from the orchestrator by polling
   `herdr agent list` (agents whose cwd is inside the tree): started,
   working, blocked (waiting on the user), finished.
-- Taller keeps showing aoe sessions while projects are migrated, but its
-  actions open things in herdr: a project with only an aoe session opens in
-  a new herdr workspace at its path with `claude --continue` / `pi
-  --continue` (the same conversation, since it is the same folder).
+- Taller opens things in herdr: a project with no agent opens in a new
+  herdr workspace at its path with `claude --continue` / `pi --continue`.
 
 ## Round 3: genealogy-only workspace (supersedes the Taller parts above)
 

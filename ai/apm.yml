@@ -53,10 +53,6 @@ dependencies:
     - git: https://github.com/mangmax/obscura-browser-skill.git
       alias: obscura-browser
       ref: f285dfdac5c3188fc4c3574eee487ae793ae9b50
-    - git: https://github.com/agent-of-empires/agent-of-empires.git
-      path: contrib/hermes-skill
-      alias: aoe
-      ref: be309177fd4529266edd47ce4ac40ca7cc4ee98c
     - git: https://github.com/herdrdev/herdr.git
       path: skills/herdr
       alias: herdr

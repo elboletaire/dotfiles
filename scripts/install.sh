@@ -124,28 +124,6 @@ install_apm() {
   fi
 }
 
-install_aoe() {
-  # aoe (Agent of Empires): tmux-based session manager for AI coding agents.
-  # https://github.com/agent-of-empires/agent-of-empires
-  # Pass "update" to force an upgrade even when aoe is already installed.
-  local mode=$1
-  local installer="https://raw.githubusercontent.com/agent-of-empires/agent-of-empires/main/scripts/install.sh"
-
-  if [[ "$mode" == "update" ]]; then
-    if [[ "$OS" == "Darwin" ]]; then
-      brew upgrade aoe || brew install aoe
-    else
-      curl -fsSL "$installer" | bash
-    fi
-  elif command -v aoe &>/dev/null; then
-    echo "aoe already installed ($(aoe --version 2>/dev/null || echo present))"
-  elif [[ "$OS" == "Darwin" ]]; then
-    brew install aoe
-  else
-    curl -fsSL "$installer" | bash
-  fi
-}
-
 install_herdr() {
   # herdr: terminal workspace manager for coding agents. Hosts Octopilot's
   # workers, orchestrator and dashboard. https://herdr.dev
@@ -844,7 +822,6 @@ do_install() {
   install_nvm               # must come before anything that needs node/npx/npm
   install_ai_agents         # claude-code and pi need node from the step above
   install_apm || return 1   # apm manages skills
-  install_aoe
   install_herdr             # after install_ai_agents: wires agent-state hooks
   install_uv
   git submodule update --init --recursive
@@ -866,7 +843,6 @@ do_update() {
   install_nvm
   install_ai_agents
   install_apm || return 1
-  install_aoe update
   install_herdr update
   install_uv
   symlink
@@ -885,7 +861,6 @@ do_update_ai() {
   install_nvm
   install_ai_agents
   install_apm || return 1
-  install_aoe update
   install_herdr update
   install_uv
   install_rtk update

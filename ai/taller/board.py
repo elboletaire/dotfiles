@@ -8,7 +8,7 @@
 - The list (taller.collect()): projects in four sections -- 🔴 Et necessita
   (an agent waiting on you, broken, or done and not looked at yet),
   🟡 Treballant, 🗂 Aparcats (newest first) and 💤 Adormits (one line until
-  `d`). Each row: its agents' glyphs (aoe ones dimmed), name, branch,
+  `d`). Each row: its agents' glyphs, name, branch,
   uncommitted (✎), unpushed (↑), no remote (⚠), worktrees, last touch.
 - The detail of the selection: path and remote, agents, the last exchange,
   the last commits, worktrees and changed files. Commits and changes are
@@ -137,7 +137,7 @@ def wrapped(prefix, text, width, max_lines, style=""):
 # ------------------------------------------------------------------- model
 
 class Model:
-    """The projects, kept fresh by background threads: herdr and aoe agents
+    """The projects, kept fresh by background threads: herdr agents
     every [ui].agents_secs, a full collect every [ui].git_secs (or when
     kicked), and the selected project's details on demand."""
 
@@ -284,16 +284,11 @@ def row_flags(p):
 
 
 def agent_glyphs(agents):
-    """One glyph per agent: herdr ones in their state's colour, then the aoe
-    ones dimmed with a small "aoe" after them."""
+    """One glyph per agent, in its state's colour."""
     t = Text(no_wrap=True)
-    for a in sorted(agents, key=lambda a: a["host"] != "herdr"):
+    for a in agents:
         g, style = AGENT_GLYPH.get(a["state"], AGENT_GLYPH["unknown"])
-        if a["host"] == "aoe":
-            style = "dim " + style
         t.append(g, style=style)
-    if any(a["host"] == "aoe" for a in agents):
-        t.append("ᵃᵒᵉ", style="dim")
     return t
 
 
@@ -518,10 +513,10 @@ class Board:
         if not p["agents"]:
             out.append(line(("  cap · ⏎ reprèn l'última conversa a herdr",
                              "dim")))
-        for a in sorted(p["agents"], key=lambda a: a["host"] != "herdr"):
+        for a in p["agents"]:
             g, style = AGENT_GLYPH.get(a["state"], AGENT_GLYPH["unknown"])
             t = line("  ", (g + " ", style), (a["name"], "bold"),
-                     (f"  {a['tool'] or '?'} · {a['host']} · ", "dim"),
+                     (f"  {a['tool'] or '?'} · ", "dim"),
                      (STATE_LABEL.get(a["state"], a["state"]),
                       style if a["state"] in taller.NEED_STATES else "dim"))
             if a["path"] != p["path"]:
@@ -751,32 +746,16 @@ class Board:
         if a:
             self.run(f"→ {a['name']}…", lambda s: taller.focus(a))
             return
-        aoe = [x for x in p["agents"] if x["host"] == "aoe"]
-        busy = [x for x in aoe if x["state"] in ("working", "waiting")]
-        if busy and p.get("last_exchange"):
-            self.say(f"la sessió aoe «{busy[0]['name']}» està "
-                     f"{STATE_LABEL[busy[0]['state']]}: acaba-la o atura-la "
-                     "abans de reprendre la conversa a herdr")
-            return
         ex = p.get("last_exchange")
         name = taller.agent_name(p["name"], self.herdr_names())
         what = (f"{ex.get('tool') or 'claude'} --continue"
                 + (f" («{clip(ex['title'], 40)}»)" if ex.get("title") else "")
                 if ex else "un claude nou (cap conversa prèvia)")
-        preview = self.where(p)
-        if aoe:
-            preview += (f" · la sessió aoe «{aoe[0]['name']}» hi segueix "
-                        "viva: atura-la després")
         if not self.ask("resume", "\r", f"prem ⏎ de nou per obrir {name} a "
-                        f"herdr: {what}", preview=preview):
+                        f"herdr: {what}", preview=self.where(p)):
             return
-        after = ""
-        if aoe:
-            after = (" · la sessió aoe «" + aoe[0]["name"] + "» ja es pot "
-                     "aturar (aoe session stop " + aoe[0]["id"] + ")")
         self.run(f"obrint {p['name']} a herdr…",
-                 lambda s: taller.resume_project(p, self.agent_args(), s),
-                 after)
+                 lambda s: taller.resume_project(p, self.agent_args(), s))
 
     def fresh(self, p):
         if not self.ask("fresh", "n", f"prem n de nou per engegar un claude "

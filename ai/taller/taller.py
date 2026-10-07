@@ -43,8 +43,7 @@ TAIL_CHUNK = 64 * 1024
 TAIL_MAX = 4 * 1024 * 1024
 TEXT_MAX = 200
 
-# Contract states; aoe and herdr each speak their own dialect.
-AOE_STATE = {"running": "working", "waiting": "waiting", "idle": "idle"}
+# herdr's agent states in the contract's words.
 HERDR_STATE = {"working": "working", "blocked": "waiting", "done": "done",
                "idle": "idle"}
 
@@ -116,11 +115,6 @@ def norm(p):
 
 def within(path, root):
     return path == root or path.startswith(root.rstrip("/") + "/")
-
-
-def trashed(path):
-    """aoe parks removed worktrees in .worktrees/.aoe-trash/<id>."""
-    return "/.aoe-trash/" in path + "/"
 
 
 def short(text, n=TEXT_MAX):
@@ -200,7 +194,7 @@ def status(path):
 
 def worktree_paths(root):
     """Linked worktrees of `root` (not the main checkout itself), skipping the
-    ones aoe trashed or that are gone from disk. None when git failed."""
+    ones gone from disk. None when git failed."""
     code, out, _ = git(root, "worktree", "list", "--porcelain")
     if code != 0:
         return None
@@ -209,7 +203,7 @@ def worktree_paths(root):
         fields = dict(line.partition(" ")[::2] for line in block.splitlines())
         p = norm(fields.get("worktree", ""))
         if (not p or p == root or "bare" in fields or "prunable" in fields
-                or trashed(p) or not os.path.isdir(p)):
+                or not os.path.isdir(p)):
             continue
         paths.append(p)
     return paths
@@ -239,36 +233,6 @@ def _json(text):
         return None
 
 
-def aoe_agents():
-    """Live aoe sessions as contract Agents. `aoe ps` only lists sessions with
-    a running process: a live session missing there is stopped, or errored
-    when `aoe session show` says so."""
-    if not shutil.which("aoe"):
-        return []
-    with ThreadPoolExecutor(2) as ex:
-        f_list = ex.submit(sh, ["aoe", "list", "--json"], timeout=AGENT_TIMEOUT)
-        f_ps = ex.submit(sh, ["aoe", "ps", "--json"], timeout=AGENT_TIMEOUT)
-        rows = _json(f_list.result()[1]) or []
-        ps = {r.get("session"): r for r in _json(f_ps.result()[1]) or []
-              if isinstance(r, dict)}
-    rows = [r for r in rows if isinstance(r, dict) and r.get("state") == "live"
-            and r.get("path") and not trashed(r["path"])]
-
-    def state_of(r):
-        if r["id"] in ps:
-            return AOE_STATE.get(ps[r["id"]].get("state"), "unknown")
-        code, out, _ = sh(["aoe", "session", "show", r["id"], "--json"],
-                          timeout=AGENT_TIMEOUT)
-        shown = _json(out) or {}
-        return "error" if shown.get("status") == "error" else "stopped"
-
-    with ThreadPoolExecutor(WORKERS) as ex:
-        states = list(ex.map(state_of, rows))
-    return [{"host": "aoe", "id": r["id"], "name": r.get("title") or r["id"],
-             "tool": r.get("tool") or "", "path": norm(r["path"]), "state": s,
-             "pane": None} for r, s in zip(rows, states)]
-
-
 def herdr_agents():
     """herdr agents as contract Agents. The server is often not running
     (server_not_running, exit 1): that is simply no agents."""
@@ -292,11 +256,9 @@ def herdr_agents():
 
 
 def list_agents():
-    """Every agent on both hosts. Cheap enough (~0.2s) for the board's fast
-    agent refresh; pair with match_agents() to update projects in place."""
-    with ThreadPoolExecutor(2) as ex:
-        a, h = ex.submit(aoe_agents), ex.submit(herdr_agents)
-        return a.result() + h.result()
+    """Every herdr agent. Cheap enough (~0.2s) for the board's fast agent
+    refresh; pair with match_agents() to update projects in place."""
+    return herdr_agents()
 
 
 def match_agents(projects, agents):
@@ -523,7 +485,7 @@ def add_strays(seeds, agents):
         if root:
             seeds.setdefault(root, {"git": True})
         else:
-            seeds.setdefault(a["path"], {"git": False, "name": a["name"]})
+            seeds.setdefault(a["path"], {"git": False})
     return seeds
 
 
@@ -652,22 +614,15 @@ def _run(argv, timeout=60):
 
 
 def send(agent, text):
-    if agent["host"] == "herdr":
-        return _run(["herdr", "agent", "prompt", _herdr_target(agent), text])
-    return _run(["aoe", "send", agent["id"], text])
+    return _run(["herdr", "agent", "prompt", _herdr_target(agent), text])
 
 
 def focus(agent):
-    """herdr can bring an agent forward; aoe cannot, the board attaches."""
-    if agent["host"] != "herdr":
-        return False, "aoe: " + shlex.join(attach_cmd(agent))
     return _run(["herdr", "agent", "focus", _herdr_target(agent)], timeout=10)
 
 
 def attach_cmd(agent):
-    if agent["host"] == "herdr":
-        return ["herdr", "agent", "attach", _herdr_target(agent)]
-    return ["aoe", "session", "attach", agent["id"]]
+    return ["herdr", "agent", "attach", _herdr_target(agent)]
 
 
 def resume_cmd(project):
@@ -886,8 +841,7 @@ def open_plan(project):
 
 
 def open_in_herdr(project):
-    """A new herdr workspace at the project running its last conversation
-    (the same one an aoe session there holds, since it is the same folder).
+    """A new herdr workspace at the project running its last conversation.
     -> (ok, message)."""
     plan = open_plan(project)
     if dry_run():
@@ -972,12 +926,11 @@ def herdr_names():
     return {a["name"] for a in herdr_agents()}
 
 
-def pick_agent(p, host="herdr"):
+def pick_agent(p):
     """The project's agent to go to: one that wants you, else a working
     one, else any."""
     rank = {"waiting": 0, "error": 0, "done": 1, "working": 2}
-    mine = [a for a in p["agents"] if a["host"] == host]
-    return min(mine, key=lambda a: rank.get(a["state"], 3), default=None)
+    return min(p["agents"], key=lambda a: rank.get(a["state"], 3), default=None)
 
 
 def project_workspace(p):

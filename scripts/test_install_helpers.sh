@@ -729,7 +729,6 @@ MOCK15
 install_packages() { return 0; }
 install_nvm() { return 0; }
 install_ai_agents() { return 0; }
-install_aoe() { return 0; }
 install_rtk() { return 0; }
 symlink() { return 0; }
 symlink_config() { return 0; }
@@ -929,10 +928,10 @@ REAL_LOCKFILE="$(cd "$(dirname "$0")/.." && pwd)/ai/apm.lock.yaml"
 if [ -f "$REAL_LOCKFILE" ]; then
   names=$(_tracked_skill_names "$REAL_LOCKFILE")
   count=$(echo "$names" | wc -l)
-  if [ "$count" -eq 14 ]; then
-    pass "Real lockfile: exactly 14 skill names extracted"
+  if [ "$count" -eq 13 ]; then
+    pass "Real lockfile: exactly 13 skill names extracted"
   else
-    fail "Real lockfile: expected exactly 14 skill names, got $count"
+    fail "Real lockfile: expected exactly 13 skill names, got $count"
   fi
 else
   pass "Real lockfile not available at $REAL_LOCKFILE; synthetic test already passed"
@@ -948,7 +947,7 @@ fi
 echo ""
 echo "=== Test 23: real manifest/lock contain the exact pinned migration set ==="
 expected_names=$(printf '%s\n' \
-  aoe brainstorming context7 \
+  brainstorming context7 \
   executing-plans find-skills git-commit github-issues herdr \
   obscura-browser skill-creator systematic-debugging \
   test-driven-development using-superpowers writing-plans | sort)
@@ -959,10 +958,10 @@ else
   fail "Real lockfile skill set differs from the expected migration set"
 fi
 REAL_MANIFEST="$(dirname "$REAL_LOCKFILE")/apm.yml"
-if [ "$(grep -c '^[[:space:]]*ref: [0-9a-f]\{40\}$' "$REAL_MANIFEST")" -eq 14 ]; then
-  pass "Manifest pins all 14 dependencies to full commit SHAs"
+if [ "$(grep -c '^[[:space:]]*ref: [0-9a-f]\{40\}$' "$REAL_MANIFEST")" -eq 13 ]; then
+  pass "Manifest pins all 13 dependencies to full commit SHAs"
 else
-  fail "Manifest must contain 14 full-SHA ref pins"
+  fail "Manifest must contain 13 full-SHA ref pins"
 fi
 
 echo ""

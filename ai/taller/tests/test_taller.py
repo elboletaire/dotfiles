@@ -1,5 +1,5 @@
 """Tests for taller.py against real throwaway git repos, fake transcripts
-under a temp HOME and fake aoe/herdr executables on PATH."""
+under a temp HOME and a fake herdr executable on PATH."""
 import json
 import os
 import subprocess
@@ -53,7 +53,7 @@ def fake_bin(d, name, script):
 
 class TallerCase(unittest.TestCase):
     """Builds a small world: src/ with repos, an extra repo, a hidden one, a
-    non-repo folder with an aoe agent, transcripts, fake aoe and herdr."""
+    non-repo folder with an agent, transcripts and a fake herdr."""
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -90,7 +90,7 @@ class TallerCase(unittest.TestCase):
         # extra: outside the roots.
         self.extra = os.path.join(t, "elsewhere", "extra")
         make_repo(self.extra)
-        # docker: not a repo, an aoe agent runs there.
+        # docker: not a repo, an agent runs there.
         self.docker = os.path.join(t, "docker")
         os.makedirs(self.docker)
 
@@ -99,24 +99,19 @@ class TallerCase(unittest.TestCase):
             "taller": {"roots": [self.src], "extra": [self.extra],
                        "hide": ["hidden"], "dormant_days": 14},
         }
-        self.aoe_list = [
-            {"id": "a1", "title": "Alpha WT", "path": self.wt, "tool": "claude",
-             "state": "live"},
-            {"id": "a2", "title": "*arr", "path": self.docker, "tool": "claude",
-             "state": "live"},
-            {"id": "a3", "title": "Beta", "path": self.beta + "/", "tool": "pi",
-             "state": "live"},
-            {"id": "a4", "title": "Gone", "path": self.alpha + "/.worktrees/.aoe-trash/a4",
-             "tool": "claude", "state": "trashed",
-             "worktree": json.dumps({"branch": "x"})},
-            {"id": "a5", "title": "Extra", "path": self.extra, "tool": "claude",
-             "state": "live"},
-        ]
-        self.aoe_ps = [{"session": "a1", "state": "running"},
-                       {"session": "a2", "state": "waiting"}]
         self.herdr_out = {"result": {"agents": [
             {"name": "ha", "agent": "pi", "agent_status": "blocked",
-             "workspace_id": "w1", "pane_id": "p1", "cwd": self.alpha}]}}
+             "workspace_id": "w1", "pane_id": "p1", "cwd": self.alpha},
+            {"name": "alpha-wt", "agent": "claude", "agent_status": "working",
+             "workspace_id": "w2", "pane_id": "p2", "cwd": self.wt},
+            {"name": "arr", "agent": "claude", "agent_status": "blocked",
+             "workspace_id": "w3", "pane_id": "p3", "cwd": self.docker},
+            {"name": "beta", "agent": "pi", "agent_status": "idle",
+             "workspace_id": "w4", "pane_id": "p4", "cwd": self.beta + "/"},
+            {"name": "extra", "agent": "claude", "agent_status": "done",
+             "workspace_id": "w5", "pane_id": "p5", "cwd": self.extra},
+            {"name": "nocwd", "agent": "claude", "agent_status": "idle",
+             "workspace_id": "w9", "pane_id": "p9"}]}}
         self.herdr_running = True
         self.env = mock.patch.dict(os.environ, {
             "HOME": self.home, "PATH": self.bin + os.pathsep + os.environ["PATH"],
@@ -127,19 +122,8 @@ class TallerCase(unittest.TestCase):
 
     def fakes(self):
         d = os.path.join(self.t, "canned")
-        write(os.path.join(d, "list.json"), json.dumps(self.aoe_list))
-        write(os.path.join(d, "ps.json"), json.dumps(self.aoe_ps))
-        write(os.path.join(d, "show.json"), json.dumps({"status": "error"}))
         write(os.path.join(d, "herdr.json"), json.dumps(self.herdr_out))
         log = os.path.join(self.t, "calls.log")
-        fake_bin(self.bin, "aoe", f"""echo "aoe $*" >> {log}
-case "$1" in
-  list) cat {d}/list.json ;;
-  ps) cat {d}/ps.json ;;
-  session) [ "$2" = show ] && [ "$3" = a5 ] && cat {d}/show.json || echo '{{"status":"stopped"}}' ;;
-  *) exit 3 ;;
-esac
-""")
         if self.herdr_running:
             fake_bin(self.bin, "herdr", f"""echo "herdr $*" >> {log}
 [ "$1 $2" = "agent list" ] && cat {d}/herdr.json || exit 3
@@ -159,9 +143,9 @@ exit 1
 class DiscoveryTest(TallerCase):
     def test_roots_extra_hide_and_agent_folders(self):
         ps = self.collect()
-        self.assertEqual(set(ps), {"alpha", "beta", "extra", "*arr"})
+        self.assertEqual(set(ps), {"alpha", "beta", "extra", "docker"})
         self.assertNotIn("plain", ps)  # not a repo, no agent
-        arr = ps["*arr"]
+        arr = ps["docker"]
         self.assertFalse(arr["git"])
         self.assertEqual(arr["path"], self.docker)
         self.assertIn("no_git", arr["flags"])
@@ -186,11 +170,12 @@ class DiscoveryTest(TallerCase):
         make_repo(other)
         owt = os.path.join(other, ".worktrees", "w")
         run("git", "worktree", "add", "-q", "-b", "w", owt, cwd=other)
-        self.aoe_list.append({"id": "a6", "title": "Other", "path": owt,
-                              "tool": "claude", "state": "live"})
+        self.herdr_out["result"]["agents"].append(
+            {"name": "other", "agent": "claude", "agent_status": "idle",
+             "workspace_id": "w6", "pane_id": "p6", "cwd": owt})
         ps = self.collect()
         self.assertEqual(ps["other"]["path"], other)
-        self.assertEqual([a["id"] for a in ps["other"]["agents"]], ["a6"])
+        self.assertEqual([a["id"] for a in ps["other"]["agents"]], ["w6"])
 
 
 class GitStateTest(TallerCase):
@@ -266,23 +251,24 @@ class AgentsTest(TallerCase):
     def test_states_and_matching(self):
         ps = self.collect()
         alpha = {a["id"]: a for a in ps["alpha"]["agents"]}
-        self.assertEqual(alpha["a1"]["state"], "working")       # running
-        self.assertEqual(alpha["a1"]["path"], self.wt)
-        self.assertEqual(alpha["w1"]["state"], "waiting")       # herdr blocked
+        self.assertEqual(alpha["w2"]["state"], "working")
+        self.assertEqual(alpha["w2"]["path"], self.wt)
+        self.assertEqual(alpha["w1"]["state"], "waiting")       # blocked
         self.assertEqual(alpha["w1"]["pane"], "p1")
         self.assertEqual(alpha["w1"]["host"], "herdr")
-        self.assertEqual(ps["*arr"]["agents"][0]["state"], "waiting")
-        self.assertEqual(ps["beta"]["agents"][0]["state"], "stopped")  # not in ps
-        self.assertEqual(ps["extra"]["agents"][0]["state"], "error")   # show: error
+        self.assertEqual(ps["docker"]["agents"][0]["state"], "waiting")
+        self.assertEqual(ps["beta"]["agents"][0]["state"], "idle")
+        self.assertEqual(ps["extra"]["agents"][0]["state"], "done")
         ids = [a["id"] for p in ps.values() for a in p["agents"]]
-        self.assertNotIn("a4", ids)  # trashed
+        self.assertNotIn("w9", ids)  # no cwd
 
     def test_herdr_not_running(self):
         self.herdr_running = False
         t0 = time.time()
         ps = self.collect()
         self.assertLess(time.time() - t0, 10)
-        self.assertEqual([a["id"] for a in ps["alpha"]["agents"]], ["a1"])
+        self.assertEqual(ps["alpha"]["agents"], [])
+        self.assertNotIn("docker", ps)  # only its agent brought it in
 
     def test_no_binaries(self):
         with mock.patch.object(taller.shutil, "which", return_value=None):
@@ -409,27 +395,21 @@ class TranscriptTest(TallerCase):
 
 
 class ActionsTest(unittest.TestCase):
-    aoe = {"host": "aoe", "id": "s1", "name": "Alpha", "tool": "claude",
-           "path": "/x", "state": "idle", "pane": None}
     herdr = {"host": "herdr", "id": "w1", "name": "ha", "tool": "pi",
              "path": "/x", "state": "idle", "pane": "p1"}
 
     def test_dry_run_runs_nothing(self):
         with mock.patch.dict(os.environ, {"ARXIU_DRY_RUN": "1"}), \
                 mock.patch.object(taller.subprocess, "run") as sp:
-            ok, msg = taller.send(self.aoe, "hola món")
-            self.assertTrue(ok)
-            self.assertEqual(msg, "dry-run: aoe send s1 'hola món'")
             ok, msg = taller.send(self.herdr, "hi")
+            self.assertTrue(ok)
             self.assertEqual(msg, "dry-run: herdr agent prompt ha hi")
             ok, msg = taller.focus(self.herdr)
             self.assertEqual((ok, msg), (True, "dry-run: herdr agent focus ha"))
-            ok, _ = taller.focus(self.aoe)
-            self.assertFalse(ok)
             sp.assert_not_called()
 
     def test_attach_and_resume(self):
-        self.assertEqual(taller.attach_cmd(self.aoe), ["aoe", "session", "attach", "s1"])
+        self.assertEqual(taller.attach_cmd(self.herdr), ["herdr", "agent", "attach", "ha"])
         self.assertEqual(taller.resume_cmd({"path": "/p", "last_exchange": None}),
                          ["env", "-C", "/p", "claude", "--continue"])
 
@@ -626,12 +606,12 @@ class BoardLogicTest(unittest.TestCase):
 
     def test_sections(self):
         need = [project("w", agents=[agent("waiting")]),
-                project("e", agents=[agent("error", host="aoe")]),
+                project("e", agents=[agent("error")]),
                 project("d", agents=[agent("done"), agent("working")])]
         working = project("k", agents=[agent("working"), agent("idle")])
         parked = [project("old", last_touch=100),
                   project("new", last_touch=200, agents=[agent("idle")])]
-        dormant = project("z", dormant=True, agents=[agent("stopped", host="aoe")])
+        dormant = project("z", dormant=True, agents=[agent("stopped")])
         got = taller.sections(need + [working] + parked + [dormant])
         self.assertEqual(list(got), ["need", "working", "parked", "dormant"])
         self.assertEqual({p["name"] for p in got["need"]}, {"w", "e", "d"})
@@ -659,12 +639,11 @@ class BoardLogicTest(unittest.TestCase):
 
     def test_pick_agent(self):
         p = project(agents=[agent("idle", name="i"), agent("working", name="w"),
-                            agent("done", name="d"),
-                            agent("waiting", host="aoe", name="x")])
+                            agent("done", name="d")])
         self.assertEqual(taller.pick_agent(p)["name"], "d")
         p["agents"].append(agent("waiting", name="b"))
         self.assertEqual(taller.pick_agent(p)["name"], "b")
-        self.assertIsNone(taller.pick_agent(project(agents=[agent("idle", host="aoe")])))
+        self.assertIsNone(taller.pick_agent(project(agents=[])))
 
     def test_web_url_and_browser(self):
         self.assertEqual(taller.web_url("github:o/r"), "https://github.com/o/r")
@@ -749,7 +728,6 @@ case "$1 $2" in
   *) exit 3 ;;
 esac
 """)
-        fake_bin(self.bin, "aoe", "exit 1\n")
         self.herdr_agents([])
         self.workspaces([])
         self.start(0)
