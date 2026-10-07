@@ -29,6 +29,7 @@ reads the projects fresh (about 2 seconds).
 | `python3 $T resume <project> [--worktree <branch>]` | its last conversation again, as a named herdr agent |
 | `python3 $T new <project> [--worktree <branch>] [--prompt <text>]` | a fresh claude there |
 | `python3 $T worktree <project> <branch> [--prompt <text>]` | fetch, a new branch off the current one in `<repo>/.worktrees/`, its own workspace and claude |
+| `python3 $T remove <project> --worktree <branch> [--force]` | close the worktree's herdr session and workspace, `git worktree remove` it and delete its local branch; never a whole project. Refuses, saying what would be lost, when it has uncommitted files or commits on no remote, unless `--force` |
 | `python3 $T prompt <agent> <text>` | type a message into a session and send it |
 | `herdr agent read <agent>` | what a session's screen shows now (read-only) |
 
@@ -42,8 +43,10 @@ new sessions appear on the board.
 Ask, with the exact command, and wait for a yes before:
 
 - anything that publishes: `git push`, opening or commenting on PRs/issues;
-- anything that deletes or rewrites: removing a worktree or a branch,
-  `git reset`, `git clean`, closing a session or a workspace;
+- anything that deletes or rewrites: removing a worktree or a branch
+  (`remove`), `git reset`, `git clean`, closing a session or a workspace.
+  Run `remove` without `--force` first; when it refuses, tell the user
+  what would be lost and add `--force` only on a yes to exactly that;
 - `prompt`, or `--prompt` on `new` / `worktree`: writing into a session
   is acting in the user's name;
 - editing files in a project: that is its session's job.

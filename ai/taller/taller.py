@@ -739,7 +739,9 @@ def sleep_plan(f, whole, agents, spaces, own=None):
     with every worktree -- or that folder alone. Closes each workspace its
     agents run in, and the one labelled after it (the project's name, a
     worktree's branch title); a workspace that also holds agents from
-    elsewhere keeps living, only these agents' panes close. Never `own`,
+    elsewhere, or that herdr keeps for another checkout (the repo's, where
+    a worktree's agent may have landed), keeps living: only these agents'
+    panes close. Never `own`,
     the board's workspace. `agents`: every herdr agent (herdr_agents()),
     `spaces`: herdr's workspace list."""
     if whole:
@@ -765,13 +767,14 @@ def sleep_plan(f, whole, agents, spaces, own=None):
     ids += [w["workspace_id"] for w in spaces if w.get("workspace_id")
             and (checkout_of(w) in folders if checkout_of(w)
                  else w.get("label") in labels)]
+    checkout = {w.get("workspace_id"): checkout_of(w) for w in spaces}
     steps, seen = [], set()
     for wid in ids:
         if wid in seen or wid == own:
             continue
         seen.add(wid)
         others = [a for a in agents if a["id"] == wid and not mine(a)]
-        if others:
+        if others or checkout.get(wid) not in (None, *folders):
             steps += [["herdr", "pane", "close", a["pane"]] for a in ours
                       if a["id"] == wid and a.get("pane")]
         else:
@@ -811,6 +814,83 @@ def wake_up(path):
         return True, f"dry-run: desperta {path}"
     save_sleep(data)
     return True, f"{os.path.basename(path)} despert"
+
+
+# ---------------------------------------------------------------- remove
+#
+# A worktree removed from the board (`x`) or `taller.py remove`: its herdr
+# side closed as sleep closes it, `git worktree remove` and its local branch
+# deleted. Never a whole project. Uncommitted files or commits on no remote
+# would be lost, so then it takes forcing.
+
+def removal_risks(f):
+    """What removing the worktree folder() `f` would lose, read live: ["N
+    fitxers sense commit", "N commits que no són a cap remot"]."""
+    risks = []
+    st = status(f["path"])
+    if st is None:
+        return ["no s'ha pogut llegir el git status"]
+    if st["dirty"]:
+        risks.append(plural_of(st["dirty"], "fitxer sense commit",
+                               "fitxers sense commit"))
+    code, out, _ = git(f["path"], "rev-list", "--count", "HEAD", "--not",
+                       "--remotes")
+    if code != 0:
+        risks.append("no s'ha pogut comprovar els commits sense pujar")
+    elif int(out or 0):
+        risks.append(plural_of(int(out), "commit que no és a cap remot",
+                               "commits que no són a cap remot"))
+    return risks
+
+
+def remove_plan(f, force=False):
+    """The git steps that remove the worktree folder() `f`: the worktree,
+    then its local branch (none when detached)."""
+    repo = f["repo"]
+    steps = [["git", "-C", repo, "worktree", "remove"]
+             + (["--force"] if force else []) + [f["path"]]]
+    if f["branch"]:
+        steps.append(["git", "-C", repo, "branch", "-D", f["branch"]])
+    return steps
+
+
+def remove_worktree(f, force=False, status=None):
+    """Close the worktree's herdr side (see sleep_plan), remove it and delete
+    its local branch. Refuses the main checkout, and a worktree with
+    removal_risks() unless `force`. -> (ok, message)."""
+    status = status or (lambda msg: None)
+    if not f.get("worktree"):
+        return False, "només es poden eliminar worktrees, no projectes"
+    risks = removal_risks(f)
+    if risks and not force:
+        return False, ("té " + ", ".join(risks)
+                       + "; cal forçar-ho per eliminar-lo")
+    plan = sleep_plan(f, False, herdr_agents(), workspaces(),
+                      os.environ.get("HERDR_WORKSPACE_ID")) \
+        + remove_plan(f, force)
+    if dry_run():
+        return True, "dry-run: " + " ; ".join(shlex.join(a) for a in plan)
+    env = dict(os.environ, GIT_TERMINAL_PROMPT="0", LC_ALL="C")
+    for step in plan:
+        if step[0] == "herdr":
+            status(f"herdr {step[1]} close {step[3]}…")
+            code, data, raw = herdr(step[1:], timeout=20)
+            if code != 0 and herdr_error(data) not in ("workspace_not_found",
+                                                        "pane_not_found"):
+                return False, (f"herdr {step[1]} close ha fallat: "
+                               f"{short(raw, 160)}")
+            continue
+        what = " ".join(step[3:5])
+        status(f"git {what}…")
+        code, out, err = sh(step, timeout=60, env=env)
+        if code != 0:
+            return False, f"git {what} ha fallat: {short(err or out, 160)}"
+    data = load_sleep()
+    if data.pop(f["path"], None) is not None:
+        save_sleep(data)
+    gone = f"{os.path.basename(f['path'])} eliminat"
+    return True, gone + (f" (i la branca {f['branch']})" if f["branch"]
+                         else "")
 
 
 def plural_of(n, one, many):
@@ -1522,12 +1602,14 @@ def cli(argv):
     import argparse
     ap = argparse.ArgumentParser(prog="taller.py")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for cmd in ("show", "resume", "new"):
+    for cmd in ("show", "resume", "new", "remove"):
         sp = sub.add_parser(cmd)
         sp.add_argument("project")
-        sp.add_argument("--worktree")
+        sp.add_argument("--worktree", required=cmd == "remove")
         if cmd == "new":
             sp.add_argument("--prompt")
+        if cmd == "remove":
+            sp.add_argument("--force", action="store_true")
     sp = sub.add_parser("worktree")
     sp.add_argument("project")
     sp.add_argument("branch")
@@ -1557,6 +1639,10 @@ def cli(argv):
                   ensure_ascii=False)
         print()
         return 0
+    if a.cmd == "remove":
+        ok, msg = remove_worktree(f, a.force)
+        print(msg if ok else f"no s'ha pogut: {msg}")
+        return 0 if ok else 1
     args = list(cfg["taller"].get("agent_args") or [])
     if a.cmd == "resume":
         ok, msg, name = resume_project(f, args, focus=False)

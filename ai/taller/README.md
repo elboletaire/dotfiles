@@ -91,6 +91,7 @@ git every `[ui].git_secs` and right after an action.
 | `g` | its `git log --graph` and `git status` (herdr popup, `q` closes) |
 | `o` | the remote in the browser (`wslview`, `explorer.exe`, `xdg-open`) |
 | `z` | put it to sleep (second `z` confirms): on a project, the main checkout with every worktree; on a worktree, that one alone. Closes its herdr workspaces (only its agents' panes, in a workspace other agents share; never the board's own), warns about working agents and uncommitted files (they stay), and lists the folder in `$XDG_STATE_HOME/taller/sleep.json` so it shows as dormant whatever its age. Anything done there afterwards -- a commit or a conversation, or an agent started (`⏎`, `n`, `v`) -- wakes it. On something asleep, `z` wakes it right away. |
+| `x` | on a worktree only (a whole project is never removed from here): closes its herdr session and workspace (only its agents' panes, in a workspace other agents share or kept for another checkout), `git worktree remove` and `git branch -D` of its local branch. Second `x` confirms. When it has uncommitted files or commits on no remote, `x` only warns, saying what would be lost, and it takes `X` twice to force it (`git worktree remove --force`). |
 | `d` | show/hide the dormant projects |
 | `/` | filter by name (`Esc` clears) |
 | `u` | refresh now |

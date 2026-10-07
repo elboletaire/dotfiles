@@ -386,6 +386,42 @@ class ActTest(BoardCase):
         self.assertIn("despert", self.b.flash[0])
         self.assertEqual(taller.load_sleep(), {})
 
+    def test_remove_only_offers_worktrees(self):
+        self.go("alpha")
+        self.assertNotIn(" x elimina ", self.b.footer().plain)
+        self.keys("x")
+        self.assertIsNone(self.b.confirm)
+        self.assertIn("x només elimina worktrees", self.b.flash[0])
+        self.go_path(self.wt)
+        self.assertIn(" x elimina ", self.b.footer().plain)
+
+    def test_remove_a_risky_worktree_takes_X(self):
+        # feat-x has two untracked files and alpha's unpushed commit.
+        self.go_path(self.wt)
+        with self.dry():
+            self.keys("xx")
+            self.assertFalse(self.b.busy)
+            self.assertIn("⚠ feat-x té 2 fitxers sense commit, 1 commit que "
+                          "no és a cap remot", self.b.confirm["msg"])
+            self.assertIn("Prem X dues vegades", self.b.confirm["msg"])
+            self.keys("X")
+            self.wait()
+        self.assertIn(f"worktree remove --force {self.wt}", self.b.flash[0])
+        self.assertIn("branch -D feat/x", self.b.flash[0])
+
+    def test_remove_a_clean_worktree_with_x_twice(self):
+        self.go_path(self.wt)
+        with self.dry(), mock.patch.object(board.taller, "removal_risks",
+                                           return_value=[]):
+            self.keys("x")
+            self.assertIn("prem x de nou per eliminar feat-x",
+                          self.b.confirm["msg"])
+            self.assertIn("git branch -D feat/x", self.b.confirm["preview"])
+            self.keys("x")
+            self.wait()
+        self.assertIn(f"worktree remove {self.wt}", self.b.flash[0])
+        self.assertNotIn("--force", self.b.flash[0])
+
     def test_moving_drops_the_confirmation(self):
         self.go("beta")
         self.keys("n")

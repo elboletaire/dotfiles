@@ -359,6 +359,20 @@ class SleepTest(TallerCase):
             taller.sleep_plan(taller.folder(p, self.wt), False, [], spaces),
             [["herdr", "workspace", "close", "w7"]])
 
+    def test_a_worktree_agent_in_the_repos_workspace_closes_alone(self):
+        p = self.proj()
+        agents = [taller_agent("idle", self.wt, "w6", "w6:p2")]
+        spaces = [{"workspace_id": "w6", "label": "alpha",
+                   "worktree": {"checkout_path": self.alpha}}]
+        self.assertEqual(
+            taller.sleep_plan(taller.folder(p, self.wt), False, agents,
+                              spaces),
+            [["herdr", "pane", "close", "w6:p2"]])
+        # Asleep whole, the repo's workspace is the project's own.
+        self.assertEqual(
+            taller.sleep_plan(taller.folder(p), True, agents, spaces),
+            [["herdr", "workspace", "close", "w6"]])
+
     def test_wake_up(self):
         taller.save_sleep({self.wt: 1})
         self.assertTrue(taller.wake_up(self.wt)[0])
@@ -395,6 +409,85 @@ class WorkspaceTest(TallerCase):
         self.assertEqual(self.ws([own], self.wt), "w7")
         self.assertEqual(self.ws([{"workspace_id": "w8", "label": "X"}],
                                  self.wt), "w8")
+
+
+class RemoveTest(TallerCase):
+    def setUp(self):
+        super().setUp()
+        self.log = os.path.join(self.t, "calls.log")
+        d = os.path.join(self.t, "canned")
+        write(os.path.join(d, "herdr.json"), json.dumps(self.herdr_out))
+        fake_bin(self.bin, "herdr", f"""echo "herdr $*" >> {self.log}
+[ "$1 $2" = "agent list" ] && cat {d}/herdr.json
+exit 0
+""")
+        # feat/y: off the remote's main, clean and with nothing unpushed.
+        self.wy = os.path.join(self.alpha, ".worktrees", "feat-y")
+        run("git", "worktree", "add", "-q", "-b", "feat/y", self.wy,
+            "origin/main", cwd=self.alpha)
+
+    def find(self, wt=None):
+        ps = taller.collect(self.cfg)
+        return taller.find_folder(ps, "alpha", wt)
+
+    def branches(self):
+        return subprocess.run(["git", "-C", self.alpha, "branch",
+                               "--format=%(refname:short)"],
+                              capture_output=True, text=True).stdout.split()
+
+    def test_risks(self):
+        self.assertEqual(taller.removal_risks(self.find("feat/x")),
+                         ["2 fitxers sense commit",
+                          "1 commit que no és a cap remot"])
+        self.assertEqual(taller.removal_risks(self.find("feat/y")), [])
+
+    def test_a_clean_worktree_goes_with_its_branch(self):
+        ok, msg = taller.remove_worktree(self.find("feat/y"))
+        self.assertTrue(ok, msg)
+        self.assertEqual(msg, "feat-y eliminat (i la branca feat/y)")
+        self.assertFalse(os.path.exists(self.wy))
+        self.assertNotIn("feat/y", self.branches())
+
+    def test_risky_takes_forcing(self):
+        f = self.find("feat/x")
+        ok, msg = taller.remove_worktree(f)
+        self.assertFalse(ok)
+        self.assertIn("2 fitxers sense commit", msg)
+        self.assertIn("cal forçar-ho", msg)
+        self.assertTrue(os.path.exists(self.wt))
+        self.assertIn("feat/x", self.branches())
+        taller.save_sleep({self.wt: 1})
+        ok, msg = taller.remove_worktree(f, force=True)
+        self.assertTrue(ok, msg)
+        self.assertFalse(os.path.exists(self.wt))
+        self.assertNotIn("feat/x", self.branches())
+        # Its agent's workspace closed, and its sleep entry gone.
+        with open(self.log) as fh:
+            self.assertIn("herdr workspace close w2", fh.read())
+        self.assertEqual(taller.load_sleep(), {})
+
+    def test_never_a_project(self):
+        ok, msg = taller.remove_worktree(self.find())
+        self.assertFalse(ok)
+        self.assertIn("només es poden eliminar worktrees", msg)
+        self.assertTrue(os.path.isdir(self.alpha))
+
+    def test_cli(self):
+        with self.assertRaises(SystemExit), \
+                mock.patch("sys.stderr", io.StringIO()):
+            taller.cli(["remove", "alpha"])
+        out = io.StringIO()
+        with mock.patch("sys.stdout", out), \
+                mock.patch.dict(os.environ, {"TALLER_DRY_RUN": "1"}):
+            self.assertEqual(taller.cli(["remove", "alpha", "--worktree",
+                                         "feat/x"]), 1)
+            self.assertEqual(taller.cli(["remove", "alpha", "--worktree",
+                                         "feat/x", "--force"]), 0)
+        self.assertIn("cal forçar-ho", out.getvalue())
+        self.assertIn(f"git -C {self.alpha} worktree remove --force "
+                      f"{self.wt} ; git -C {self.alpha} branch -D feat/x",
+                      out.getvalue())
+        self.assertTrue(os.path.exists(self.wt))
 
 
 class RemoteTest(unittest.TestCase):

@@ -737,6 +737,8 @@ class Board:
             if taller.web_url(p["remote"]):
                 keys.append(("o", "web"))
             keys.append(("z", "desperta" if self.slept(p) else "adorm"))
+            if p.get("worktree"):
+                keys.append(("x", "elimina"))
         if any(r[0] == "head" and r[1] == "dormant" for r in self.rows) \
                 and not self.filter:
             keys.append(("d", "amaga adormits" if self.show_dormant
@@ -805,6 +807,8 @@ class Board:
             self.open_web(p)
         elif key == "z":
             self.sleep(p)
+        elif key in ("x", "X"):
+            self.remove(p, key)
         return True
 
     def handle_input(self, key):
@@ -921,6 +925,39 @@ class Board:
             return
         self.run(f"adormint {name}…",
                  lambda s: taller.put_to_sleep(p, whole, s))
+
+    def remove(self, p, key):
+        """x: the worktree removed -- its herdr workspace closed, `git
+        worktree remove` and its local branch deleted; never a project.
+        Twice to confirm; when it would lose uncommitted files or commits
+        on no remote, x only warns and it takes X twice (forced)."""
+        if not p.get("worktree"):
+            self.say("x només elimina worktrees; un projecte, fora del tauler")
+            return
+        name = self.list_name(p)
+        risks = taller.removal_risks(p)
+        steps = ["tanca " + ", ".join(a["name"] for a in p["agents"])
+                 + " i el seu workspace"] if p["agents"] else []
+        steps.append(f"git worktree remove {home(p['path'])}")
+        if p["branch"]:
+            steps.append(f"git branch -D {p['branch']}")
+        if risks:
+            msg = (f"⚠ {name} té {', '.join(risks)}: es perdran. "
+                   f"Prem X dues vegades per forçar-ho")
+            if key == "x":
+                self.confirm = dict(action="remove", key="X",
+                                    path=self.cursor, msg=msg,
+                                    until=time.time() + CONFIRM_SECS,
+                                    preview="; ".join(steps))
+                return
+        else:
+            msg = f"prem x de nou per eliminar {name}"
+            key = "x"
+        if not self.ask("remove", key, msg, preview="; ".join(steps)):
+            return
+        force = bool(risks)
+        self.run(f"eliminant {name}…",
+                 lambda s: taller.remove_worktree(p, force, s))
 
     def where(self, p):
         a = next((x for x in p["agents"] if x["host"] == "herdr"), None)
