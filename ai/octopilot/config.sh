@@ -1,11 +1,11 @@
-# PR Autopilot configuration. Sourced by scan.sh and the pr-autopilot skill.
+# Octopilot configuration. Sourced by scan.sh and the messenger skill.
 
 # Repos where every open PR is a candidate regardless of author (canonical
 # slugs -- resolved via `gh repo view`, NOT directory names. vocdoni/ui-scaffold
 # redirects to vocdoni/vocdoni-app; using the old slug silently drops the repo).
 HOME_REPOS="vocdoni/vocdoni-app vocdoni/vocdoni.io vocdoni/vocdoni-integrator-sdk"
 
-# Where your local clones live. Autopilot treats every git repo directly under
+# Where your local clones live. Octopilot treats every git repo directly under
 # these folders (a real `.git` dir; worktrees are skipped) as "cloned", and
 # resolves its GitHub slug and base branch with `gh repo view`. Space-separated.
 CLONE_ROOTS="$HOME/src/vocdoni $HOME/src/davinci"
@@ -35,7 +35,7 @@ REVIEW_LEVEL_COMMENT="high"
 
 # Model pinned per spawned session, by the prompt that CREATES it. Written
 # explicitly onto the `claude` command line, so a worker never inherits the
-# orchestrator's model -- running autopilot on haiku still gets you opus
+# orchestrator's model -- running octopilot on haiku still gets you opus
 # workers. Later prompts (rebase, address-feedback) land in an existing
 # session and run on whatever it was spawned with; the model cannot be changed
 # without restarting the session, which would destroy its conversation.
@@ -50,7 +50,7 @@ MODEL_REVIEW_FIX='opus[1m]'        # own/assigned PR: rebase, 3 review rounds, C
 MODEL_REVIEW_COMMENT='opus[1m]'    # public review of someone else's PR
 MODEL_COLD_REVIEW=opus       # the Agent-tool review pass inside the loop
 
-# Max concurrent work/review sessions autopilot will run. Candidates above the
+# Max concurrent work/review sessions octopilot will run. Candidates above the
 # cap queue as PROPOSE rows instead of spawning.
 MAX_ACTIVE=6
 
@@ -59,11 +59,11 @@ MAX_ACTIVE=6
 # confirmation before spawning. Empty disables it.
 WIND_DOWN_AT="15:00"
 
-# How many self-review rounds autopilot runs on one PR before it stops and
+# How many self-review rounds octopilot runs on one PR before it stops and
 # hands back. Each round is one review-fix pass; the counter increments on
 # mark-reviewed, resets when a human leaves a GitHub review (mark-feedback) or
 # on `scan.sh reset-rounds <key>`. At the cap the item prints CAPPED and
-# autopilot takes no further action on it.
+# octopilot takes no further action on it.
 MAX_REVIEW_ROUNDS=3
 
 # An agent-driven item that has neither pushed nor called `heartbeat` for this
@@ -88,19 +88,19 @@ ISSUE_MAX_AGE_DAYS=120
 # sent: "herdr:<agent name>". Empty means
 # "whichever agent last ran a scan", which the scan records itself -- leave it
 # empty unless that guesses wrong.
-AUTOPILOT_ORCH=""
+OCTOPILOT_ORCH=""
 
 # Folder the herdr plugin starts the orchestrator in. Claude asks once whether
 # to trust it. ~/src holds the clones on every workstation; the skill itself
 # is global, so it works from any folder.
-AUTOPILOT_ORCH_CWD="$HOME/src"
+OCTOPILOT_ORCH_CWD="$HOME/src"
 
 # How often the dashboard re-reads GitHub (a read-only scan), in seconds. Agent
-# state and autopilot events update instantly; only PR/CI data waits for this.
+# state and octopilot events update instantly; only PR/CI data waits for this.
 DASHBOARD_REFRESH_SECS=120
 
-# AUTOPILOT_STATE_DIR in the environment points autopilot at another state
+# OCTOPILOT_STATE_DIR in the environment points octopilot at another state
 # (a sandbox, a second profile); unset, it is the usual XDG state dir.
-STATE_DIR="${AUTOPILOT_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/pr-autopilot}"
+STATE_DIR="${OCTOPILOT_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/octopilot}"
 STATE_FILE="$STATE_DIR/state.json"
 PROMPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/prompts"

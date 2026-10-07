@@ -147,7 +147,7 @@ install_aoe() {
 }
 
 install_herdr() {
-  # herdr: terminal workspace manager for coding agents. Hosts PR Autopilot's
+  # herdr: terminal workspace manager for coding agents. Hosts Octopilot's
   # workers, orchestrator and dashboard. https://herdr.dev
   # Pass "update" to upgrade even when herdr is already installed.
   local mode=${1:-} agent
@@ -178,7 +178,7 @@ install_herdr() {
 }
 
 install_uv() {
-  # uv runs PR Autopilot's dashboard with its Python deps (rich) without
+  # uv runs Octopilot's dashboard with its Python deps (rich) without
   # touching the system Python. Installed only when missing: uv installed by
   # astral's script updates itself (`uv self update`).
   command -v uv &>/dev/null && return 0
@@ -190,7 +190,7 @@ install_uv() {
 }
 
 link_herdr_plugin() {
-  # The dotfiles' herdr plugins: PR Autopilot (Autopilot workspace + live
+  # The dotfiles' herdr plugins: Octopilot (Octopilot workspace + live
   # dashboard), Arxiu (genealogy board) and Taller (projects board). Only
   # linked when herdr is installed (install_herdr).
   command -v herdr &>/dev/null || return 0
@@ -199,22 +199,31 @@ link_herdr_plugin() {
     echo "herdr server not running; skipping the herdr plugin links"
     return 0
   fi
-  _link_herdr_plugin elboletaire.autopilot "$dotfiles/ai/autopilot/herdr"
+  # Octopilot's id before the rename from PR Autopilot.
+  if [[ -n "$(_herdr_plugin_root elboletaire.autopilot)" ]]; then
+    herdr plugin unlink elboletaire.autopilot >/dev/null || true
+  fi
+  _link_herdr_plugin elboletaire.octopilot "$dotfiles/ai/octopilot/herdr"
   _link_herdr_plugin elboletaire.arxiu "$dotfiles/ai/arxiu/herdr"
   _link_herdr_plugin elboletaire.taller "$dotfiles/ai/taller/herdr"
 }
 
-_link_herdr_plugin() {
-  # Relinks when it points anywhere else (e.g. a worktree it was tested from).
-  local id=$1 root=$2 current
-  current=$(herdr plugin list --json 2>/dev/null | python3 -c '
+_herdr_plugin_root() {
+  # Where the herdr plugin with this id is linked from; empty when it is not.
+  herdr plugin list --json 2>/dev/null | python3 -c '
 import json, sys
 try:
     plugins = json.load(sys.stdin)["result"]["plugins"]
 except Exception:
     plugins = []
 print(next((p["plugin_root"] for p in plugins if p["plugin_id"] == sys.argv[1]), ""))
-' "$id")
+' "$1"
+}
+
+_link_herdr_plugin() {
+  # Relinks when it points anywhere else (e.g. a worktree it was tested from).
+  local id=$1 root=$2 current
+  current=$(_herdr_plugin_root "$id")
   if [[ "$current" == "$root" ]]; then
     return 0
   fi
@@ -226,6 +235,20 @@ print(next((p["plugin_root"] for p in plugins if p["plugin_id"] == sys.argv[1]),
   else
     echo "WARNING: could not link the herdr plugin (is a herdr server running?)" >&2
   fi
+}
+
+migrate_octopilot_state() {
+  # PR Autopilot was renamed Octopilot: carry its state over once, and point
+  # the recorded orchestrator at the renamed herdr agent.
+  local root=${XDG_STATE_HOME:-$HOME/.local/state}
+  local old=$root/pr-autopilot new=$root/octopilot
+  [[ -d "$old" && ! -e "$new" ]] || return 0
+  mv "$old" "$new" || return 0
+  if [[ -f "$new/state.json" ]]; then
+    sed 's/"herdr:autopilot"/"herdr:octopilot"/' "$new/state.json" > "$new/state.json.tmp" &&
+      mv "$new/state.json.tmp" "$new/state.json"
+  fi
+  echo "Moved Octopilot state: $old -> $new"
 }
 
 merge_claude_settings() {
@@ -830,6 +853,7 @@ do_install() {
   install_rtk               # wires hooks into claude and pi, which must exist first
   symlink_ai || return 1    # config symlinks + APM skills global install
   merge_claude_settings
+  migrate_octopilot_state
   link_herdr_plugin
   set_login_shell
   vim -c 'PluginInstall' -c 'qa!'
@@ -851,6 +875,7 @@ do_update() {
   update_apm_skills || return 1
   symlink_ai || return 1
   merge_claude_settings
+  migrate_octopilot_state
   link_herdr_plugin
   echo "dotfiles update complete"
 }
@@ -867,6 +892,7 @@ do_update_ai() {
   update_apm_skills || return 1
   symlink_ai || return 1
   merge_claude_settings
+  migrate_octopilot_state
   link_herdr_plugin
   echo "AI stack update complete"
 }
@@ -878,6 +904,7 @@ do_install_ai_config() {
   no_backup=1
   symlink_ai || return 1
   merge_claude_settings
+  migrate_octopilot_state
   link_herdr_plugin
   echo "AI config install complete"
 }

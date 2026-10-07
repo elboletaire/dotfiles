@@ -975,7 +975,7 @@ echo "herdr \$*" >> "$TESTDIR/herdr.log"
 case "\$1 \$2" in
   "plugin list")
     if [ -s "$HERDR_STATE" ]; then
-      printf '{"result":{"plugins":[{"plugin_id":"elboletaire.autopilot","plugin_root":"%s"}]}}' "\$(cat "$HERDR_STATE")"
+      printf '{"result":{"plugins":[{"plugin_id":"elboletaire.octopilot","plugin_root":"%s"}]}}' "\$(cat "$HERDR_STATE")"
     else
       printf '{"result":{"plugins":[]}}'
     fi ;;
@@ -986,7 +986,7 @@ case "\$1 \$2" in
 esac
 MOCK
 chmod +x "$MOCK_HERDR"
-want="$DOTFILES/ai/autopilot/herdr"
+want="$DOTFILES/ai/octopilot/herdr"
 
 touch "$TESTDIR/herdr-down"
 : > "$TESTDIR/herdr.log"
@@ -1000,38 +1000,76 @@ rm -f "$TESTDIR/herdr-down"
 
 : > "$TESTDIR/herdr.log"
 link_herdr_plugin >/dev/null
-if grep -q "^herdr plugin link $DOTFILES/ai/autopilot/herdr$" "$TESTDIR/herdr.log" &&
+if grep -q "^herdr plugin link $DOTFILES/ai/octopilot/herdr$" "$TESTDIR/herdr.log" &&
    grep -q "^herdr plugin link $DOTFILES/ai/arxiu/herdr$" "$TESTDIR/herdr.log" &&
    grep -q "^herdr plugin link $DOTFILES/ai/taller/herdr$" "$TESTDIR/herdr.log"; then
-  pass "links the autopilot, arxiu and taller plugins"
+  pass "links the octopilot, arxiu and taller plugins"
 else
   fail "did not link all three plugins: $(grep 'plugin link' "$TESTDIR/herdr.log" | tr '\n' ';')"
 fi
 
 : > "$HERDR_STATE"
 : > "$TESTDIR/herdr.log"
-_link_herdr_plugin elboletaire.autopilot "$want" >/dev/null
+_link_herdr_plugin elboletaire.octopilot "$want" >/dev/null
 [ "$(cat "$HERDR_STATE")" = "$want" ] && pass "links the plugin when absent" \
   || fail "plugin not linked to $want"
 
 : > "$TESTDIR/herdr.log"
-_link_herdr_plugin elboletaire.autopilot "$want" >/dev/null
+_link_herdr_plugin elboletaire.octopilot "$want" >/dev/null
 if grep -q "plugin link\|plugin unlink" "$TESTDIR/herdr.log"; then
   fail "re-ran link/unlink although already linked to the right root"
 else
   pass "leaves an already-correct link alone"
 fi
 
-echo "/somewhere/.worktrees/feat-herdr/ai/autopilot/herdr" > "$HERDR_STATE"
+echo "/somewhere/.worktrees/feat-herdr/ai/octopilot/herdr" > "$HERDR_STATE"
 : > "$TESTDIR/herdr.log"
-_link_herdr_plugin elboletaire.autopilot "$want" >/dev/null
-if grep -q "plugin unlink elboletaire.autopilot" "$TESTDIR/herdr.log" &&
+_link_herdr_plugin elboletaire.octopilot "$want" >/dev/null
+if grep -q "plugin unlink elboletaire.octopilot" "$TESTDIR/herdr.log" &&
    [ "$(cat "$HERDR_STATE")" = "$want" ]; then
   pass "relinks a plugin that points at another checkout"
 else
   fail "did not relink from a stale root"
 fi
+
+cat > "$MOCK_HERDR" <<MOCK
+#!/bin/bash
+echo "herdr \$*" >> "$TESTDIR/herdr.log"
+case "\$1 \$2" in
+  "plugin list") printf '{"result":{"plugins":[{"plugin_id":"elboletaire.autopilot","plugin_root":"/old/ai/autopilot/herdr"}]}}' ;;
+  "status server") echo "Status: running" ;;
+esac
+MOCK
+: > "$TESTDIR/herdr.log"
+link_herdr_plugin >/dev/null
+if grep -q "^herdr plugin unlink elboletaire.autopilot$" "$TESTDIR/herdr.log"; then
+  pass "unlinks the plugin's pre-Octopilot id"
+else
+  fail "left elboletaire.autopilot linked"
+fi
 rm -f "$MOCK_HERDR"
+
+echo ""
+echo "=== Test 24b: migrate_octopilot_state carries PR Autopilot's state over once ==="
+STATE_ROOT="$FAKE_HOME/.local/state"
+mkdir -p "$STATE_ROOT/pr-autopilot"
+printf '{\n  "orch": "herdr:autopilot",\n  "paused": true\n}\n' > "$STATE_ROOT/pr-autopilot/state.json"
+XDG_STATE_HOME="$STATE_ROOT" migrate_octopilot_state >/dev/null
+if [ ! -e "$STATE_ROOT/pr-autopilot" ] &&
+   grep -q '"orch": "herdr:octopilot"' "$STATE_ROOT/octopilot/state.json"; then
+  pass "moves the state dir and renames the recorded orchestrator"
+else
+  fail "state not migrated: $(ls "$STATE_ROOT")"
+fi
+
+mkdir -p "$STATE_ROOT/pr-autopilot"
+XDG_STATE_HOME="$STATE_ROOT" migrate_octopilot_state >/dev/null
+if [ -d "$STATE_ROOT/pr-autopilot" ] && [ -f "$STATE_ROOT/octopilot/state.json" ]; then
+  pass "leaves both alone once the octopilot state exists"
+else
+  fail "touched an existing octopilot state dir"
+fi
+rm -rf "$STATE_ROOT/pr-autopilot" "$STATE_ROOT/octopilot"
 
 echo ""
 echo "=== Test 25: install_herdr installs, upgrades and wires only missing integrations ==="

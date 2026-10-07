@@ -1,37 +1,37 @@
 #!/usr/bin/env bash
-# Build the Autopilot workspace, or focus it if it already exists and add
+# Build the Octopilot workspace, or focus it if it already exists and add
 # whatever it is missing. Run by the plugin's `open` action.
 #
-# Tab "AUTOPILOT": on the left the orchestrator's communications pane (small,
+# Tab "OCTOPILOT": on the left the orchestrator's messenger pane (small,
 # on top) and the user's prompter pane below it, the dashboard on the right.
-# Tab "Autopilot (code changes)": a claude in the dotfiles, for changing
-# autopilot itself.
+# Tab "Octopilot (code changes)": a claude in the dotfiles, for changing
+# octopilot itself.
 #
 # Nothing is ever typed into the prompter: agent reports and dashboard
 # commands go to the orchestrator's inbox, and the prompter queues the user's
-# commands there too (skills/autopilot-prompter).
+# commands there too (plugin/skills/prompter).
 set -euo pipefail
 H="${HERDR_BIN_PATH:-herdr}"
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-LABEL="Autopilot"
-ORCH_AGENT="autopilot"             # scan.py's ORCH_AGENT
-PROMPTER_AGENT="autopilot-prompter"
-COMMS_RATIO=0.35                   # the communications pane's share: room for the takoyaki band
-MAIN_TAB="AUTOPILOT"
-CODE_TAB="Autopilot (code changes)"
-CODE_AGENT="autopilot-code"
+LABEL="Octopilot"
+ORCH_AGENT="octopilot"             # scan.py's ORCH_AGENT
+PROMPTER_AGENT="octopilot-prompter"
+MESSENGER_RATIO=0.35                   # the messenger pane's share: room for the takoyaki band
+MAIN_TAB="OCTOPILOT"
+CODE_TAB="Octopilot (code changes)"
+CODE_AGENT="octopilot-code"
 CODE_CWD="$(cd "$DIR/../.." && pwd)"   # the dotfiles checkout
 
 # Split the orchestrator's pane down and start the prompter in the new pane.
 add_prompter() {
   local split pane
-  split=$("$H" pane split "$1" --direction down --ratio "$COMMS_RATIO" --focus)
+  split=$("$H" pane split "$1" --direction down --ratio "$MESSENGER_RATIO" --focus)
   pane=$(jq -r '.result.pane.pane_id // .result.pane_id' <<<"$split")
   "$H" pane rename "$pane" "prompter" >/dev/null
   "$H" agent start "$PROMPTER_AGENT" --kind claude --pane "$pane" \
     --timeout 60000 >/dev/null || return 0
   # A brand-new pane: nobody is typing in it yet.
-  "$H" agent prompt "$PROMPTER_AGENT" "/autopilot-prompter" >/dev/null || true
+  "$H" agent prompt "$PROMPTER_AGENT" "/octopilot:prompter" >/dev/null || true
 }
 
 # The code-changes tab, unless the workspace has one; a claude starts in it.
@@ -75,7 +75,7 @@ set -a
 source "$DIR/config.sh"
 set +a
 # "herdr:<agent>".
-orch="${AUTOPILOT_ORCH:-$(jq -r '.orch // empty' "$STATE_FILE" 2>/dev/null || true)}"
+orch="${OCTOPILOT_ORCH:-$(jq -r '.orch // empty' "$STATE_FILE" 2>/dev/null || true)}"
 name="${orch#herdr:}"
 name="${name:-$ORCH_AGENT}"
 
@@ -86,19 +86,19 @@ if "$H" agent get "$name" >/dev/null 2>&1; then
 fi
 
 created=$("$H" workspace create --label "$LABEL" \
-  --cwd "${AUTOPILOT_ORCH_CWD:-$HOME}" --focus)
+  --cwd "${OCTOPILOT_ORCH_CWD:-$HOME}" --focus)
 root=$(jq -r '.result.root_pane.pane_id' <<<"$created")
-"$H" pane rename "$root" "communications" >/dev/null
+"$H" pane rename "$root" "messenger" >/dev/null
 name_main_tab "$root"
 
 # A fresh claude, named so workers and the dashboard can address it. It waits
-# for you: type /pr-autopilot to start ticking.
+# for you: type /octopilot:messenger to start ticking.
 "$H" agent start "$name" --kind claude --pane "$root" \
   --timeout 60000 >/dev/null || true
 
 # The dashboard first, so it takes the full height on the right; the prompter
 # then splits only the left column.
-"$H" plugin pane open --plugin elboletaire.autopilot --entrypoint dashboard \
+"$H" plugin pane open --plugin elboletaire.octopilot --entrypoint dashboard \
   --placement split --target-pane "$root" \
   --direction right --no-focus >/dev/null
 add_prompter "$root"

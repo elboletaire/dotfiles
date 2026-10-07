@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PR Autopilot reconciler.
+"""Octopilot reconciler.
 
 Reads GitHub + herdr, diffs against a small state file, prints a compact table of
 actionable rows. Deterministic; no model involved. See SKILL.md for how the
@@ -44,7 +44,7 @@ MODEL_COLD_REVIEW = os.environ.get("MODEL_COLD_REVIEW", "opus")
 STALE_HOURS = int(os.environ.get("STALE_HOURS", "48"))
 ISSUE_MAX_AGE_DAYS = int(os.environ.get("ISSUE_MAX_AGE_DAYS", "120"))
 STATE_FILE = os.environ.get(
-    "STATE_FILE", os.path.expanduser("~/.local/state/pr-autopilot/state.json"))
+    "STATE_FILE", os.path.expanduser("~/.local/state/octopilot/state.json"))
 # Both live next to the state file and exist for the dashboard: the event log
 # is appended by every mutating command, the snapshot is the last read-only
 # scan rendered as JSON.
@@ -54,9 +54,9 @@ EVENTS_MAX_BYTES = 512 * 1024
 EVENTS_KEEP = 1000
 # Address of the orchestrator ("herdr:<agent>"). Empty means "whichever agent
 # last ran a scan", recorded by the scan itself.
-AUTOPILOT_ORCH = os.environ.get("AUTOPILOT_ORCH", "")
+OCTOPILOT_ORCH = os.environ.get("OCTOPILOT_ORCH", "")
 # herdr agent name the orchestrator runs under.
-ORCH_AGENT = "autopilot"
+ORCH_AGENT = "octopilot"
 
 AGENT_MARKER = "controlled by elboletaire"
 FEEDBACK_IGNORE = set(
@@ -227,8 +227,8 @@ def herdr_agents():
 
 
 def herdr_live():
-    """workspace id -> {state, agent, pane}. Autopilot runs one agent per
-    workspace; when the user opened more, the one autopilot named wins."""
+    """workspace id -> {state, agent, pane}. Octopilot runs one agent per
+    workspace; when the user opened more, the one octopilot named wins."""
     out = {}
     for a in herdr_agents():
         ws = a.get("workspace_id")
@@ -459,7 +459,7 @@ def pr_review_comments(detail):
 
 
 def new_feedback(detail, since):
-    """Reviews/comments newer than `since` that autopilot did not itself write.
+    """Reviews/comments newer than `since` that octopilot did not itself write.
 
     Author alone cannot identify the agent: it posts with the user's token, so
     its comments are authored by the user. The signature line the prompt
@@ -616,7 +616,7 @@ def scan(state, refresh=False, info=None):
                 and answered and not (
                 it.get("pr") and d and d.get("state") == "MERGED"):
             items.pop(k)
-            rows.append(("GONE", k, f"{smeta} removed outside autopilot "
+            rows.append(("GONE", k, f"{smeta} removed outside octopilot "
                                     "-> untracked, slot freed"))
             continue
 
@@ -714,7 +714,7 @@ def scan(state, refresh=False, info=None):
         rv = it.get("reviewed_sha") or ""
 
         # A human (or review bot) leaving a review outranks everything below:
-        # it is explicit instruction, where REVIEW is only autopilot's own
+        # it is explicit instruction, where REVIEW is only octopilot's own
         # second guess. Items tracked before feedback_seen existed get it
         # stamped now, so pre-existing reviews do not stampede on first scan.
         if it["mode"] == "fix":
@@ -819,7 +819,7 @@ def scan(state, refresh=False, info=None):
                     rows.append(("CAPPED", k,
                                  f"mode=comment {smeta} head={head[:7]} "
                                  f"rounds={rounds}/{MAX_REVIEW_ROUNDS} "
-                                 "re-requested -> autopilot stopped; you decide"))
+                                 "re-requested -> octopilot stopped; you decide"))
                     continue
                 it["rerequest_head"] = head
                 active += 1
@@ -855,7 +855,7 @@ def scan(state, refresh=False, info=None):
                 rows.append(("CAPPED", k,
                              f"mode={it['mode']} {smeta} head={head[:7]} "
                              f"rounds={rounds}/{MAX_REVIEW_ROUNDS} "
-                             "-> autopilot stopped; you decide"))
+                             "-> octopilot stopped; you decide"))
                 continue
             rows.append(("REVIEW", k, f"mode={it['mode']} {smeta} "
                                       f"head={head[:7]} "
@@ -954,7 +954,7 @@ def scan(state, refresh=False, info=None):
                      "nopr "
                      f"idle={age // 3600}h"))
 
-    # Sessions running on this machine that autopilot did not start. They are
+    # Sessions running on this machine that octopilot did not start. They are
     # real load even though they are not tracked, so the header shows them --
     # otherwise ACTIVE reads 0/6 while 15 agents are already running.
     untracked = sum(
@@ -1411,7 +1411,7 @@ def snapshot(state):
 
 def orchestrator_target(state):
     """Where agent reports and dashboard commands are sent."""
-    return AUTOPILOT_ORCH or state.get("orch") or f"herdr:{ORCH_AGENT}"
+    return OCTOPILOT_ORCH or state.get("orch") or f"herdr:{ORCH_AGENT}"
 
 
 def item_or_exit(state, k):
@@ -1477,7 +1477,7 @@ def report(state, args):
     """report <key> <state> <sha> <message...> [--to <session>]
 
     Records the agent's final report on its item and queues it in the
-    orchestrator's inbox as the `AUTOPILOT <key> <state> <sha> <message>`
+    orchestrator's inbox as the `OCTOPILOT <key> <state> <sha> <message>`
     line it already parses. The dashboard shows it from the item.
 
     `--to` is accepted and ignored: agents spawned before the inbox still
@@ -1503,7 +1503,7 @@ def report(state, args):
         # is waiting for this, and the orchestrator must not act on it. Keep
         # a neutral trace in the log (no doorbell) and tell the agent to stop.
         log_event("orphan-report", k, state=st, sha=sha[:7], msg=msg[:300])
-        print(f"{k} is no longer tracked by autopilot (detached or cleaned "
+        print(f"{k} is no longer tracked by octopilot (detached or cleaned "
               "up): report not delivered. Stop here; there is nothing left "
               "to do for this item.")
         return 0
@@ -1513,7 +1513,7 @@ def report(state, args):
     # Into the orchestrator's inbox, never typed into its pane: a typed
     # prompt lands on whatever the user is half-way through writing there
     # and sends it. The log line below is what its Monitor wakes on.
-    to_inbox(state, f"AUTOPILOT {args[1]} {st} {sha} {msg}".rstrip())
+    to_inbox(state, f"OCTOPILOT {args[1]} {st} {sha} {msg}".rstrip())
     log_event("report", k, state=st, sha=sha[:7], msg=msg[:300])
     print(f"reported {k} {st} -> inbox")
     return 0
@@ -1533,7 +1533,7 @@ def to_inbox(state, text):
 def inbox(state):
     """Print and clear the orchestrator's pending messages, oldest first.
 
-    Agent reports print as the `AUTOPILOT <key> <state> <sha> <message>` line
+    Agent reports print as the `OCTOPILOT <key> <state> <sha> <message>` line
     they always were; dashboard requests as `REQUEST <command>`. Continuation
     lines are indented, so every message starts at column 0."""
     box = state.get("inbox") or []

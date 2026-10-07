@@ -1,11 +1,11 @@
-// Reads PR Autopilot's state.json and events.jsonl (see ../scan.py) into
+// Reads Octopilot's state.json and events.jsonl (see ../scan.py) into
 // what the kitchen draws: one takoyaki per tracked item, and a reaction
 // plus a log line per event.
 
 import type { LogLine } from '../types'
 import type { Ball, BallState, Mood } from './scene'
 
-export type AutopilotEvent = {
+export type OctopilotEvent = {
   at: number
   kind: string
   key?: string
@@ -99,15 +99,15 @@ function ballState(item: Record<string, unknown>, doneKind?: string): BallState 
 export function newEvents(
   text: string,
   cursor: { at: number; seen: string[] },
-): { events: AutopilotEvent[]; cursor: { at: number; seen: string[] } } {
-  const events: AutopilotEvent[] = []
+): { events: OctopilotEvent[]; cursor: { at: number; seen: string[] } } {
+  const events: OctopilotEvent[] = []
   let at = cursor.at
   let seen = cursor.seen
   for (const line of text.split('\n')) {
     if (!line.trim()) continue
-    let ev: AutopilotEvent
+    let ev: OctopilotEvent
     try {
-      ev = JSON.parse(line) as AutopilotEvent
+      ev = JSON.parse(line) as OctopilotEvent
     } catch {
       continue
     }
@@ -126,7 +126,7 @@ export function newEvents(
 
 const short = (key?: string) => (key ? key.replace(/^[^/]+\//, '') : '')
 
-export function react(ev: AutopilotEvent): Reaction {
+export function react(ev: OctopilotEvent): Reaction {
   const key = ev.key
   const k = short(key)
   const at = ev.at

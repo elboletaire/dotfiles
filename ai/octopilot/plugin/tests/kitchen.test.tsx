@@ -31,7 +31,7 @@ const engineBand = ($: EngineInterface, e: RenderInput) => {
 
 test('the band stays the engine’s until the kitchen opens', async ($, on) => {
   on('ui.render', engineBand)
-  const ui = await $.ui.mount({ plugin: 'autopilot-takoyaki', surface: 'terminal', ...BAND })
+  const ui = await $.ui.mount({ plugin: 'octopilot', surface: 'terminal', ...BAND })
   expect(await ui.find({ key: 'kitchen' })).toBeUndefined()
   expect(await ui.find({ type: 'Text', text: 'engine' })).toBeDefined()
   await ui.unmount()
@@ -41,23 +41,23 @@ test('/takoyaki opens the kitchen above the prompt', async ($, on) => {
   on('ui.render', engineBand)
   on('command.run', () => ({ text: '' }))
   await $.command.run(TAKOYAKI)
-  const ui = await $.ui.mount({ plugin: 'autopilot-takoyaki', surface: 'terminal', ...BAND })
+  const ui = await $.ui.mount({ plugin: 'octopilot', surface: 'terminal', ...BAND })
   const raster = await ui.find({ type: 'Raster', key: 'kitchen' })
   expect(raster?.props.columns).toBe(COLUMNS)
   expect(await ui.find({ type: 'Text', text: /takoyaki kitchen/ })).toBeDefined()
   await ui.unmount()
 
   await $.command.run(TAKOYAKI)
-  const closed = await $.ui.mount({ plugin: 'autopilot-takoyaki', surface: 'terminal', ...BAND })
+  const closed = await $.ui.mount({ plugin: 'octopilot', surface: 'terminal', ...BAND })
   expect(await closed.find({ key: 'kitchen' })).toBeUndefined()
   await closed.unmount()
 })
 
-test('/pr-autopilot opens the kitchen on its own', async ($, on) => {
+test('/octopilot:messenger opens the kitchen on its own', async ($, on) => {
   on('ui.render', engineBand)
   on('command.run', () => ({ text: '' }))
-  await $.command.run({ ...TAKOYAKI, command: 'pr-autopilot' })
-  const ui = await $.ui.mount({ plugin: 'autopilot-takoyaki', surface: 'terminal', ...BAND })
+  await $.command.run({ ...TAKOYAKI, command: 'octopilot:messenger' })
+  const ui = await $.ui.mount({ plugin: 'octopilot', surface: 'terminal', ...BAND })
   expect(await ui.find({ type: 'Raster', key: 'kitchen' })).toBeDefined()
   await ui.unmount()
 })

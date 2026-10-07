@@ -62,7 +62,7 @@ herdr plugin link ~/.dotfiles/ai/arxiu/herdr
 ```
 
 and bind its actions in `~/.config/herdr/config.toml`. `prefix+a`,
-`prefix+shift+a` (autopilot) and `prefix+t` (shell popup) are taken, so:
+`prefix+shift+a` (octopilot) and `prefix+t` (shell popup) are taken, so:
 
 ```toml
 # Arxiu (~/.dotfiles/ai/arxiu/herdr)

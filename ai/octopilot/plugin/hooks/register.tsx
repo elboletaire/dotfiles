@@ -3,11 +3,11 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { LogLine } from '../types'
 import { newEvents, react, readKitchen } from './feed'
-import type { AutopilotEvent, Kitchen, Reaction } from './feed'
+import type { OctopilotEvent, Kitchen, Reaction } from './feed'
 import { COLUMNS, PALETTE, ROWS, encode, holeX, paint, step } from './scene'
 import type { Mood, Particle, Scene } from './scene'
 
-const ORCH_AGENT = 'autopilot' // scan.py's ORCH_AGENT
+const ORCH_AGENT = 'octopilot' // scan.py's ORCH_AGENT
 const RASTER = 'kitchen'
 const FRAME_MS = 100
 const POLL_MS = 1000
@@ -18,13 +18,13 @@ const LOG_LINES = 5
 const DETECT_MS = 2000
 const DETECT_TRIES = 15
 
-const isActive = atom({ plugin: 'autopilot-takoyaki', key: 'isActive' } as const, false)
-const log = atom({ plugin: 'autopilot-takoyaki', key: 'log' } as const, [] as LogLine[])
-const header = atom({ plugin: 'autopilot-takoyaki', key: 'header' } as const, '')
+const isActive = atom({ plugin: 'octopilot', key: 'isActive' } as const, false)
+const log = atom({ plugin: 'octopilot', key: 'log' } as const, [] as LogLine[])
+const header = atom({ plugin: 'octopilot', key: 'header' } as const, '')
 
 // The order of events `/takoyaki demo` plays, one every DEMO_MS.
 const DEMO_MS = 2500
-const DEMO: Omit<AutopilotEvent, 'at'>[] = [
+const DEMO: Omit<OctopilotEvent, 'at'>[] = [
   { kind: 'tick', active: 0 },
   { kind: 'spawn', key: 'demo/app#101', title: 'Fix login redirect' },
   { kind: 'spawn', key: 'demo/app#102', title: 'Add dark mode' },
@@ -127,7 +127,7 @@ function frame(): Scene {
   }
 }
 
-async function apply($: EngineInterface, events: AutopilotEvent[], isReplay: boolean) {
+async function apply($: EngineInterface, events: OctopilotEvent[], isReplay: boolean) {
   const lines: LogLine[] = []
   for (const ev of events) {
     const r = react(ev)
@@ -187,7 +187,7 @@ async function pollFiles($: EngineInterface) {
 async function playDemo($: EngineInterface) {
   const demo = k.demo
   if (!demo) return
-  const ev = { ...DEMO[demo.step % DEMO.length]!, at: Math.floor(now() / 1000) } as AutopilotEvent
+  const ev = { ...DEMO[demo.step % DEMO.length]!, at: Math.floor(now() / 1000) } as OctopilotEvent
   demo.step += 1
   const key = ev.key
   if (ev.kind === 'tick') demo.balls = []
@@ -274,11 +274,11 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const home = (await $.env.get('HOME')) ?? ''
     const xdg = (await $.env.get('XDG_STATE_HOME')) || `${home}/.local/state`
-    k.stateDir = (await $.env.get('AUTOPILOT_STATE_DIR')) || `${xdg}/pr-autopilot`
+    k.stateDir = (await $.env.get('OCTOPILOT_STATE_DIR')) || `${xdg}/octopilot`
 
     await $.command.register({
       name: 'takoyaki',
-      description: 'Toggle the autopilot takoyaki kitchen above the prompt (`demo` plays sample events)',
+      description: 'Toggle the octopilot takoyaki kitchen above the prompt (`demo` plays sample events)',
     })
 
     $.clock.every(FRAME_MS, () => void animate($))
@@ -312,17 +312,17 @@ export const register: Register = on => {
     return { text: isOn ? 'Takoyaki kitchen open.' : 'Takoyaki kitchen closed.' }
   })
 
-  // The orchestrator's own scan is the surest sign this session drives autopilot.
+  // The orchestrator's own scan is the surest sign this session drives octopilot.
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
     // The skill calls it as `$A <cmd>` with A=.../scan.sh, so accept both spellings.
-    if (!k.active && /(autopilot\/scan\.sh|\$A)"?\s+(scan|inbox|doorbell|pause|resume)\b/.test(e.command)) {
+    if (!k.active && /(octopilot\/scan\.sh|\$A)"?\s+(scan|inbox|doorbell|pause|resume)\b/.test(e.command)) {
       await activate($, true)
     }
     return next(e)
   })
 
   // Slash commands run through command.run, never prompt.submit.
-  on('command.run', { command: 'pr-autopilot' }, async ($, e, next) => {
+  on('command.run', { command: 'octopilot:messenger' }, async ($, e, next) => {
     if (!k.active) await activate($, true)
     return next(e)
   })

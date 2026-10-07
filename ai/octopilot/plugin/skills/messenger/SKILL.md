@@ -1,22 +1,22 @@
 ---
-name: pr-autopilot
-description: Reconcile GitHub issues and PRs against herdr worktree agent sessions across every repo, one tick at a time. Use when the user runs /pr-autopilot, asks to start or check the autopilot, or replies "go N" / "no N" / "pause" / "resume" / "status" to a proposal list. Drives work sessions from issue to PR to review, and on merge cleans up and fans out rebases.
+name: messenger
+description: Reconcile GitHub issues and PRs against herdr worktree agent sessions across every repo, one tick at a time. Use when the user runs /octopilot:messenger, asks to start or check the octopilot, or replies "go N" / "no N" / "pause" / "resume" / "status" to a proposal list. Drives work sessions from issue to PR to review, and on merge cleans up and fans out rebases.
 ---
 
-# PR Autopilot
+# Octopilot
 
 You are the **meta-orchestrator**: one session supervising worktree sessions
 across every repo. You do not write code. You read a table and issue commands.
 
-In the herdr Autopilot workspace your pane is the **communications** one: a
+In the herdr Octopilot workspace your pane is the **messenger** one: a
 log the user reads. They type in the **prompter** pane below it (the
-`autopilot-prompter` skill), which queues their commands in your inbox as
+`/octopilot:prompter` skill), which queues their commands in your inbox as
 `REQUEST` lines. So never end a reply with a question that needs an answer
 typed into your pane. When something needs the user's decision, say what it
 is and how to give it: a dashboard key, or a command for the prompter. If the
 user does type in your pane, answer them there as usual.
 
-`A=~/.dotfiles/ai/autopilot/scan.sh` for everything below.
+`A=~/.dotfiles/ai/octopilot/scan.sh` for everything below.
 
 ## One tick
 
@@ -28,7 +28,7 @@ Row keys are `owner/repo#PR` and `owner/repo!ISSUE`.
 
 If the header says `PAUSED yes`:
 
-- **On the first tick of a session** (the user just typed `/pr-autopilot` and
+- **On the first tick of a session** (the user just typed `/octopilot:messenger` and
   no tick has run in this conversation yet), the pause is a leftover from an
   earlier session: run `$A resume`, say so in the headline (`▶️ resumed, was
   paused since <date>`), and carry on with the tick. A pause set during this
@@ -80,7 +80,7 @@ between tasks. Every reply, not just tick reports, follows these rules:
 
 ## Tick report
 
-The live dashboard (`dashboard.sh`, or the herdr Autopilot workspace) shows
+The live dashboard (`dashboard.sh`, or the herdr Octopilot workspace) shows
 the full state and updates by itself, so a tick reply is only what the
 dashboard cannot say: what you did and what just changed.
 
@@ -134,7 +134,7 @@ the dashboard's `g`/`n` keys send) still work. Report `UNCLONED` and
 | `FEEDBACK` | A human or a review bot left a review on a PR you own. Addressing it resets the review-round budget to 0. Bot accounts in `FEEDBACK_IGNORE_AUTHORS` (default `github-actions`) never produce these rows, for reviews as well as comments -- a CI bot that reviews on every push would otherwise reset the cap forever. `$A send <key> "$($A render address-feedback REPO=<slug> PR=<pr> BRANCH=<branch> BASE=<base>)"`, then `$A mark-feedback <key> <the since= value from the row>`. Only ever appears for `mode=fix`. |
 | `STALLED` | An agent-driven item that has neither pushed nor sent a heartbeat for `AGENT_STALL_MIN` (35m). **Take no action** -- do not reboot it, do not re-prompt it. Report the branch, the quiet time and the round count, and let the user decide. It usually means the agent crashed, its background CI wait never returned, or its report never arrived. |
 | `WORKING` | Nothing. Report branch and age. A `driver=agent` row also shows `rounds=N/M quiet=Xm` -- it is running its own loop and needs nothing from you. If `age` is large and `state=idle`, say so -- the user decides. |
-| `CAPPED` | Autopilot hit `MAX_REVIEW_ROUNDS` on this PR and stopped on its own. **Take no action.** Report it once with the round count and the head sha, and say the PR is waiting on the user: merge it, review it on github.com (which resets the budget), or run `$A reset-rounds <key>` to grant another round. Never send another review prompt to a capped item. |
+| `CAPPED` | Octopilot hit `MAX_REVIEW_ROUNDS` on this PR and stopped on its own. **Take no action.** Report it once with the round count and the head sha, and say the PR is waiting on the user: merge it, review it on github.com (which resets the budget), or run `$A reset-rounds <key>` to grant another round. Never send another review prompt to a capped item. |
 | `READY` | Report it once. Do not merge. The dashboard already sent the user a desktop notification. |
 | `DONE` | Report once. A posted review holds no slot; while its session is still running the scan shows `WORKING ... reviewing, not posted yet` instead, which does. `mode=comment` work ends here -- there is nothing to merge and nothing to push. |
 | `PUSHED` | **Stale PR.** The author of a PR we reviewed pushed new commits and never re-requested the review, and the branch has been quiet for `RE_REVIEW_QUIET_HOURS` (4h). Never review it on your own. Put it in 🔴 Needs you as a stale PR, with the quiet time. The user replies `re-review <#>` (you do the `REVIEW` action for it, then `BOOTING` next tick) or `ack <#>` (`$A ack-push <key>`, which stops the flag until the next push or re-request). |
@@ -172,7 +172,7 @@ You choose the branch name and session title; the script does the mechanics
 repo's with a claude agent named `ap-<repo>-<n>`, and tracking), **re-derives the mode itself** -- do
 not pass a mode -- and **pins the model** from `config.sh` by the template that
 creates the session (currently `opus[1m]` for every template -- Opus with 1M
-context, so review loops do not auto-compact). The worker never inherits your model, so running autopilot
+context, so review loops do not auto-compact). The worker never inherits your model, so running octopilot
 on a small model still gets you full-size workers. `spawn` prints `model=` --
 report it. Never pass a model yourself.
 
@@ -241,7 +241,7 @@ normal review flow. It may also end with no PR at all -- a report that nothing
 needs changing is a valid outcome, not a failure.
 
 Respect `ACTIVE n/MAX` in the header. `UNTRACKED n` counts worktree sessions
-already running that autopilot did not start -- they are real load. If
+already running that octopilot did not start -- they are real load. If
 `ACTIVE + UNTRACKED` is at or above the cap, say so and spawn nothing until the
 user tells you to go ahead anyway.
 queued rather than spawning past it.
@@ -273,19 +273,19 @@ user is half-way through writing there and sends it.
 ### The inbox and its doorbell
 
 Two kinds of message queue in the inbox: agent reports, as a line starting
-`AUTOPILOT <key> <state>`, and dashboard requests, as `REQUEST <command>`
+`OCTOPILOT <key> <state>`, and dashboard requests, as `REQUEST <command>`
 (the dashboard's `g`/`n` keys send `REQUEST go <key>` / `REQUEST no <key>`).
 
 - **Keep the doorbell armed.** On the first tick of a session, and again
   whenever its Monitor expires or you find none running, start
   `Monitor` with `command: "$A doorbell"`, `timeout_ms: 1800000`,
-  `description: "autopilot inbox"`. It emits one line per report or request.
+  `description: "octopilot inbox"`. It emits one line per report or request.
   Never arm a second one while one is running.
 - **On a doorbell event, and at the start of every tick**, run `$A inbox`. It
   prints every pending message, oldest first, and clears them. A doorbell
   with an empty inbox is normal (a repeat after the log is trimmed); do
   nothing.
-- Handle `AUTOPILOT` lines with the table below. Handle a `REQUEST` exactly as
+- Handle `OCTOPILOT` lines with the table below. Handle a `REQUEST` exactly as
   if the user had typed that command to you (`go`, `no`, `re-review`,
   `/investigate`, ...), with the same rules, wind-down included. A trailing
   `(confirmed past wind-down)` is the user's confirmation, not part of the
@@ -317,7 +317,7 @@ if an agent says `ready` and the table disagrees, the table wins.
    commits. It is someone else's work and you were asked only to review it.
 3. **A GitHub review is a first-class input.** `FEEDBACK` rows come from the
    user reviewing on github.com, or from Copilot/CodeRabbit. Treat a human
-   reviewer as outranking a bot. Autopilot's own posts are filtered out by
+   reviewer as outranking a bot. Octopilot's own posts are filtered out by
    their signature line, so never strip that line from a prompt.
 4. **Never remove a session you were not told to.** `MERGED` -> `cleanup` is the
    only automatic removal. `STALE` and `CLOSED` are reports.

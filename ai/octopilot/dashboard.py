@@ -3,12 +3,12 @@
 # requires-python = ">=3.10"
 # dependencies = ["rich>=13.7"]
 # ///
-"""PR Autopilot live dashboard.
+"""Octopilot live dashboard.
 
 A read-only view over three sources, each refreshed at its own pace:
 
 - agent state from herdr (`herdr agent list`), every few seconds;
-- autopilot's own state.json and events.jsonl, the moment they change;
+- octopilot's own state.json and events.jsonl, the moment they change;
 - GitHub, through `scan.py snapshot` (a scan that saves nothing), every
   DASHBOARD_REFRESH_SECS and right after any event that changes the table.
 
@@ -42,7 +42,7 @@ DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, DIR)
 import scan  # noqa: E402
 STATE_FILE = os.environ.get(
-    "STATE_FILE", os.path.expanduser("~/.local/state/pr-autopilot/state.json"))
+    "STATE_FILE", os.path.expanduser("~/.local/state/octopilot/state.json"))
 STATE_DIR = os.path.dirname(STATE_FILE)
 EVENTS_FILE = os.path.join(STATE_DIR, "events.jsonl")
 SNAPSHOT_FILE = os.path.join(STATE_DIR, "snapshot.json")
@@ -60,12 +60,12 @@ NOTIFY_WHY = {"READY": "ready to merge", "CAPPED": "out of review rounds",
 REFRESH_SECS = int(os.environ.get("DASHBOARD_REFRESH_SECS", "120"))
 MAX_REVIEW_ROUNDS = int(os.environ.get("MAX_REVIEW_ROUNDS", "3"))
 AGENT_STALL_MIN = int(os.environ.get("AGENT_STALL_MIN", "35"))
-PLUGIN_ID = "elboletaire.autopilot"
+PLUGIN_ID = "elboletaire.octopilot"
 IN_HERDR = os.environ.get("HERDR_ENV") == "1"
 
 LIVE_SECS = 3          # herdr agent list
 SESSIONS_SECS = 30     # herdr workspaces (titles, worktree paths)
-META_SOURCE = "autopilot"
+META_SOURCE = "octopilot"
 META_TTL_MS = 10 * 60 * 1000   # sidebar tokens vanish if the dashboard dies
 META_EVERY = 180               # re-push unchanged tokens before they expire
 KICK_DEBOUNCE = 15     # min seconds between event-triggered GitHub refreshes
@@ -73,7 +73,7 @@ CONFIRM_SECS = 4       # window for the second press of g / n / P
 KITCHEN_SECS = 15      # the kitchen-closed alert cancels itself after this
 KITCHEN_GRACE = 0.5    # a g this soon after the alert opened is a typed-ahead
                        # ggg, not a confirmation of something seen
-PROMPTER_AGENT = "autopilot-prompter"   # herdr/open.sh's prompter pane
+PROMPTER_AGENT = "octopilot-prompter"   # herdr/open.sh's prompter pane
 # Appended to a request the user already confirmed past WIND_DOWN_AT.
 CONFIRMED = "(confirmed past wind-down)"
 
@@ -138,7 +138,7 @@ def short(key):
 def desktop(title, body):
     """Fire-and-forget KDE/freedesktop notification."""
     try:
-        subprocess.Popen(["notify-send", "-a", "PR Autopilot", title, body],
+        subprocess.Popen(["notify-send", "-a", "Octopilot", title, body],
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except OSError:
         pass
@@ -175,7 +175,7 @@ class Hosts:
         return scan.herdr(args)[0] == 0
 
     def publish(self, entries):
-        """Autopilot's view of each herdr agent, as pane metadata tokens the
+        """Octopilot's view of each herdr agent, as pane metadata tokens the
         herdr sidebar renders ($ap_kind, $ap_pr, ...; see herdr/README.md)."""
         for pane, tokens in entries:
             args = ["pane", "report-metadata", pane, "--source", META_SOURCE,
@@ -614,7 +614,7 @@ class Dashboard:
 
     def header(self, data, hdr, now):
         t = Text()
-        t.append(" PR Autopilot ", style="bold reverse")
+        t.append(" Octopilot ", style="bold reverse")
         t.append("  ")
         t.append(f"🔴 {len(data['needs'])} needs you", style="bold red"
                  if data["needs"] else "dim")
@@ -851,7 +851,7 @@ class Dashboard:
         elif key == "P":
             paused = bool((self.m.state or {}).get("paused"))
             verb = "resume" if paused else "pause"
-            if self.ask("P", "", f"press P again to {verb} autopilot"):
+            if self.ask("P", "", f"press P again to {verb} octopilot"):
                 code, out, err = sh([sys.executable,
                                      os.path.join(DIR, "scan.py"), verb])
                 self.say(out or err)

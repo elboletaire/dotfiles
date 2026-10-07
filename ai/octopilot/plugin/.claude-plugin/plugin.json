@@ -1,0 +1,7 @@
+{
+  "name": "octopilot",
+  "version": "0.1.0",
+  "author": { "name": "elboletaire" },
+  "description": "An octopus cooking takoyaki above the Octopilot orchestrator's prompt, reacting to octopilot events",
+  "types": "./types/index.d.ts"
+}

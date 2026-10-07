@@ -3,7 +3,7 @@
 You own this PR end to end. Nobody polls you and nobody will prompt you again:
 after this message you decide what happens next, and you report when you stop.
 
-`A=~/.dotfiles/ai/autopilot/scan.sh`, and your item key is `{{KEY}}`. Always
+`A=~/.dotfiles/ai/octopilot/scan.sh`, and your item key is `{{KEY}}`. Always
 quote it: it contains `#` (or `?`), which a shell otherwise reads as a
 comment and silently truncates the argument.
 
@@ -89,7 +89,7 @@ comment and silently truncates the argument.
    reviewing, so later rounds know where your fixes start:
 
    ```
-   git rev-parse HEAD > "$(git rev-parse --git-dir)/autopilot-review-base"
+   git rev-parse HEAD > "$(git rev-parse --git-dir)/octopilot-review-base"
    ```
 
    **Pass 1 -- candidates (nothing is changed).** Give the subagent only the
@@ -104,7 +104,7 @@ comment and silently truncates the argument.
    > block a merge. Change nothing and post nothing.
 
    *Round 2 and later* -- only the fix diff. Read the base back with
-   `cat "$(git rev-parse --git-dir)/autopilot-review-base"`. If a rebase has
+   `cat "$(git rev-parse --git-dir)/octopilot-review-base"`. If a rebase has
    rewritten it (`git merge-base --is-ancestor <base> HEAD` fails), use the
    commit on `HEAD` with the same subject line instead; if there is none,
    review the commits you made after round 1 by name. Give the subagent the
@@ -166,7 +166,7 @@ $A report "{{KEY}}" <ready|capped|blocked|failed|stalled> <sha> "<one line>"
 ```
 
 It records the report on your item (the dashboard shows it) and queues the
-`AUTOPILOT {{KEY}} <state> <sha> <one line>` message in the orchestrator's
+`OCTOPILOT {{KEY}} <state> <sha> <one line>` message in the orchestrator's
 inbox. The first line of the message must be that one line -- the
 orchestrator reads it as a status, and a human reads it as a summary. Put any
 detail on the lines after it, inside the same quotes. Never message the

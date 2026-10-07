@@ -117,7 +117,7 @@ type = "plugin_action"
 command = "elboletaire.taller.peek"
 ```
 
-(`o` for obrador; neither is a herdr default nor used by Autopilot or Arxiu.)
+(`o` for obrador; neither is a herdr default nor used by Octopilot or Arxiu.)
 
 ## Tests
 
