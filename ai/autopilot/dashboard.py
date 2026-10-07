@@ -29,8 +29,10 @@ import time
 import tty
 
 from rich import box
+from rich.align import Align
 from rich.console import Console, Group
 from rich.live import Live
+from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
@@ -68,6 +70,9 @@ META_TTL_MS = 10 * 60 * 1000   # sidebar tokens vanish if the dashboard dies
 META_EVERY = 180               # re-push unchanged tokens before they expire
 KICK_DEBOUNCE = 15     # min seconds between event-triggered GitHub refreshes
 CONFIRM_SECS = 4       # window for the second press of g / n / P
+KITCHEN_SECS = 15      # the kitchen-closed alert cancels itself after this
+KITCHEN_GRACE = 0.5    # a g this soon after the alert opened is a typed-ahead
+                       # ggg, not a confirmation of something seen
 PROMPTER_AGENT = "autopilot-prompter"   # herdr/open.sh's prompter pane
 # Appended to a request the user already confirmed past WIND_DOWN_AT.
 CONFIRMED = "(confirmed past wind-down)"
@@ -534,6 +539,7 @@ class Dashboard:
         self.hidden_done = 0
         self.flash = ("", 0)
         self.confirm = None   # (action, key, deadline)
+        self.alert = None     # (key, title, deadline): the kitchen is closed
         self.selectable = []
 
     def say(self, msg):
@@ -542,8 +548,13 @@ class Dashboard:
     # -- rendering
 
     def render(self):
-        data, hdr = self.m.build()
         now = time.time()
+        if self.alert and now >= self.alert[2]:
+            self.alert = None
+            self.say("start cancelled")
+        if self.alert:
+            return self.kitchen()
+        data, hdr = self.m.build()
         parts = [self.header(data, hdr, now)]
         self.selectable = []
         if hdr["paused"]:
@@ -577,6 +588,21 @@ class Dashboard:
         if self.sel_key not in self.selectable:
             self.sel_key = self.selectable[0] if self.selectable else None
         return Group(*[p for p in parts if p is not None])
+
+    def kitchen(self):
+        """The kitchen-closed alert, alone and centered on the screen."""
+        key, title, _ = self.alert
+        body = Text(justify="center")
+        body.append(f"🍳 The kitchen is closed (past {scan.WIND_DOWN_AT})\n\n",
+                    style="bold red")
+        body.append(f"{key}\n", style="bold")
+        body.append(f"{title or ''}\n\n")
+        body.append("Press g to start it anyway", style="bold yellow")
+        body.append(" · any other key cancels", style="dim")
+        panel = Panel(body, title="🍳 Kitchen closed", border_style="bold red",
+                      box=box.DOUBLE, padding=(1, 4), expand=False)
+        return Align.center(panel, vertical="middle",
+                            height=self.console.height)
 
     def height(self, renderable):
         if renderable is None:
@@ -794,6 +820,17 @@ class Dashboard:
         return code == 0
 
     def handle(self, key, live, term):
+        if self.alert:
+            opened = self.alert[2] - KITCHEN_SECS
+            if key == "g" and time.time() - opened < KITCHEN_GRACE:
+                return True
+            # Only g gets through the alert; anything else (q too) cancels.
+            k, self.alert = self.alert[0], None
+            if key == "g":
+                self.to_orch(f"go {k} {CONFIRMED}")
+            else:
+                self.say("start cancelled")
+            return True
         e = self.selected()
         if key in ("q", "\x03"):
             return False
@@ -838,11 +875,13 @@ class Dashboard:
         elif key == "o":
             self.browse(e)
         elif key == "g" and e["kind"] == "PROPOSE" and scan.wind_down() == "yes":
-            # Past WIND_DOWN_AT the second press is the confirmation, so the
-            # orchestrator never has to ask in its own pane.
-            if self.ask("g", e["key"], f"🌇 past {scan.WIND_DOWN_AT} -- press g "
-                        f"again to start {e['key']} anyway"):
-                self.to_orch(f"go {e['key']} {CONFIRMED}")
+            # Past WIND_DOWN_AT a fast gg only opens the alert; the third g,
+            # pressed with it on screen, confirms. The orchestrator then never
+            # has to ask in its own pane.
+            if self.ask("g", e["key"], f"🍳 kitchen closed -- press g again to "
+                        f"start {e['key']} anyway"):
+                self.alert = (e["key"], e["title"],
+                              time.time() + KITCHEN_SECS)
         elif key in ("g", "n") and e["kind"] == "PROPOSE":
             verb = "go" if key == "g" else "no"
             if self.ask(key, e["key"], f"press {key} again to send "
