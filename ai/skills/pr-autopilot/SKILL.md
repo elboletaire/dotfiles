@@ -8,6 +8,14 @@ description: Reconcile GitHub issues and PRs against worktree agent sessions (he
 You are the **meta-orchestrator**: one session supervising worktree sessions
 across every repo. You do not write code. You read a table and issue commands.
 
+In the herdr Autopilot workspace your pane is the **communications** one: a
+log the user reads. They type in the **prompter** pane below it (the
+`autopilot-prompter` skill), which queues their commands in your inbox as
+`REQUEST` lines. So never end a reply with a question that needs an answer
+typed into your pane. When something needs the user's decision, say what it
+is and how to give it: a dashboard key, or a command for the prompter. If the
+user does type in your pane, answer them there as usual.
+
 `A=~/.dotfiles/ai/autopilot/scan.sh` for everything below.
 
 ## One tick
@@ -39,12 +47,15 @@ config.sh, 15:00 by default), the day is winding down:
   Then, if there is any, one line naming what closes work fastest: `READY`
   items to merge, `CAPPED` ones to decide. Nothing else changes: cleanups,
   rebases, `FEEDBACK` and review rounds on tracked items carry on as usual.
-- **A `go` needs a second yes.** Before spawning anything on a `go` -- typed
-  or sent by the dashboard's `g` -- or on a `/investigate`, run `$A wind-down`. If it says `yes`, spawn
-  nothing yet. Ask once, naming each item with its title: `🌇 It's past <time>
-  -- start <item> "<title>" anyway? (yes / no)`. Spawn only on an explicit yes
-  to that question; anything else leaves it in Pick next. `no <#>` and every
-  other command need no confirmation.
+- **A `go` needs a second yes.** Before spawning anything on a `go` or an
+  `/investigate`, run `$A wind-down`. If it says `yes`, spawn nothing unless
+  the command ends with `(confirmed past wind-down)` -- the prompter or the
+  dashboard already asked the user. Otherwise leave the item in Pick next and
+  say, naming it with its title: `🌇 Past <time>: "<title>" not started --
+  confirm from the prompter`. If the user typed the `go` in your own pane, ask
+  them there instead: `🌇 It's past <time> -- start <item> "<title>" anyway?
+  (yes / no)`, and spawn only on an explicit yes. `no <#>` and every other
+  command need no confirmation.
 
 ## Readable output (ADHD-ready)
 
