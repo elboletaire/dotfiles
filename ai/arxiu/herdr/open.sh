@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build the Arxiu workspace -- the board on top, the orchestrator below it
-# (about 60/40), both in the family tree's folder -- or focus it if it
+# (50/50), both in the family tree's folder -- or focus it if it
 # already exists. Run by the plugin's `open` action.
 #
 # The orchestrator is a claude agent named [arbre].orchestrator_agent, with
@@ -12,7 +12,7 @@ set -euo pipefail
 H="${HERDR_BIN_PATH:-herdr}"
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LABEL="Arxiu"   # agents.py's ARXIU_LABEL
-BOARD_SHARE=0.6 # of the height, for the board
+BOARD_SHARE=0.5 # of the height, for the board; Tecla needs ~12 rows below
 
 run() {
   if [ "${ARXIU_DRY_RUN:-}" = 1 ]; then
@@ -50,7 +50,7 @@ if [ -n "$orch" ] && "$H" agent get "$orch" >/dev/null 2>&1; then
 fi
 
 # The workspace's first pane is the orchestrator's; the board opens below it
-# as a plugin pane, then the two swap places and the split moves to 60/40.
+# as a plugin pane, then the two swap places and the split is set to BOARD_SHARE.
 if [ "${ARXIU_DRY_RUN:-}" = 1 ]; then
   root="<pane>"
   board="<board>"
@@ -95,8 +95,11 @@ else
   board=$(jq -r '.result.plugin_pane.pane.pane_id' <<<"$opened")
 fi
 run "$H" pane swap --source-pane "$root" --target-pane "$board" >/dev/null
-# The split starts at 50/50: grow the board (now on top) to BOARD_SHARE.
+# The split starts at 50/50: move the border to BOARD_SHARE if it differs.
 amount=$(python3 -c "print(round($BOARD_SHARE - 0.5, 2))")
-run "$H" pane resize --pane "$board" --direction down --amount "$amount" \
-  >/dev/null
+case "$amount" in
+  0|0.0|-0.0) ;;
+  -*) run "$H" pane resize --pane "$board" --direction up --amount "${amount#-}" >/dev/null ;;
+  *) run "$H" pane resize --pane "$board" --direction down --amount "$amount" >/dev/null ;;
+esac
 run "$H" pane focus --pane "$root" --direction up >/dev/null

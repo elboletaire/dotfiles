@@ -80,7 +80,7 @@ command = "elboletaire.arxiu.peek"
 (`f` for família; neither is a herdr default.)
 
 **The Arxiu workspace** (`prefix+shift+f`, `herdr/open.sh`), in the tree's
-folder: the board on top (about 60% of the height), below it the
+folder: the board on top (half the height), below it the
 orchestrator, a claude agent named `[arbre].orchestrator_agent` (`arbre`),
 with `ARXIU_ROLE=orchestrator` in its pane's environment, which Tecla reads.
 The board has the focus. If the workspace exists it is focused; if an agent

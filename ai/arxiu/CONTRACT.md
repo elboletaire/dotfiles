@@ -196,4 +196,4 @@ person -> their pedigree + lookup card (`uv run --script scripts/lookup.py
 people/sources it mentions; always at the bottom -> the queue.
 
 Workspace (`herdr/open.sh`): board on top, the orchestrator claude
-(`ARXIU_ROLE=orchestrator`, Tecla) below, split down, about 60/40.
+(`ARXIU_ROLE=orchestrator`, Tecla) below, split down, 50/50.
