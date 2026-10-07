@@ -24,7 +24,7 @@ command = ["bash", "-c", "exec \"${HERDR_BIN_PATH:-herdr}\" plugin pane open --p
 
 [[panes]]
 id = "dashboard"
-title = "Autopilot"
+title = "dashboard"
 placement = "split"
 command = ["bash", "../dashboard.sh"]
 

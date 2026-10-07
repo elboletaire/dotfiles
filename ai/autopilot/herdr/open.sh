@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-# Build the Autopilot workspace -- on the left the orchestrator's
-# communications pane (small, on top) and the user's prompter pane below it,
-# the dashboard on the right -- or focus it if it already exists, adding the
-# prompter if it is missing. Run by the plugin's `open` action.
+# Build the Autopilot workspace, or focus it if it already exists and add
+# whatever it is missing. Run by the plugin's `open` action.
+#
+# Tab "AUTOPILOT": on the left the orchestrator's communications pane (small,
+# on top) and the user's prompter pane below it, the dashboard on the right.
+# Tab "Autopilot (code changes)": a claude in the dotfiles, for changing
+# autopilot itself.
 #
 # Nothing is ever typed into the prompter: agent reports and dashboard
 # commands go to the orchestrator's inbox, and the prompter queues the user's
@@ -14,6 +17,10 @@ LABEL="Autopilot"
 ORCH_AGENT="autopilot"             # scan.py's ORCH_AGENT
 PROMPTER_AGENT="autopilot-prompter"
 COMMS_RATIO=0.35                   # the communications pane's share: room for the takoyaki band
+MAIN_TAB="AUTOPILOT"
+CODE_TAB="Autopilot (code changes)"
+CODE_AGENT="autopilot-code"
+CODE_CWD="$(cd "$DIR/../.." && pwd)"   # the dotfiles checkout
 
 # Split the orchestrator's pane down and start the prompter in the new pane.
 add_prompter() {
@@ -27,16 +34,39 @@ add_prompter() {
   "$H" agent prompt "$PROMPTER_AGENT" "/autopilot-prompter" >/dev/null || true
 }
 
+# The code-changes tab, unless the workspace has one; a claude starts in it.
+add_code_tab() {
+  local tabs created pane
+  tabs=$("$H" tab list --workspace "$1")
+  jq -e --arg l "$CODE_TAB" '.result.tabs[] | select(.label == $l)' \
+    <<<"$tabs" >/dev/null && return 0
+  created=$("$H" tab create --workspace "$1" --label "$CODE_TAB" \
+    --cwd "$CODE_CWD" --no-focus)
+  pane=$(jq -r '.result.root_pane.pane_id' <<<"$created")
+  "$H" agent start "$CODE_AGENT" --kind claude --pane "$pane" \
+    --timeout 60000 >/dev/null || true
+}
+
+# The tab holding the orchestrator's pane is the main one.
+name_main_tab() {
+  local tab
+  tab=$("$H" pane list | jq -r --arg p "$1" \
+    '.result.panes[] | select(.pane_id == $p) | .tab_id')
+  [ -n "$tab" ] && "$H" tab rename "$tab" "$MAIN_TAB" >/dev/null
+}
+
 ws=$("$H" workspace list | jq -r --arg l "$LABEL" \
   '.result.workspaces[] | select(.label == $l) | .workspace_id' | head -n1)
 if [ -n "$ws" ]; then
   "$H" workspace focus "$ws" >/dev/null
-  if ! "$H" agent get "$PROMPTER_AGENT" >/dev/null 2>&1; then
-    orch_pane=$("$H" agent get "$ORCH_AGENT" 2>/dev/null |
-      jq -r --arg w "$ws" '.result.agent | select(.workspace_id == $w) | .pane_id' ||
-      true)
-    [ -n "$orch_pane" ] && add_prompter "$orch_pane"
+  orch_pane=$("$H" agent get "$ORCH_AGENT" 2>/dev/null |
+    jq -r --arg w "$ws" '.result.agent | select(.workspace_id == $w) | .pane_id' ||
+    true)
+  if [ -n "$orch_pane" ]; then
+    name_main_tab "$orch_pane"
+    "$H" agent get "$PROMPTER_AGENT" >/dev/null 2>&1 || add_prompter "$orch_pane"
   fi
+  add_code_tab "$ws"
   exit 0
 fi
 
@@ -59,6 +89,7 @@ created=$("$H" workspace create --label "$LABEL" \
   --cwd "${AUTOPILOT_ORCH_CWD:-$HOME}" --focus)
 root=$(jq -r '.result.root_pane.pane_id' <<<"$created")
 "$H" pane rename "$root" "communications" >/dev/null
+name_main_tab "$root"
 
 # A fresh claude, named so workers and the dashboard can address it. It waits
 # for you: type /pr-autopilot to start ticking.
@@ -71,3 +102,4 @@ root=$(jq -r '.result.root_pane.pane_id' <<<"$created")
   --placement split --target-pane "$root" \
   --direction right --no-focus >/dev/null
 add_prompter "$root"
+add_code_tab "$(jq -r '.result.workspace.workspace_id // .result.workspace_id' <<<"$created")"

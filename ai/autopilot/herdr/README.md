@@ -31,14 +31,18 @@ type = "plugin_action"
 command = "elboletaire.autopilot.peek"
 ```
 
+The workspace has two tabs: **AUTOPILOT**, described below, and **Autopilot
+(code changes)**, a claude started in the dotfiles for changing autopilot
+itself. In AUTOPILOT, the dashboard pane is titled `dashboard`.
+
 `open` starts the orchestrator as a fresh claude in `AUTOPILOT_ORCH_CWD`
 (`~/src`) in a small **communications** pane -- type `/pr-autopilot` in it once
 to start ticking -- and the **prompter** below it, a second claude running
 `/autopilot-prompter`. Type in the prompter: it answers from autopilot's state
 and queues your commands in the orchestrator's inbox. Agent reports and the
 dashboard's keys go to that inbox too, so nothing is ever typed into a pane
-you are writing in. On an existing workspace without a prompter, `open` adds
-one.
+you are writing in. On an existing workspace, `open` adds whichever of the prompter and the
+code-changes tab is missing, and names the first tab AUTOPILOT.
 
 Show autopilot's state on each worker's row in the herdr sidebar (the
 dashboard publishes these tokens; they expire ten minutes after it stops):
