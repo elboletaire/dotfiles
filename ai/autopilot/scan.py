@@ -1493,11 +1493,18 @@ def report(state, args):
         return 1
     now = int(time.time())
     it = state["items"].get(k)
-    if it is not None:
-        it["last_report"] = {"state": st, "sha": sha, "msg": msg[:300],
-                             "at": now}
-        it["last_seen"] = now
-        save(state)
+    if it is None:
+        # Detached or cleaned up while its agent was still mid-turn: nobody
+        # is waiting for this, and the orchestrator must not act on it. Keep
+        # a neutral trace in the log (no doorbell) and tell the agent to stop.
+        log_event("orphan-report", k, state=st, sha=sha[:7], msg=msg[:300])
+        print(f"{k} is no longer tracked by autopilot (detached or cleaned "
+              "up): report not delivered. Stop here; there is nothing left "
+              "to do for this item.")
+        return 0
+    it["last_report"] = {"state": st, "sha": sha, "msg": msg[:300], "at": now}
+    it["last_seen"] = now
+    save(state)
     # Into the orchestrator's inbox, never typed into its pane: a typed
     # prompt lands on whatever the user is half-way through writing there
     # and sends it. The log line below is what its Monitor wakes on.
