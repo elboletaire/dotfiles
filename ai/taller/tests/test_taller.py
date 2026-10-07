@@ -590,6 +590,330 @@ esac
             "herdr pane run w9:p1 env -C /p/.worktrees/x pi --continue"])
 
 
+def project(name="p", path="/p", **kw):
+    """A collect()-shaped project."""
+    p = {"name": name, "path": path, "git": True, "remote": "github:o/p",
+         "branch": "main", "dirty": 0, "ahead": 0, "behind": 0,
+         "worktrees": [], "last_touch": int(time.time()), "agents": [],
+         "last_exchange": None, "flags": [], "dormant": False}
+    p.update(kw)
+    return p
+
+
+def agent(state, host="herdr", name="a", **kw):
+    a = {"host": host, "id": "w1", "name": name, "tool": "claude",
+         "path": "/p", "state": state, "pane": "w1:p1"}
+    a.update(kw)
+    return a
+
+
+class BoardLogicTest(unittest.TestCase):
+    def test_agent_name(self):
+        n = taller.agent_name
+        self.assertEqual(n(".dotfiles"), "dotfiles")
+        self.assertEqual(n("*arr"), "arr")
+        self.assertEqual(n("QtMule"), "qtmule")
+        self.assertEqual(n("feat/user-auth"), "feat-user-auth")
+        self.assertEqual(n("2048 game"), "p-2048-game")
+        self.assertEqual(n("***"), "agent")
+        self.assertEqual(n("x" * 50), "x" * 32)
+        self.assertEqual(n("planets", {"planets"}), "planets-2")
+        self.assertEqual(n("planets", {"planets", "planets-2"}), "planets-3")
+        long = n("y" * 40, {"y" * 32})
+        self.assertEqual(long, "y" * 30 + "-2")
+        for name in ("dotfiles", "p-2048-game", long, n("Ñandú_ß")):
+            self.assertRegex(name, taller.AGENT_NAME)
+
+    def test_sections(self):
+        need = [project("w", agents=[agent("waiting")]),
+                project("e", agents=[agent("error", host="aoe")]),
+                project("d", agents=[agent("done"), agent("working")])]
+        working = project("k", agents=[agent("working"), agent("idle")])
+        parked = [project("old", last_touch=100),
+                  project("new", last_touch=200, agents=[agent("idle")])]
+        dormant = project("z", dormant=True, agents=[agent("stopped", host="aoe")])
+        got = taller.sections(need + [working] + parked + [dormant])
+        self.assertEqual(list(got), ["need", "working", "parked", "dormant"])
+        self.assertEqual({p["name"] for p in got["need"]}, {"w", "e", "d"})
+        self.assertEqual([p["name"] for p in got["working"]], ["k"])
+        self.assertEqual([p["name"] for p in got["parked"]], ["new", "old"])
+        self.assertEqual([p["name"] for p in got["dormant"]], ["z"])
+        # Wanting you beats being dormant.
+        self.assertEqual(taller.section(project(dormant=True, agents=[
+            agent("waiting")])), "need")
+
+    def test_wake(self):
+        now = time.time()
+        p = project(last_touch=int(now - 30 * 86400), flags=["dirty", "error"])
+        taller.wake(p, 14, now)
+        self.assertEqual(p["flags"], ["dirty", "dormant", "error"])
+        p["agents"] = [agent("idle")]
+        taller.wake(p, 14, now)
+        self.assertEqual((p["dormant"], p["flags"]), (False, ["dirty", "error"]))
+
+    def test_no_backup(self):
+        self.assertTrue(taller.no_backup(project(flags=["no_remote"])))
+        self.assertTrue(taller.no_backup(project(flags=["unpushed", "dirty"])))
+        self.assertFalse(taller.no_backup(project(flags=["dirty"])))
+        self.assertFalse(taller.no_backup(project(git=False, flags=["no_git"])))
+
+    def test_pick_agent(self):
+        p = project(agents=[agent("idle", name="i"), agent("working", name="w"),
+                            agent("done", name="d"),
+                            agent("waiting", host="aoe", name="x")])
+        self.assertEqual(taller.pick_agent(p)["name"], "d")
+        p["agents"].append(agent("waiting", name="b"))
+        self.assertEqual(taller.pick_agent(p)["name"], "b")
+        self.assertIsNone(taller.pick_agent(project(agents=[agent("idle", host="aoe")])))
+
+    def test_web_url_and_browser(self):
+        self.assertEqual(taller.web_url("github:o/r"), "https://github.com/o/r")
+        self.assertEqual(taller.web_url("gitlab:g/s/r"), "https://gitlab.com/g/s/r")
+        self.assertEqual(taller.web_url("https://git.x/a/b.git"), "https://git.x/a/b")
+        self.assertIsNone(taller.web_url("elboletaire.loc:/home/x/arbre"))
+        self.assertIsNone(taller.web_url(None))
+        have = lambda *names: (lambda b: b in names)  # noqa: E731
+        self.assertEqual(taller.browser_cmd("u", have("wslview", "xdg-open")),
+                         ["wslview", "u"])
+        self.assertEqual(taller.browser_cmd("u", have("explorer.exe", "xdg-open")),
+                         ["explorer.exe", "u"])
+        self.assertEqual(taller.browser_cmd("u", have("xdg-open")), ["xdg-open", "u"])
+        self.assertIsNone(taller.browser_cmd("u", have()))
+
+    def test_branch_title_and_dir(self):
+        self.assertEqual(taller.branch_title("feat/convert-images"), "Convert Images")
+        self.assertEqual(taller.branch_title("fix/api_v2"), "Api V2")
+        self.assertEqual(taller.branch_title("wsl"), "Wsl")
+        self.assertEqual(taller.branch_title("user/x-y"), "User X Y")
+        self.assertEqual(taller.worktree_dir("/r", "feat/a-b"), "/r/.worktrees/feat-a-b")
+
+    def test_pane_of(self):
+        self.assertEqual(taller.pane_of({"result": {"root_pane": {"pane_id": "w1:p1"}}}),
+                         "w1:p1")
+        self.assertEqual(taller.pane_of({"result": {"workspace": {
+            "root_pane": {"pane_id": "w5:p1"}}}}), "w5:p1")
+        self.assertIsNone(taller.pane_of({"result": {}}))
+        self.assertIsNone(taller.pane_of(None))
+
+    def test_resume_plan(self):
+        with tempfile.TemporaryDirectory() as d:
+            wt = os.path.join(d, "wt")
+            os.makedirs(wt)
+            p = project("alpha", d, last_exchange={"tool": "claude", "path": wt})
+            plan = taller.resume_plan(p, "alpha", None, ["--model", "haiku"])
+            self.assertEqual(plan[0], ["herdr", "workspace", "create", "--label",
+                                       "alpha", "--cwd", wt, "--focus"])
+            self.assertEqual(plan[1][:8], ["herdr", "agent", "start", "alpha",
+                                           "--kind", "claude", "--pane", "<pane>"])
+            self.assertEqual(plan[1][-4:], ["--", "--model", "haiku", "--continue"])
+            # pi gets no claude args; a worktree that is gone falls back to
+            # the project; an existing workspace gets a tab.
+            p["last_exchange"] = {"tool": "pi", "path": os.path.join(d, "gone")}
+            plan = taller.resume_plan(p, "alpha", "w7", ["--model", "haiku"])
+            self.assertEqual(plan[0], ["herdr", "tab", "create", "--workspace", "w7",
+                                       "--cwd", d, "--label", "alpha", "--focus"])
+            self.assertEqual(plan[1][5], "pi")
+            self.assertEqual(plan[1][-2:], ["--", "--continue"])
+            # No conversation: a plain claude.
+            p["last_exchange"] = None
+            self.assertNotIn("--", taller.resume_plan(p, "alpha")[1])
+
+    def test_fresh_plan(self):
+        p = project("beta", "/b")
+        plan = taller.fresh_plan(p, "beta-2", "w3")
+        self.assertEqual(plan[0][:5], ["herdr", "tab", "create", "--workspace", "w3"])
+        self.assertEqual(plan[1][3], "beta-2")
+        self.assertNotIn("--continue", plan[1])
+
+
+class LaunchTest(TallerCase):
+    """resume_project / fresh_agent / new_worktree against a fake herdr and
+    real temp repos (alpha, beta from TallerCase)."""
+
+    def setUp(self):
+        super().setUp()
+        self.state = os.path.join(self.t, "hstate")
+        os.makedirs(self.state)
+        self.log = os.path.join(self.t, "launch.log")
+        s = self.state
+        fake_bin(self.bin, "herdr", f"""printf '%s\\n' "herdr $*" >> {self.log}
+case "$1 $2" in
+  "agent list") cat {s}/agents.json ;;
+  "workspace list") cat {s}/workspaces.json ;;
+  "workspace create") echo '{{"result":{{"root_pane":{{"pane_id":"w9:p1"}}}}}}' ;;
+  "tab create") echo '{{"result":{{"root_pane":{{"pane_id":"w2:p7"}}}}}}' ;;
+  "worktree open") echo '{{"result":{{"workspace":{{"workspace_id":"w8"}},"root_pane":{{"pane_id":"w8:p1"}}}}}}' ;;
+  "agent start") cat {s}/start.json; exit $(cat {s}/start.code) ;;
+  "agent read") cat {s}/screen.txt ;;
+  "agent send-keys"|"agent wait") echo '{{"result":{{}}}}' ;;
+  *) exit 3 ;;
+esac
+""")
+        fake_bin(self.bin, "aoe", "exit 1\n")
+        self.herdr_agents([])
+        self.workspaces([])
+        self.start(0)
+        write(os.path.join(s, "screen.txt"), "")
+        for var in ("ARXIU_DRY_RUN", "TALLER_DRY_RUN"):
+            os.environ.pop(var, None)
+
+    def herdr_agents(self, rows):
+        write(os.path.join(self.state, "agents.json"),
+              json.dumps({"result": {"agents": rows}}))
+
+    def workspaces(self, rows):
+        write(os.path.join(self.state, "workspaces.json"),
+              json.dumps({"result": {"workspaces": rows}}))
+
+    def start(self, code, error=None):
+        write(os.path.join(self.state, "start.json"),
+              json.dumps({"error": {"code": error}}) if error else "{}")
+        write(os.path.join(self.state, "start.code"), str(code))
+
+    def mutating(self):
+        try:
+            with open(self.log) as fh:
+                calls = fh.read().splitlines()
+        except OSError:
+            return []
+        return [c for c in calls if not c.startswith((
+            "herdr agent list", "herdr workspace list", "herdr agent read"))]
+
+    def proj(self, **kw):
+        kw.setdefault("remote", None)
+        return project("beta", self.beta, **kw)
+
+    def test_resume_starts_a_named_agent_with_continue(self):
+        self.herdr_agents([{"name": "beta", "agent_status": "idle", "cwd": "/x",
+                            "workspace_id": "w1", "pane_id": "w1:p1"}])
+        p = self.proj(last_exchange={"tool": "claude", "path": self.beta})
+        ok, msg, name = taller.resume_project(p, ["--model", "haiku"])
+        self.assertTrue(ok, msg)
+        self.assertEqual(name, "beta-2")   # "beta" is taken
+        self.assertEqual(self.mutating(), [
+            f"herdr workspace create --label beta --cwd {self.beta} --focus",
+            "herdr agent start beta-2 --kind claude --pane w9:p1 --timeout 60000 "
+            "-- --model haiku --continue"])
+
+    def test_resume_goes_into_the_projects_workspace(self):
+        self.workspaces([{"label": "beta", "workspace_id": "w4"}])
+        ok, msg, _ = taller.resume_project(self.proj())
+        self.assertTrue(ok, msg)
+        self.assertEqual(self.mutating()[0],
+                         f"herdr tab create --workspace w4 --cwd {self.beta} "
+                         "--label beta --focus")
+
+    def test_fresh_agent_in_a_tab_of_its_herdr_workspace(self):
+        p = self.proj(agents=[agent("idle", name="beta", id="w5", path=self.beta)])
+        ok, msg, name = taller.fresh_agent(p)
+        self.assertTrue(ok, msg)
+        self.assertEqual(self.mutating(), [
+            f"herdr tab create --workspace w5 --cwd {self.beta} --label beta "
+            "--focus",
+            "herdr agent start beta --kind claude --pane w2:p7 --timeout 60000"])
+
+    def test_new_worktree(self):
+        run("git", "remote", "add", "origin", os.path.join(self.t, "nowhere.git"),
+            cwd=self.beta)
+        p = self.proj(remote="/nowhere.git")
+        seen = []
+        ok, msg, name = taller.new_worktree(p, "feat/new-thing", [], seen.append)
+        self.assertTrue(ok, msg)
+        self.assertIn("fetch ha fallat", msg)   # offline is only a warning
+        wt = os.path.join(self.beta, ".worktrees", "feat-new-thing")
+        self.assertTrue(os.path.isdir(wt))
+        _, out, _ = taller.git(wt, "branch", "--show-current")
+        self.assertEqual(out, "feat/new-thing")
+        self.assertEqual(name, "feat-new-thing")
+        self.assertEqual(self.mutating(), [
+            f"herdr worktree open --cwd {self.beta} --path {wt} --label "
+            "New Thing --focus",
+            "herdr agent start feat-new-thing --kind claude --pane w8:p1 "
+            "--timeout 60000"])
+        self.assertTrue(any("git" in s for s in seen), seen)
+        # The main checkout is untouched and still clean.
+        self.assertEqual(taller.status(self.beta)["branch"], "main")
+        self.assertEqual(taller.status(self.beta)["dirty"], 0)
+        # Again: the branch exists now.
+        ok, msg, _ = taller.new_worktree(p, "feat/new-thing")
+        self.assertFalse(ok)
+        self.assertIn("ja existeix", msg)
+
+    def test_check_branch(self):
+        p = self.proj()
+        self.assertIsNone(taller.check_branch(p, "fix/x"))
+        self.assertIn("no és un nom", taller.check_branch(p, "bad..name"))
+        self.assertIn("no és un nom", taller.check_branch(p, "-x"))
+        self.assertIn("ja existeix", taller.check_branch(p, "main"))
+        self.assertIn("no és un repositori", taller.check_branch(
+            self.proj(git=False), "x"))
+        os.makedirs(os.path.join(self.beta, ".worktrees", "fix-y"))
+        self.assertIn("ja existeix", taller.check_branch(p, "fix/y"))
+
+    def test_trust_prompt_only_for_the_projects_folder(self):
+        self.start(1, "agent_not_ready")
+        write(os.path.join(self.state, "screen.txt"),
+              "Do you trust this folder?\n> No, exit\n  Yes\n")
+        ok, msg, name = taller.fresh_agent(self.proj())
+        self.assertTrue(ok, msg)
+        self.assertIn("confiança", msg)
+        self.assertIn(f"herdr agent send-keys {name} down enter", self.mutating())
+        # A dialog that is not the trust prompt stays for the user.
+        open(self.log, "w").close()
+        write(os.path.join(self.state, "screen.txt"), "Allow this MCP server?\n> Yes\n")
+        ok, msg, _ = taller.fresh_agent(self.proj())
+        self.assertFalse(ok)
+        self.assertIn("Allow this MCP server", msg)
+        self.assertFalse([c for c in self.mutating() if "send-keys" in c])
+
+    def test_dry_run_says_and_runs_nothing(self):
+        p = self.proj(last_exchange={"tool": "claude", "path": self.beta})
+        with mock.patch.dict(os.environ, {"TALLER_DRY_RUN": "1"}):
+            ok, msg, _ = taller.resume_project(p)
+            self.assertTrue(ok)
+            self.assertIn("dry-run: herdr workspace create --label beta", msg)
+            self.assertIn("--continue", msg)
+            ok, msg, _ = taller.new_worktree(p, "feat/z")
+            self.assertTrue(ok)
+            self.assertIn("git -C", msg)
+            ok, msg, _ = taller.fresh_agent(p)
+            self.assertTrue(ok)
+            ok, msg = taller.focus(agent("idle", name="beta"))
+            self.assertEqual(msg, "dry-run: herdr agent focus beta")
+        self.assertEqual(self.mutating(), [])
+        self.assertFalse(os.path.exists(os.path.join(self.beta, ".worktrees")))
+
+
+class DetailsTest(TallerCase):
+    def test_commits_and_changes(self):
+        d = taller.details(self.alpha)
+        self.assertEqual([c["subject"] for c in d["commits"]], ["ahead", "init"])
+        self.assertTrue(d["commits"][0]["at"])
+        self.assertEqual(d["changes"], ["?? dirty.txt"])
+        self.assertEqual(d["changes_total"], 1)
+        self.assertIsNone(d["error"])
+        for i in range(12):
+            write(os.path.join(self.alpha, f"n{i}.txt"), "x")
+        d = taller.details(self.alpha, n_changes=8)
+        self.assertEqual((len(d["changes"]), d["changes_total"]), (8, 13))
+
+    def test_key_follows_head_and_index(self):
+        p = project("alpha", self.alpha)
+        k1 = taller.details_key(p)
+        self.assertEqual(k1, taller.details_key(p))
+        time.sleep(0.01)
+        run("git", "add", "dirty.txt", cwd=self.alpha)
+        k2 = taller.details_key(p)
+        self.assertNotEqual(k1, k2)
+        run("git", "commit", "-q", "-m", "more", cwd=self.alpha)
+        self.assertNotEqual(k2, taller.details_key(p))
+
+    def test_broken_path(self):
+        d = taller.details(os.path.join(self.t, "nope"))
+        self.assertEqual(d["commits"], [])
+        self.assertTrue(d["error"])
+
+
 class ConfigTest(unittest.TestCase):
     def test_defaults_and_expansion(self):
         with tempfile.TemporaryDirectory() as d:
@@ -607,8 +931,16 @@ class ConfigTest(unittest.TestCase):
         with mock.patch.dict(os.environ, {"ARXIU_CONFIG": "/nonexistent.toml"}):
             self.assertEqual(taller.load_config()["taller"]["roots"],
                              [os.path.expanduser("~/src")])
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "t.toml")
+            write(path, '[taller]\nagent_args = ["--model", "haiku"]\n')
+            with mock.patch.dict(os.environ, {"TALLER_CONFIG": path,
+                                              "ARXIU_CONFIG": "/nonexistent.toml"}):
+                self.assertEqual(taller.load_config()["taller"]["agent_args"],
+                                 ["--model", "haiku"])
         cfg = taller.load_config(os.path.join(taller.HERE, "config.toml"))
         self.assertIn(os.path.expanduser("~/.dotfiles"), cfg["taller"]["extra"])
+        self.assertEqual(cfg["taller"]["agent_args"], [])
 
 
 if __name__ == "__main__":

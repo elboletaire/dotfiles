@@ -191,8 +191,8 @@ install_uv() {
 
 link_herdr_plugin() {
   # The dotfiles' herdr plugins: PR Autopilot (Autopilot workspace + live
-  # dashboard) and Arxiu (genealogy + projects board). Only linked when herdr
-  # is installed (install_herdr).
+  # dashboard), Arxiu (genealogy board) and Taller (projects board). Only
+  # linked when herdr is installed (install_herdr).
   command -v herdr &>/dev/null || return 0
   # Plugin commands need a live server and exit 0 even when there is none.
   if herdr status server 2>/dev/null | grep -q "not running"; then
@@ -201,6 +201,7 @@ link_herdr_plugin() {
   fi
   _link_herdr_plugin elboletaire.autopilot "$dotfiles/ai/autopilot/herdr"
   _link_herdr_plugin elboletaire.arxiu "$dotfiles/ai/arxiu/herdr"
+  _link_herdr_plugin elboletaire.taller "$dotfiles/ai/taller/herdr"
 }
 
 _link_herdr_plugin() {

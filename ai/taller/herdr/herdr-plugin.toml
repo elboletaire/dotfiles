@@ -1,0 +1,49 @@
+# Taller inside herdr: a "Taller" workspace with the board as its only pane,
+# the board as an overlay over whatever you are doing, and the popups the
+# board opens. Link it with `herdr plugin link ~/.dotfiles/ai/taller/herdr`
+# (scripts/install.sh does; see ../README.md).
+id = "elboletaire.taller"
+name = "Taller"
+version = "0.1.0"
+min_herdr_version = "0.9.3"
+platforms = ["linux", "macos"]
+description = "Every coding project with its git state and agents, one key from resuming it"
+
+# Build (or focus) the Taller workspace.
+[[actions]]
+id = "open"
+title = "Open Taller"
+contexts = ["workspace"]
+command = ["bash", "open.sh"]
+
+# The board over whatever you are doing; q closes it.
+[[actions]]
+id = "peek"
+title = "Peek at Taller"
+contexts = ["workspace"]
+command = ["bash", "-c", "exec \"${HERDR_BIN_PATH:-herdr}\" plugin pane open --plugin elboletaire.taller --entrypoint board --placement overlay"]
+
+[[panes]]
+id = "board"
+title = "Taller"
+placement = "split"
+command = ["bash", "../taller.sh"]
+
+# Opened by the board (`t`): a shell in the selected project.
+[[panes]]
+id = "shell"
+title = "Shell"
+placement = "popup"
+width = "92%"
+height = "88%"
+command = ["bash", "-c", "exec \"${SHELL:-bash}\" -l"]
+
+# Opened by the board (`g`): the project's recent history and status; q
+# closes it.
+[[panes]]
+id = "git"
+title = "Git"
+placement = "popup"
+width = "92%"
+height = "88%"
+command = ["bash", "-c", "{ git -c color.ui=always log --oneline --graph --decorate -20; echo; git -c color.ui=always status -sb; } 2>&1 | less -+F -R"]

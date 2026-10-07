@@ -1001,10 +1001,11 @@ rm -f "$TESTDIR/herdr-down"
 : > "$TESTDIR/herdr.log"
 link_herdr_plugin >/dev/null
 if grep -q "^herdr plugin link $DOTFILES/ai/autopilot/herdr$" "$TESTDIR/herdr.log" &&
-   grep -q "^herdr plugin link $DOTFILES/ai/arxiu/herdr$" "$TESTDIR/herdr.log"; then
-  pass "links both the autopilot and the arxiu plugins"
+   grep -q "^herdr plugin link $DOTFILES/ai/arxiu/herdr$" "$TESTDIR/herdr.log" &&
+   grep -q "^herdr plugin link $DOTFILES/ai/taller/herdr$" "$TESTDIR/herdr.log"; then
+  pass "links the autopilot, arxiu and taller plugins"
 else
-  fail "did not link both plugins: $(grep 'plugin link' "$TESTDIR/herdr.log" | tr '\n' ';')"
+  fail "did not link all three plugins: $(grep 'plugin link' "$TESTDIR/herdr.log" | tr '\n' ';')"
 fi
 
 : > "$HERDR_STATE"

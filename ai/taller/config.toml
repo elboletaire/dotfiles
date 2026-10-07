@@ -1,6 +1,5 @@
 # Taller: every project the user works on, with its agents. Read by
-# taller.py (or $ARXIU_CONFIG). Parked here, out of Arxiu, until it gets a
-# workspace of its own.
+# taller.py and board.py (or $TALLER_CONFIG).
 
 [taller]
 # Every git repository directly under these folders is a project, whether or
@@ -13,6 +12,9 @@ hide = ["~/src/agent-of-empires", "interviews", "foundation"]
 # Idle for longer than this (days since the last commit or conversation) is
 # "dormant": collapsed into one line.
 dormant_days = 14
+# Extra claude arguments for the agents the board starts (⏎, n, w), e.g.
+# ["--model", "haiku"]. Not passed to pi.
+agent_args = []
 
 [ui]
 # Seconds between refreshes of agent state; files are re-read on change.

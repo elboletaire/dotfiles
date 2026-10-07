@@ -2,11 +2,12 @@
 """Taller collector: every project the user works on, with git state, the
 agents running in it and the last conversation held there.
 
-Stdlib only, read-only. board.py imports collect() and the actions; run it
-directly (`taller.py [--json]`) to see what the board would get. See
-CONTRACT.md for the shapes. The herdr-native actions (starting the tree's
-agents, opening a project in herdr) are the only ones that change anything,
-and only when the board asks.
+Stdlib only, read-only. board.py imports collect(), the sections and the
+actions; run it directly (`taller.py [--json]`) to see what the board would
+get (shapes: ai/arxiu/CONTRACT.md). The herdr launches (resuming a project's
+conversation, a fresh agent, a new worktree) are the only things that change
+anything, and only when the board asks; TALLER_DRY_RUN=1 makes them say what
+they would run instead.
 """
 import json
 import os
@@ -27,7 +28,7 @@ DEFAULTS = {
               "research_agent": "investigacio",
               "research_skill": "genealogy-research", "agent_args": []},
     "taller": {"roots": ["~/src"], "extra": [], "hide": [],
-               "dormant_days": 14},
+               "dormant_days": 14, "agent_args": []},
     "ui": {"agents_secs": 3, "git_secs": 20},
 }
 
@@ -61,9 +62,11 @@ def _expand(p):
 
 
 def load_config(path=None):
-    """config.toml next to this module (or $ARXIU_CONFIG), with defaults for
-    every missing key and `~` expanded in every path."""
-    path = path or os.environ.get("ARXIU_CONFIG") or os.path.join(HERE, "config.toml")
+    """config.toml next to this module (or $TALLER_CONFIG, or $ARXIU_CONFIG
+    from when it lived in Arxiu), with defaults for every missing key and `~`
+    expanded in every path."""
+    path = (path or os.environ.get("TALLER_CONFIG")
+            or os.environ.get("ARXIU_CONFIG") or os.path.join(HERE, "config.toml"))
     try:
         with open(path, "rb") as fh:
             raw = tomllib.load(fh)
@@ -135,7 +138,9 @@ def iso_epoch(ts):
 
 
 def dry_run():
-    return os.environ.get("ARXIU_DRY_RUN") == "1"
+    """TALLER_DRY_RUN=1 (or Arxiu's ARXIU_DRY_RUN=1): actions say what they
+    would run instead of running it."""
+    return "1" in (os.environ.get("TALLER_DRY_RUN"), os.environ.get("ARXIU_DRY_RUN"))
 
 
 # ---------------------------------------------------------------- git
@@ -559,13 +564,29 @@ def scan(root, seed):
     return p
 
 
+def is_dormant(p, dormant_days, now=None):
+    now = now or time.time()
+    awake = any(a["state"] not in ("stopped", "error") for a in p["agents"])
+    return not awake and (p["last_touch"] is None
+                          or now - p["last_touch"] > dormant_days * 86400)
+
+
+def wake(p, dormant_days, now=None):
+    """Dormancy again after match_agents() changed a project's agents
+    (finish() can only run once: it consumes the scan's private keys)."""
+    p["dormant"] = is_dormant(p, dormant_days, now)
+    flags = [f for f in p["flags"] if f != "dormant"]
+    if p["dormant"]:
+        at = flags.index("error") if "error" in flags else len(flags)
+        flags.insert(at, "dormant")
+    p["flags"] = flags
+    return p
+
+
 def finish(p, dormant_days, now=None):
     """Flags and dormancy, once agents are matched: a project with an agent
     that is not stopped is never dormant, however old its last commit."""
-    now = now or time.time()
-    awake = any(a["state"] not in ("stopped", "error") for a in p["agents"])
-    p["dormant"] = not awake and (p["last_touch"] is None
-                                  or now - p["last_touch"] > dormant_days * 86400)
+    p["dormant"] = is_dormant(p, dormant_days, now)
     flags = []
     if not p["git"]:
         flags.append("no_git")
@@ -762,10 +783,34 @@ def start_agent(name, role, cwd, root, agent_args=(), status=None):
     code, data, raw = herdr(plan[0][1:])
     if code != 0:
         return False, f"no s'ha pogut obrir la pestanya: {short(raw, 120)}"
-    pane = (((data or {}).get("result") or {}).get("root_pane") or {}) \
-        .get("pane_id")
-    args = [pane if a == "<pane>" else a for a in plan[1][1:]]
-    status(f"engegant {name}: esperant claude…")
+    return start_in_pane(name, plan[1], pane_of(data), cwd, root, status)
+
+
+def pane_of(data):
+    """The pane a create/open call made: `.result.root_pane.pane_id`, wherever
+    in the result it sits (workspace, tab and worktree calls differ)."""
+    def walk(d):
+        if isinstance(d, dict):
+            rp = d.get("root_pane")
+            if isinstance(rp, dict) and rp.get("pane_id"):
+                return rp["pane_id"]
+            for v in d.values():
+                found = walk(v)
+                if found:
+                    return found
+        return None
+    return walk((data or {}).get("result"))
+
+
+def start_in_pane(name, start, pane, cwd, root, status):
+    """Run `start` (a `herdr agent start` argv, "<pane>" for the pane) in
+    `pane` and wait until the agent takes prompts. Claude's folder-trust
+    prompt is answered only for a folder inside `root`; any other dialog is
+    left on screen and its last lines come back. -> (ok, message)."""
+    if not pane:
+        return False, f"herdr no ha tornat cap pane per a {name}"
+    args = [pane if a == "<pane>" else a for a in start[1:]]
+    status(f"engegant {name}: esperant l'agent…")
     # The pane's shell may still be starting; agent start needs its prompt.
     for _ in range(3):
         code, data, raw = herdr(args, timeout=START_TIMEOUT_MS / 1000 + 30)
@@ -856,6 +901,309 @@ def open_in_herdr(project):
     if code != 0:
         return False, f"workspace creat, però l'ordre ha fallat: {short(raw, 120)}"
     return True, f"obert a herdr: {plan[0][4]}"
+
+
+# ---------------------------------------------------------------- the board
+#
+# What board.py needs beyond collect(): where each project goes on screen,
+# the expensive per-project details, and the herdr launches behind its keys
+# (resume the project's conversation, a fresh agent, a new worktree). Every
+# agent it starts gets a name, so herdr lists it by name and not by pane.
+
+SECTIONS = ("need", "working", "parked", "dormant")
+# An agent in one of these states wants you: blocked on a question or an
+# approval, broken, or finished with nobody having looked yet (herdr's done).
+NEED_STATES = {"waiting", "error", "done"}
+AGENT_NAME = re.compile(r"^[a-z][a-z0-9_-]{0,31}$")
+# Branch prefixes the worktree title drops (herdr-orchestrator.md).
+TITLE_PREFIXES = ("feat", "fix", "chore", "docs", "refactor", "test", "ci",
+                  "build", "perf", "style")
+WORKTREES = ".worktrees"
+
+
+def section(p):
+    """need | working | parked | dormant: the first that applies."""
+    states = {a["state"] for a in p["agents"]}
+    if states & NEED_STATES:
+        return "need"
+    if "working" in states:
+        return "working"
+    if p["dormant"]:
+        return "dormant"
+    return "parked"
+
+
+def sections(projects):
+    """-> {section: [project]}, each newest first."""
+    out = {s: [] for s in SECTIONS}
+    for p in projects:
+        out[section(p)].append(p)
+    for rows in out.values():
+        rows.sort(key=lambda p: (-(p["last_touch"] or 0), p["name"]))
+    return out
+
+
+def no_backup(p):
+    """Work that exists only on this machine: no remote, or commits ahead of
+    the upstream."""
+    return p["git"] and ("no_remote" in p["flags"] or "unpushed" in p["flags"])
+
+
+def agent_name(base, taken=()):
+    """A herdr agent name ([a-z][a-z0-9_-]{0,31}) from a project or branch
+    name, with -2, -3... when `taken` already has it."""
+    s = re.sub(r"[^a-z0-9_-]+", "-", (base or "").lower()).strip("-_")
+    if s and not s[0].isalpha():
+        s = "p-" + s
+    s = s[:32].rstrip("-_") or "agent"
+    taken = set(taken)
+    if s not in taken:
+        return s
+    for n in range(2, 1000):
+        suffix = f"-{n}"
+        cand = s[:32 - len(suffix)].rstrip("-_") + suffix
+        if cand not in taken:
+            return cand
+    raise ValueError(f"no free agent name for {base!r}")
+
+
+def herdr_names():
+    """Names (or pane ids, for unnamed ones) of every herdr agent."""
+    return {a["name"] for a in herdr_agents()}
+
+
+def pick_agent(p, host="herdr"):
+    """The project's agent to go to: one that wants you, else a working
+    one, else any."""
+    rank = {"waiting": 0, "error": 0, "done": 1, "working": 2}
+    mine = [a for a in p["agents"] if a["host"] == host]
+    return min(mine, key=lambda a: rank.get(a["state"], 3), default=None)
+
+
+def project_workspace(p):
+    """herdr workspace of the project: the one its herdr agents run in, or
+    one labelled with its name. None when there is none."""
+    for a in p["agents"]:
+        if a["host"] == "herdr" and a.get("id"):
+            return a["id"]
+    return find_workspace(p["name"])
+
+
+def web_url(remote):
+    """Browser URL of a parsed remote ("github:o/r"), or None."""
+    if not remote:
+        return None
+    for host in ("github", "gitlab"):
+        if remote.startswith(host + ":"):
+            return f"https://{host}.com/{remote[len(host) + 1:]}"
+    if remote.startswith(("https://", "http://")):
+        return re.sub(r"\.git$", "", remote)
+    return None
+
+
+def browser_cmd(url, which=shutil.which):
+    """argv opening `url` in the browser; under WSL the Windows one."""
+    if which("wslview"):
+        return ["wslview", url]
+    if which("explorer.exe"):
+        return ["explorer.exe", url]
+    for opener in ("xdg-open", "open"):
+        if which(opener):
+            return [opener, url]
+    return None
+
+
+# .. details: only for the selected project, cached by the board
+
+def details_key(p):
+    """Changes whenever the details could: the repo's HEAD, index and reflog
+    stamps (a stat each, no git) plus what collect() saw."""
+    gitdir = os.path.join(p["path"], ".git")
+    stamps = []
+    for f in ("HEAD", "index", "logs/HEAD"):
+        try:
+            stamps.append(os.stat(os.path.join(gitdir, f)).st_mtime_ns)
+        except OSError:
+            stamps.append(None)
+    return (p["path"], p["branch"], p["dirty"], p["ahead"], tuple(stamps))
+
+
+def details(path, n_commits=5, n_changes=8):
+    """The last commits and the changed files of a checkout:
+    {commits: [{sha, at, subject}], changes: [porcelain line], changes_total,
+    error}."""
+    with ThreadPoolExecutor(2) as ex:
+        f_log = ex.submit(git, path, "log", f"-{n_commits}",
+                          "--format=%h%x1f%ct%x1f%s")
+        f_st = ex.submit(git, path, "status", "--porcelain")
+        (lc, lout, lerr), (sc, sout, serr) = f_log.result(), f_st.result()
+    commits = []
+    for line in lout.splitlines() if lc == 0 else []:
+        sha, at, subject = (line.split("\x1f") + ["", ""])[:3]
+        commits.append({"sha": sha, "at": int(at) if at.isdigit() else None,
+                        "subject": subject})
+    changes = [ln for ln in sout.splitlines() if ln.strip()] if sc == 0 else []
+    error = None
+    if sc != 0:
+        error = short(serr or "git status ha fallat", 120)
+    elif lc != 0 and "does not have any commits" not in lerr:
+        error = short(lerr or "git log ha fallat", 120)
+    return {"commits": commits, "changes": changes[:n_changes],
+            "changes_total": len(changes), "error": error}
+
+
+# .. launches
+
+def launch_kind(tool):
+    return tool if tool in ("claude", "pi") else "claude"
+
+
+def start_argv(name, kind, args=()):
+    argv = ["herdr", "agent", "start", name, "--kind", kind, "--pane",
+            "<pane>", "--timeout", str(START_TIMEOUT_MS)]
+    return argv + (["--"] + list(args) if args else [])
+
+
+def _opener(p, name, cwd, workspace):
+    """First step of a launch: a tab of the project's workspace, or a
+    workspace of its own labelled with the project's name."""
+    if workspace:
+        return ["herdr", "tab", "create", "--workspace", workspace, "--cwd",
+                cwd, "--label", name, "--focus"]
+    return ["herdr", "workspace", "create", "--label", p["name"], "--cwd",
+            cwd, "--focus"]
+
+
+def resume_plan(p, name, workspace=None, agent_args=()):
+    """Steps to run the project's last conversation again in herdr as agent
+    `name` (`--continue` where it ran: a worktree, maybe), or a new claude
+    when there was none. "<pane>": the pane the first step makes."""
+    ex = p.get("last_exchange")
+    where = (ex or {}).get("path") or p["path"]
+    if not os.path.isdir(where):
+        where = p["path"]
+    kind = launch_kind((ex or {}).get("tool"))
+    args = (list(agent_args) if kind == "claude" else []) + \
+        (["--continue"] if ex else [])
+    return [_opener(p, name, where, workspace), start_argv(name, kind, args)]
+
+
+def fresh_plan(p, name, workspace=None, agent_args=()):
+    """Steps for a new claude conversation in the project."""
+    return [_opener(p, name, p["path"], workspace),
+            start_argv(name, "claude", agent_args)]
+
+
+def branch_title(branch):
+    """feat/convert-images -> "Convert Images"."""
+    head, sep, rest = branch.partition("/")
+    if sep and head in TITLE_PREFIXES:
+        branch = rest
+    words = [w for w in re.split(r"[-_/.\s]+", branch) if w]
+    return " ".join(w[:1].upper() + w[1:] for w in words) or branch
+
+
+def worktree_dir(repo, branch):
+    return os.path.join(repo, WORKTREES, branch.replace("/", "-"))
+
+
+def check_branch(p, branch):
+    """Why `branch` cannot be a new worktree of `p`, or None when it can."""
+    if not p["git"]:
+        return f"{p['name']} no és un repositori git"
+    if not branch:
+        return "cal un nom de branca"
+    code, _, _ = sh(["git", "check-ref-format", "--branch", branch])
+    if code != 0 or branch.startswith("-"):
+        return f"«{branch}» no és un nom de branca vàlid"
+    code, _, _ = git(p["path"], "show-ref", "--verify", "--quiet",
+                     f"refs/heads/{branch}")
+    if code == 0:
+        return f"la branca {branch} ja existeix"
+    if os.path.exists(worktree_dir(p["path"], branch)):
+        return f"{worktree_dir(p['path'], branch)} ja existeix"
+    return None
+
+
+def worktree_plan(p, branch, name, agent_args=()):
+    """herdr-orchestrator.md's "create", without touching the main checkout:
+    fetch, a new branch off the current one in <repo>/.worktrees/<branch>,
+    opened in herdr as a workspace (grouped under the repo's) titled after
+    the branch, and claude in it named `name`."""
+    repo = p["path"]
+    wt = worktree_dir(repo, branch)
+    steps = []
+    if p.get("remote"):
+        steps.append(["git", "-C", repo, "fetch", "--quiet"])
+    steps.append(["git", "-C", repo, "worktree", "add", "-b", branch, wt,
+                  p.get("branch") or "HEAD"])
+    steps.append(["herdr", "worktree", "open", "--cwd", repo, "--path", wt,
+                  "--label", branch_title(branch), "--focus"])
+    steps.append(start_argv(name, "claude", agent_args))
+    return steps
+
+
+def launch(plan, name, cwd, root, status=None):
+    """Run a plan from the *_plan() functions: git steps, then the herdr step
+    that makes the pane, then the agent start in it. A failed fetch is only
+    a warning (offline still works); anything else stops. -> (ok, msg)."""
+    status = status or (lambda msg: None)
+    if dry_run():
+        return True, "dry-run: " + " ; ".join(shlex.join(a) for a in plan)
+    pane, notes = None, []
+    for step in plan[:-1]:
+        if step[0] == "git":
+            what = " ".join(step[3:5])
+            status(f"{name}: git {what}…")
+            env = dict(os.environ, GIT_TERMINAL_PROMPT="0", LC_ALL="C")
+            code, out, err = sh(step, timeout=120, env=env)
+            if code != 0:
+                if step[3] == "fetch":
+                    notes.append("fetch ha fallat")
+                    continue
+                return False, f"git {what} ha fallat: {short(err or out, 160)}"
+        else:
+            status(f"{name}: herdr {step[1]} {step[2]}…")
+            code, data, raw = herdr(step[1:])
+            if code != 0:
+                return False, (f"herdr {step[1]} {step[2]} ha fallat: "
+                               f"{short(raw, 160)}")
+            pane = pane_of(data) or pane
+    ok, msg = start_in_pane(name, plan[-1], pane, cwd, root, status)
+    return ok, msg + (f" ({', '.join(notes)})" if notes and ok else "")
+
+
+def resume_project(p, agent_args=(), status=None):
+    """The project's last conversation as a named herdr agent, in its
+    workspace (a new one labelled after it when there is none).
+    -> (ok, message, agent name)."""
+    name = agent_name(p["name"], herdr_names())
+    plan = resume_plan(p, name, project_workspace(p), agent_args)
+    ok, msg = launch(plan, name, plan[0][plan[0].index("--cwd") + 1],
+                     p["path"], status)
+    return ok, msg, name
+
+
+def fresh_agent(p, agent_args=(), status=None):
+    """A new claude conversation in the project, named after it.
+    -> (ok, message, agent name)."""
+    name = agent_name(p["name"], herdr_names())
+    plan = fresh_plan(p, name, project_workspace(p), agent_args)
+    ok, msg = launch(plan, name, p["path"], p["path"], status)
+    return ok, msg, name
+
+
+def new_worktree(p, branch, agent_args=(), status=None):
+    """A new worktree on a new branch with its own herdr workspace and
+    claude. -> (ok, message, agent name)."""
+    err = check_branch(p, branch)
+    if err:
+        return False, err, None
+    name = agent_name(branch, herdr_names())
+    plan = worktree_plan(p, branch, name, agent_args)
+    ok, msg = launch(plan, name, worktree_dir(p["path"], branch), p["path"],
+                     status)
+    return ok, msg, name
 
 
 # ---------------------------------------------------------------- CLI
