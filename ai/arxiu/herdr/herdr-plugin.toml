@@ -1,0 +1,39 @@
+# Arxiu inside herdr: an "Arxiu" workspace with the board on top and the
+# tree's orchestrator agent below it, the board as an overlay over whatever
+# you are doing, and the shell popup the board opens. Link it
+# with `herdr plugin link ~/.dotfiles/ai/arxiu/herdr` (see ../README.md).
+id = "elboletaire.arxiu"
+name = "Arxiu"
+version = "0.1.0"
+min_herdr_version = "0.9.3"
+platforms = ["linux", "macos"]
+description = "Genealogy research dashboard wired to the family tree's agents"
+
+# Build (or focus) the Arxiu workspace: board on top, orchestrator below.
+[[actions]]
+id = "open"
+title = "Open Arxiu"
+contexts = ["workspace"]
+command = ["bash", "open.sh"]
+
+# The board over whatever you are doing; q closes it.
+[[actions]]
+id = "peek"
+title = "Peek at Arxiu"
+contexts = ["workspace"]
+command = ["bash", "-c", "exec \"${HERDR_BIN_PATH:-herdr}\" plugin pane open --plugin elboletaire.arxiu --entrypoint board --placement overlay"]
+
+[[panes]]
+id = "board"
+title = "Arxiu"
+placement = "split"
+command = ["bash", "../arxiu.sh"]
+
+# Opened by the board (`t`): a shell in the tree.
+[[panes]]
+id = "shell"
+title = "Shell"
+placement = "popup"
+width = "92%"
+height = "88%"
+command = ["bash", "-c", "exec \"${SHELL:-bash}\" -l"]

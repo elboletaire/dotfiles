@@ -1,0 +1,5 @@
+{
+  "env": {
+    "CLAUDE_CODE_PLUGIN_DIRS": "~/.dotfiles/ai/autopilot/takoyaki:~/.dotfiles/ai/arxiu/bibliotecaria"
+  }
+}

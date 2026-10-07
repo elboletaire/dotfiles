@@ -1,0 +1,21 @@
+# Taller: every project the user works on, with its agents. Read by
+# taller.py (or $ARXIU_CONFIG). Parked here, out of Arxiu, until it gets a
+# workspace of its own.
+
+[taller]
+# Every git repository directly under these folders is a project, whether or
+# not an agent runs in it. Projects with a live agent elsewhere are added too.
+roots = ["~/src"]
+# Projects outside the roots.
+extra = ["/mnt/d/Documents/Godot/water", "~/.dotfiles"]
+# Folder names (or full paths) never shown.
+hide = ["~/src/agent-of-empires", "interviews", "foundation"]
+# Idle for longer than this (days since the last commit or conversation) is
+# "dormant": collapsed into one line.
+dormant_days = 14
+
+[ui]
+# Seconds between refreshes of agent state; files are re-read on change.
+agents_secs = 3
+# Seconds between git scans of Taller projects.
+git_secs = 20

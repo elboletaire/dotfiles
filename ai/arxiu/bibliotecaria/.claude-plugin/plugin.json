@@ -1,0 +1,7 @@
+{
+  "name": "arxiu-bibliotecaria",
+  "version": "0.1.0",
+  "author": { "name": "elboletaire" },
+  "description": "Tecla, a chibi archivist above the prompt of sessions working on the family tree, reacting to new sources, commits, research files and the agent's own work",
+  "types": "./types/index.d.ts"
+}

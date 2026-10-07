@@ -966,7 +966,7 @@ else
 fi
 
 echo ""
-echo "=== Test 24: link_herdr_plugin links, keeps and relinks the autopilot plugin ==="
+echo "=== Test 24: link_herdr_plugin links, keeps and relinks the herdr plugins ==="
 MOCK_HERDR="$TESTDIR/bin/herdr"
 HERDR_STATE="$TESTDIR/herdr-linked"
 cat > "$MOCK_HERDR" <<MOCK
@@ -1000,11 +1000,21 @@ rm -f "$TESTDIR/herdr-down"
 
 : > "$TESTDIR/herdr.log"
 link_herdr_plugin >/dev/null
+if grep -q "^herdr plugin link $DOTFILES/ai/autopilot/herdr$" "$TESTDIR/herdr.log" &&
+   grep -q "^herdr plugin link $DOTFILES/ai/arxiu/herdr$" "$TESTDIR/herdr.log"; then
+  pass "links both the autopilot and the arxiu plugins"
+else
+  fail "did not link both plugins: $(grep 'plugin link' "$TESTDIR/herdr.log" | tr '\n' ';')"
+fi
+
+: > "$HERDR_STATE"
+: > "$TESTDIR/herdr.log"
+_link_herdr_plugin elboletaire.autopilot "$want" >/dev/null
 [ "$(cat "$HERDR_STATE")" = "$want" ] && pass "links the plugin when absent" \
   || fail "plugin not linked to $want"
 
 : > "$TESTDIR/herdr.log"
-link_herdr_plugin >/dev/null
+_link_herdr_plugin elboletaire.autopilot "$want" >/dev/null
 if grep -q "plugin link\|plugin unlink" "$TESTDIR/herdr.log"; then
   fail "re-ran link/unlink although already linked to the right root"
 else
@@ -1013,7 +1023,7 @@ fi
 
 echo "/somewhere/.worktrees/feat-herdr/ai/autopilot/herdr" > "$HERDR_STATE"
 : > "$TESTDIR/herdr.log"
-link_herdr_plugin >/dev/null
+_link_herdr_plugin elboletaire.autopilot "$want" >/dev/null
 if grep -q "plugin unlink elboletaire.autopilot" "$TESTDIR/herdr.log" &&
    [ "$(cat "$HERDR_STATE")" = "$want" ]; then
   pass "relinks a plugin that points at another checkout"
@@ -1127,6 +1137,59 @@ link_ai "$DOTFILES/ai/prompts" "$HOME/.backup/commands"
   && pass "still backs up to ~/old_dotfiles by default" \
   || fail "default link_ai no longer backs up"
 rm -rf "$oldfiles"
+
+echo ""
+echo "=== Test 27: merge_claude_settings merges our keys and keeps the rest ==="
+mkdir -p "$DOTFILES/ai/claude"
+cat > "$DOTFILES/ai/claude/settings.json" <<'JSON'
+{"env": {"CLAUDE_CODE_PLUGIN_DIRS": "~/mods/a:~/mods/b"}}
+JSON
+SETTINGS="$HOME/.claude/settings.json"
+rm -rf "$HOME/.claude"
+
+merge_claude_settings >/dev/null
+if [ "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["env"]["CLAUDE_CODE_PLUGIN_DIRS"])' "$SETTINGS")" = "~/mods/a:~/mods/b" ] &&
+   [ "$(stat -c %a "$SETTINGS" 2>/dev/null || stat -f %Lp "$SETTINGS")" = "600" ]; then
+  pass "creates the settings file (mode 600) when there is none"
+else
+  fail "did not create the settings file from the base"
+fi
+
+cat > "$SETTINGS" <<'JSON'
+{"env": {"OTHER": "1", "CLAUDE_CODE_PLUGIN_DIRS": "~/old"}, "hooks": {"Stop": [{"hooks": [{"command": "rtk x"}]}]}, "model": "opus"}
+JSON
+chmod 640 "$SETTINGS"
+merge_claude_settings >/dev/null
+if python3 - "$SETTINGS" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert d["env"] == {"OTHER": "1", "CLAUDE_CODE_PLUGIN_DIRS": "~/mods/a:~/mods/b"}, d["env"]
+assert d["hooks"]["Stop"][0]["hooks"][0]["command"] == "rtk x"
+assert d["model"] == "opus"
+PY
+then
+  pass "merges into env and keeps tool-written keys"
+else
+  fail "lost or mangled keys while merging"
+fi
+[ -f "$SETTINGS.dotfiles-bak" ] && grep -q '"~/old"' "$SETTINGS.dotfiles-bak" \
+  && pass "keeps a backup of the previous settings" || fail "no backup of the previous settings"
+[ "$(stat -c %a "$SETTINGS" 2>/dev/null || stat -f %Lp "$SETTINGS")" = "640" ] \
+  && pass "preserves the file's permissions" || fail "changed the file's permissions"
+
+before=$(cat "$SETTINGS.dotfiles-bak")
+out=$(merge_claude_settings)
+if [ -z "$out" ] && [ "$(cat "$SETTINGS.dotfiles-bak")" = "$before" ]; then
+  pass "rewrites nothing when already merged"
+else
+  fail "rewrote an already-merged settings file"
+fi
+
+echo '{ not json' > "$SETTINGS"
+merge_claude_settings >/dev/null 2>&1
+[ "$(cat "$SETTINGS")" = "{ not json" ] && pass "leaves an invalid settings file untouched" \
+  || fail "overwrote an invalid settings file"
+rm -rf "$HOME/.claude" "$DOTFILES/ai/claude/settings.json"
 
 echo ""
 echo "=== ALL TESTS COMPLETE ==="

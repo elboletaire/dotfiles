@@ -1,0 +1,23 @@
+# Arxiu: the genealogy research dashboard (board.py, agents.py, actions.py);
+# the librarian mod reads [arbre] too. Taller lives in ai/taller now.
+
+[arbre]
+# A family-tree-kit tree. Folder names, families and branches come from its
+# families.yml, never from here.
+path = "~/src/arbre"
+# herdr agent names. The orchestrator runs in the Arxiu workspace below the
+# board: lowercase actions type their prompt into its input. Uppercase ones
+# send it to the research agent, started in a new tab of Arxiu first if it
+# isn't running. Nothing in the tree goes through aoe.
+orchestrator_agent = "arbre"
+research_agent = "investigacio"
+# Extra claude arguments for the agents Arxiu starts, e.g. ["--model", "haiku"].
+# agent_args = []
+# Skills the prompts ask for: research (r, i) and interview questions (e).
+research_skill = "genealogy-research"
+interview_skill = "family-interview"
+
+[ui]
+# Seconds between refreshes of agent state (and the queue's statuses); the
+# tree's files are re-read on change.
+agents_secs = 3

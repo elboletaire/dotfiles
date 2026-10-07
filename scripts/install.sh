@@ -190,16 +190,22 @@ install_uv() {
 }
 
 link_herdr_plugin() {
-  # PR Autopilot's herdr plugin (Autopilot workspace + live dashboard).
-  # Only linked when herdr is installed (install_herdr).
-  # Relinks when it points anywhere else (e.g. a worktree it was tested from).
-  local root="$dotfiles/ai/autopilot/herdr" id="elboletaire.autopilot" current
+  # The dotfiles' herdr plugins: PR Autopilot (Autopilot workspace + live
+  # dashboard) and Arxiu (genealogy + projects board). Only linked when herdr
+  # is installed (install_herdr).
   command -v herdr &>/dev/null || return 0
   # Plugin commands need a live server and exit 0 even when there is none.
   if herdr status server 2>/dev/null | grep -q "not running"; then
-    echo "herdr server not running; skipping the autopilot plugin link"
+    echo "herdr server not running; skipping the herdr plugin links"
     return 0
   fi
+  _link_herdr_plugin elboletaire.autopilot "$dotfiles/ai/autopilot/herdr"
+  _link_herdr_plugin elboletaire.arxiu "$dotfiles/ai/arxiu/herdr"
+}
+
+_link_herdr_plugin() {
+  # Relinks when it points anywhere else (e.g. a worktree it was tested from).
+  local id=$1 root=$2 current
   current=$(herdr plugin list --json 2>/dev/null | python3 -c '
 import json, sys
 try:
@@ -219,6 +225,56 @@ print(next((p["plugin_root"] for p in plugins if p["plugin_id"] == sys.argv[1]),
   else
     echo "WARNING: could not link the herdr plugin (is a herdr server running?)" >&2
   fi
+}
+
+merge_claude_settings() {
+  # The tracked ai/claude/settings.json holds only the keys these dotfiles own
+  # (today the mods in CLAUDE_CODE_PLUGIN_DIRS). It is merged into
+  # ~/.claude/settings.json instead of linked over it: rtk, herdr, codegraph
+  # and Claude Code itself write their own hooks, permissions and plugins
+  # there, which must stay out of a public repo and differ per machine.
+  # Nested objects merge, our values win, nothing else is touched; the file
+  # is only rewritten when something changes, with a backup beside it.
+  local src="$dotfiles/ai/claude/settings.json" dest="$HOME/.claude/settings.json"
+  [ -f "$src" ] || return 0
+  mkdir -p "$HOME/.claude"
+  python3 - "$src" "$dest" <<'PY'
+import json, os, shutil, sys
+
+src, dest = sys.argv[1], os.path.realpath(sys.argv[2])
+with open(src) as fh:
+    base = json.load(fh)
+try:
+    with open(dest) as fh:
+        cur = json.load(fh)
+except FileNotFoundError:
+    cur = {}
+except (OSError, json.JSONDecodeError) as e:
+    print(f"WARNING: {dest} is not valid JSON ({e}); left untouched", file=sys.stderr)
+    sys.exit(0)
+
+
+def merge(a, b):
+    out = dict(a)
+    for k, v in b.items():
+        out[k] = merge(a[k], v) if isinstance(v, dict) and isinstance(a.get(k), dict) else v
+    return out
+
+
+new = merge(cur, base)
+if new == cur:
+    sys.exit(0)
+if os.path.exists(dest):
+    shutil.copy2(dest, dest + ".dotfiles-bak")
+mode = os.stat(dest).st_mode & 0o777 if os.path.exists(dest) else 0o600
+tmp = f"{dest}.tmp.{os.getpid()}"
+with open(tmp, "w") as fh:
+    json.dump(new, fh, indent=2, ensure_ascii=False)
+    fh.write("\n")
+os.chmod(tmp, mode)
+os.replace(tmp, dest)
+print(f"Merged dotfiles keys into {dest}")
+PY
 }
 
 install_rtk() {
@@ -772,6 +828,7 @@ do_install() {
   symlink_config
   install_rtk               # wires hooks into claude and pi, which must exist first
   symlink_ai || return 1    # config symlinks + APM skills global install
+  merge_claude_settings
   link_herdr_plugin
   set_login_shell
   vim -c 'PluginInstall' -c 'qa!'
@@ -792,6 +849,7 @@ do_update() {
   install_rtk update
   update_apm_skills || return 1
   symlink_ai || return 1
+  merge_claude_settings
   link_herdr_plugin
   echo "dotfiles update complete"
 }
@@ -807,6 +865,7 @@ do_update_ai() {
   install_rtk update
   update_apm_skills || return 1
   symlink_ai || return 1
+  merge_claude_settings
   link_herdr_plugin
   echo "AI stack update complete"
 }
@@ -817,6 +876,7 @@ do_install_ai_config() {
   # no ~/old_dotfiles backups since everything relinked is tracked in git.
   no_backup=1
   symlink_ai || return 1
+  merge_claude_settings
   link_herdr_plugin
   echo "AI config install complete"
 }
