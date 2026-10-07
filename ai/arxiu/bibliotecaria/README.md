@@ -146,7 +146,7 @@ Linux and macOS). Add her folder next to the takoyaki one:
 
 ```json
 "env": {
-  "CLAUDE_CODE_PLUGIN_DIRS": "~/.dotfiles/ai/octopilot/plugin:~/.dotfiles/ai/arxiu/bibliotecaria"
+  "CLAUDE_CODE_PLUGIN_DIRS": "~/.dotfiles/ai/octopilot/plugin:~/.dotfiles/ai/arxiu/bibliotecaria:~/.dotfiles/ai/taller/plugin"
 }
 ```
 

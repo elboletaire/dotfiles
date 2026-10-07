@@ -91,11 +91,12 @@ def load_config(path=None):
 
 def sh(args, cwd=None, timeout=GIT_TIMEOUT, env=None):
     """-> (code, stdout, stderr); a timeout or missing binary is code 124/127,
-    never an exception."""
+    never an exception. Only the end of stdout is trimmed: a line may start
+    with meaningful spaces (`git status --porcelain`)."""
     try:
         p = subprocess.run(args, cwd=cwd, capture_output=True, text=True,
                            timeout=timeout, env=env, stdin=subprocess.DEVNULL)
-        return p.returncode, p.stdout.strip(), p.stderr.strip()
+        return p.returncode, p.stdout.lstrip("\n").rstrip(), p.stderr.strip()
     except subprocess.TimeoutExpired:
         return 124, "", f"timeout after {timeout}s: {shlex.join(args)}"
     except OSError as e:
@@ -513,17 +514,52 @@ def scan(root, seed):
                 error |= wst is None
                 p["worktrees"].append({"path": w,
                                        "branch": (wst or {}).get("branch"),
-                                       "dirty": (wst or {}).get("dirty", 0)})
+                                       "dirty": (wst or {}).get("dirty", 0),
+                                       "ahead": (wst or {}).get("ahead")})
         if st is None:
             error = True
         else:
             p.update({k: st[k] for k in ("branch", "dirty", "ahead", "behind")})
             p["_upstream"] = st["upstream"]
-    p["last_exchange"] = last_exchange([root] + [w["path"] for w in p["worktrees"]])
+    # Each folder's own last conversation (folder() hands it to the actions)
+    # and the newest of them, the project's.
+    folders = [root] + [w["path"] for w in p["worktrees"]]
+    with ThreadPoolExecutor(len(folders)) as ex:
+        p["exchanges"] = dict(zip(folders, ex.map(
+            lambda f: last_exchange([f]), folders)))
+    held = [e for e in p["exchanges"].values() if e]
+    p["last_exchange"] = max(held, key=lambda e: e.get("at") or 0,
+                             default=None)
     stamps = [s for s in (commit, (p["last_exchange"] or {}).get("at")) if s]
     p["last_touch"] = max(stamps) if stamps else None
     p["_error"] = error
     return p
+
+
+def folder(p, path=None):
+    """The project's main checkout (no `path`, or its own) or one of its
+    worktrees, shaped like a project so every action takes either: its own
+    agents (the main checkout's are those in no worktree), last
+    conversation, branch and changes. `repo` / `repo_name` are the
+    project's path and name, `worktree` the worktree's entry (None for the
+    main checkout)."""
+    path = path or p["path"]
+    w = next((x for x in p["worktrees"] if x["path"] == path), None)
+    if w:
+        agents = [a for a in p["agents"] if within(a["path"], path)]
+    else:
+        agents = [a for a in p["agents"] if not any(
+            within(a["path"], x["path"]) for x in p["worktrees"])]
+    exchanges = p.get("exchanges")
+    f = dict(p, path=path, agents=agents, repo=p["path"],
+             repo_name=p["name"], worktree=w,
+             last_exchange=(exchanges.get(path) if exchanges is not None
+                            else p.get("last_exchange")))
+    if w:
+        f.update(name=w["branch"] or os.path.basename(path),
+                 branch=w["branch"], dirty=w["dirty"], ahead=w.get("ahead"),
+                 behind=None, worktrees=[])
+    return f
 
 
 def is_dormant(p, dormant_days, now=None):
@@ -578,7 +614,11 @@ def collect(cfg):
         agents = f_agents.result()
     seeds = add_strays(seeds, agents)
     hide = cfg["taller"]["hide"]
-    seeds = {r: s for r, s in seeds.items() if not hidden(r, hide)}
+    # A root itself (the orchestrator runs in the first one) holds projects
+    # rather than being one, unless it's a repo of its own.
+    roots = {norm(r) for r in cfg["taller"]["roots"]}
+    seeds = {r: s for r, s in seeds.items() if not hidden(r, hide)
+             and (s["git"] or r not in roots)}
     with ThreadPoolExecutor(WORKERS) as ex:
         projects = list(ex.map(lambda kv: scan(*kv), seeds.items()))
     match_agents(projects, agents)
@@ -934,11 +974,16 @@ def pick_agent(p):
 
 
 def project_workspace(p):
-    """herdr workspace of the project: the one its herdr agents run in, or
-    one labelled with its name. None when there is none."""
+    """herdr workspace of the project (or of a folder()): the one its herdr
+    agents run in, or one labelled with its name -- for a worktree, the one
+    `herdr worktree open` made (titled after the branch), else the repo's.
+    None when there is none."""
     for a in p["agents"]:
         if a["host"] == "herdr" and a.get("id"):
             return a["id"]
+    if p.get("worktree"):
+        return (find_workspace(branch_title(p["branch"] or p["name"]))
+                or find_workspace(p["repo_name"]))
     return find_workspace(p["name"])
 
 
@@ -968,10 +1013,24 @@ def browser_cmd(url, which=shutil.which):
 
 # .. details: only for the selected project, cached by the board
 
+def git_dir(path):
+    """<path>/.git, or where a worktree's .git file points ("gitdir: ...")."""
+    dot = os.path.join(path, ".git")
+    if os.path.isfile(dot):
+        try:
+            with open(dot) as fh:
+                head, _, where = fh.read().strip().partition(" ")
+            if head == "gitdir:":
+                return os.path.normpath(os.path.join(path, where))
+        except OSError:
+            pass
+    return dot
+
+
 def details_key(p):
     """Changes whenever the details could: the repo's HEAD, index and reflog
     stamps (a stat each, no git) plus what collect() saw."""
-    gitdir = os.path.join(p["path"], ".git")
+    gitdir = git_dir(p["path"])
     stamps = []
     for f in ("HEAD", "index", "logs/HEAD"):
         try:
@@ -1017,17 +1076,27 @@ def start_argv(name, kind, args=()):
     return argv + (["--"] + list(args) if args else [])
 
 
-def _opener(p, name, cwd, workspace):
+def _focus(focus):
+    return "--focus" if focus else "--no-focus"
+
+
+def _opener(p, name, cwd, workspace, focus=True):
     """First step of a launch: a tab of the project's workspace, or a
-    workspace of its own labelled with the project's name."""
+    workspace of its own labelled with the project's name -- a worktree's
+    (a folder()) opened with `herdr worktree open`, grouped under the
+    repo's in herdr's sidebar and titled after its branch."""
     if workspace:
         return ["herdr", "tab", "create", "--workspace", workspace, "--cwd",
-                cwd, "--label", name, "--focus"]
+                cwd, "--label", name, _focus(focus)]
+    if p.get("worktree"):
+        return ["herdr", "worktree", "open", "--cwd", p["repo"], "--path",
+                p["path"], "--label", branch_title(p["branch"] or p["name"]),
+                _focus(focus)]
     return ["herdr", "workspace", "create", "--label", p["name"], "--cwd",
-            cwd, "--focus"]
+            cwd, _focus(focus)]
 
 
-def resume_plan(p, name, workspace=None, agent_args=()):
+def resume_plan(p, name, workspace=None, agent_args=(), focus=True):
     """Steps to run the project's last conversation again in herdr as agent
     `name` (`--continue` where it ran: a worktree, maybe), or a new claude
     when there was none. "<pane>": the pane the first step makes."""
@@ -1038,12 +1107,13 @@ def resume_plan(p, name, workspace=None, agent_args=()):
     kind = launch_kind((ex or {}).get("tool"))
     args = (list(agent_args) if kind == "claude" else []) + \
         (["--continue"] if ex else [])
-    return [_opener(p, name, where, workspace), start_argv(name, kind, args)]
+    return [_opener(p, name, where, workspace, focus),
+            start_argv(name, kind, args)]
 
 
-def fresh_plan(p, name, workspace=None, agent_args=()):
+def fresh_plan(p, name, workspace=None, agent_args=(), focus=True):
     """Steps for a new claude conversation in the project."""
-    return [_opener(p, name, p["path"], workspace),
+    return [_opener(p, name, p["path"], workspace, focus),
             start_argv(name, "claude", agent_args)]
 
 
@@ -1078,7 +1148,7 @@ def check_branch(p, branch):
     return None
 
 
-def worktree_plan(p, branch, name, agent_args=()):
+def worktree_plan(p, branch, name, agent_args=(), focus=True):
     """herdr-orchestrator.md's "create", without touching the main checkout:
     fetch, a new branch off the current one in <repo>/.worktrees/<branch>,
     opened in herdr as a workspace (grouped under the repo's) titled after
@@ -1091,7 +1161,7 @@ def worktree_plan(p, branch, name, agent_args=()):
     steps.append(["git", "-C", repo, "worktree", "add", "-b", branch, wt,
                   p.get("branch") or "HEAD"])
     steps.append(["herdr", "worktree", "open", "--cwd", repo, "--path", wt,
-                  "--label", branch_title(branch), "--focus"])
+                  "--label", branch_title(branch), _focus(focus)])
     steps.append(start_argv(name, "claude", agent_args))
     return steps
 
@@ -1126,34 +1196,35 @@ def launch(plan, name, cwd, root, status=None):
     return ok, msg + (f" ({', '.join(notes)})" if notes and ok else "")
 
 
-def resume_project(p, agent_args=(), status=None):
+def resume_project(p, agent_args=(), status=None, focus=True):
     """The project's last conversation as a named herdr agent, in its
     workspace (a new one labelled after it when there is none).
     -> (ok, message, agent name)."""
     name = agent_name(p["name"], herdr_names())
-    plan = resume_plan(p, name, project_workspace(p), agent_args)
-    ok, msg = launch(plan, name, plan[0][plan[0].index("--cwd") + 1],
-                     p["path"], status)
+    plan = resume_plan(p, name, project_workspace(p), agent_args, focus)
+    first = plan[0]
+    where = first[first.index("--path" if "--path" in first else "--cwd") + 1]
+    ok, msg = launch(plan, name, where, p["path"], status)
     return ok, msg, name
 
 
-def fresh_agent(p, agent_args=(), status=None):
+def fresh_agent(p, agent_args=(), status=None, focus=True):
     """A new claude conversation in the project, named after it.
     -> (ok, message, agent name)."""
     name = agent_name(p["name"], herdr_names())
-    plan = fresh_plan(p, name, project_workspace(p), agent_args)
+    plan = fresh_plan(p, name, project_workspace(p), agent_args, focus)
     ok, msg = launch(plan, name, p["path"], p["path"], status)
     return ok, msg, name
 
 
-def new_worktree(p, branch, agent_args=(), status=None):
+def new_worktree(p, branch, agent_args=(), status=None, focus=True):
     """A new worktree on a new branch with its own herdr workspace and
     claude. -> (ok, message, agent name)."""
     err = check_branch(p, branch)
     if err:
         return False, err, None
     name = agent_name(branch, herdr_names())
-    plan = worktree_plan(p, branch, name, agent_args)
+    plan = worktree_plan(p, branch, name, agent_args, focus)
     ok, msg = launch(plan, name, worktree_dir(p["path"], branch), p["path"],
                      status)
     return ok, msg, name
@@ -1188,10 +1259,116 @@ def table(projects):
     return "\n".join(out)
 
 
+class NotFound(Exception):
+    pass
+
+
+def find_folder(projects, name, worktree=None):
+    """The folder() a CLI argument names: a project by name (any case) or
+    path, then one of its worktrees by branch, folder name or path."""
+    want = name.lower()
+    p = (next((x for x in projects if x["name"] == name), None)
+         or next((x for x in projects if x["name"].lower() == want), None)
+         or next((x for x in projects if x["path"] == norm(name)), None))
+    if not p:
+        raise NotFound(f"cap projecte «{name}». N'hi ha: "
+                       + ", ".join(sorted(x["name"] for x in projects)))
+    if not worktree:
+        return folder(p)
+    for w in p["worktrees"]:
+        if worktree in (w["branch"], os.path.basename(w["path"]), w["path"]):
+            return folder(p, w["path"])
+    raise NotFound(f"{p['name']} no té cap worktree «{worktree}». Té: "
+                   + (", ".join(w["branch"] or w["path"] for w in p["worktrees"])
+                      or "cap"))
+
+
+def sessions(projects):
+    """One line per herdr session: agent, state, where (<project> or
+    <project> ⑂ <branch>), tool."""
+    labels = {"working": "treballant", "waiting": "t'espera", "done":
+              "acabat sense mirar", "idle": "inactiu", "error": "error"}
+    out = []
+    for p in projects:
+        for f in [folder(p)] + [folder(p, w["path"]) for w in p["worktrees"]]:
+            where = (f"{p['name']} ⑂ {f['branch'] or f['name']}"
+                     if f["worktree"] else p["name"])
+            for a in f["agents"]:
+                out.append(f"{a['name']}\t{labels.get(a['state'], a['state'])}"
+                           f"\t{where}\t{a['tool']}")
+    return "\n".join(out) or "cap sessió oberta a herdr"
+
+
+def _cli_folder(p):
+    """A folder() as JSON for `show`: its details read now."""
+    out = {k: v for k, v in p.items() if not k.startswith("_")
+           and k not in ("exchanges",)}
+    if p["git"]:
+        out["details"] = details(p["path"])
+    return out
+
+
+def cli(argv):
+    """Subcommands for the Taller orchestrator (the taller:orchestrator
+    skill): the board's actions, taking the focus from nobody."""
+    import argparse
+    ap = argparse.ArgumentParser(prog="taller.py")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    for cmd in ("show", "resume", "new"):
+        sp = sub.add_parser(cmd)
+        sp.add_argument("project")
+        sp.add_argument("--worktree")
+        if cmd == "new":
+            sp.add_argument("--prompt")
+    sp = sub.add_parser("worktree")
+    sp.add_argument("project")
+    sp.add_argument("branch")
+    sp.add_argument("--prompt")
+    sp = sub.add_parser("prompt")
+    sp.add_argument("agent")
+    sp.add_argument("text")
+    sub.add_parser("sessions")
+    a = ap.parse_args(argv)
+
+    if a.cmd == "prompt":
+        ok, msg = send({"host": "herdr", "name": a.agent, "id": ""}, a.text)
+        print(msg if ok else f"no s'ha pogut: {msg}")
+        return 0 if ok else 1
+    cfg = load_config()
+    projects = collect(cfg)
+    if a.cmd == "sessions":
+        print(sessions(projects))
+        return 0
+    try:
+        f = find_folder(projects, a.project, getattr(a, "worktree", None))
+    except NotFound as e:
+        print(e)
+        return 1
+    if a.cmd == "show":
+        json.dump(_cli_folder(f), sys.stdout, indent=2,
+                  ensure_ascii=False)
+        print()
+        return 0
+    args = list(cfg["taller"].get("agent_args") or [])
+    if a.cmd == "resume":
+        ok, msg, name = resume_project(f, args, focus=False)
+    elif a.cmd == "new":
+        ok, msg, name = fresh_agent(f, args, focus=False)
+    else:
+        ok, msg, name = new_worktree(f, a.branch, args, focus=False)
+    print(msg if ok else f"no s'ha pogut: {msg}")
+    if ok and getattr(a, "prompt", None):
+        ok, msg = send({"host": "herdr", "name": name, "id": ""}, a.prompt)
+        print(msg if ok else f"no s'ha pogut enviar: {msg}")
+    return 0 if ok else 1
+
+
 def main(argv):
     if argv[:1] == ["--accept-trust"] and len(argv) == 4:
         # herdr/open.sh, when the orchestrator stops at claude's trust prompt.
         return 0 if accept_trust(*argv[1:]) else 1
+    if argv and not argv[0].startswith("-"):
+        return cli(argv)
     cfg = load_config()
     t0 = time.time()
     projects = collect(cfg)

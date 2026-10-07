@@ -6,12 +6,15 @@ picking it up again: the git repositories under `[taller].roots` plus `extra`
 its uncommitted and unpushed work, its worktrees, its agents and the last
 conversation held there.
 
-It lives in herdr: the **Taller** workspace is the board alone, and the
-board acts through herdr -- it goes to a project's agent, or brings the
-project's last conversation back as a named herdr agent.
+It lives in herdr: the **Taller** workspace is a chat on the left (the
+orchestrator, a claude that sees every project and session and acts on them
+when asked) and the board as a column on the right. The board acts through
+herdr -- it shows a project's agent in a popup, goes to it, or brings the
+project's last conversation back as a named herdr agent. Run on its own or
+as an overlay (`peek`), the board puts the detail beside the list, as below.
 
 ```
-╭─ 🛠  Taller ────────────────────────────────────────────╮╭─ .dotfiles ───────────────────────────────────╮
+╭─ 📂 Projectes ──────────────────────────────────────────╮╭─ .dotfiles ───────────────────────────────────╮
 │ 🔴 1  🟡 1  🗂  9  💤 11   ⚠ 3 projectes sense còpia     ││ ~/.dotfiles                                   │
 │                                                         ││ remot github:elboletaire/dotfiles  main       │
 │    🔴        Et necessita (1)                           ││                                               │
@@ -59,26 +62,31 @@ Four sections, a project in the first that applies:
   for `dormant_days` and no live agent: one line until `d`.
 
 A row: one glyph per agent (◐ working, ⏸ waiting, ✓ done, ✗ error, ○ idle,
-■ stopped), the name, the branch, `✎N`
-uncommitted files (worktrees included), `↑N` unpushed commits, `⚠` no remote
-at all, `⑂N` worktrees and the last touch. The header counts the sections and
+■ stopped), the name, the branch, `✎N` uncommitted files, `↑N` unpushed
+commits, `⚠` no remote at all, `⑂N` worktrees and the last touch. Each
+worktree has a row of its own under its project (`├ <folder>` with its
+branch, its agents, its uncommitted files and when its last conversation
+was): the project's row counts its main checkout alone, while its section
+counts every agent, a worktree's too. The header counts the sections and
 warns about the projects with no copy elsewhere (no remote, or unpushed).
 
-The detail: path and remote (or the lack of one), the agents and their state,
-the last exchange (your message, the agent's reply, the session's title), the
-last commits, the worktrees and the changed files. Commits and changes are
-read for the selected project only, in the background, and kept until its
-HEAD, index or dirty count change. Agents refresh every `[ui].agents_secs`,
+The detail, of the selected row (a worktree's is titled `<project> ⑂
+<branch>`): path and remote (or the lack of one), the agents and their state,
+the last exchange there (your message, the agent's reply, the session's
+title), the last commits, the worktrees and the changed files. Commits and
+changes are read for the selected folder only, in the background, and kept
+until its HEAD, index or dirty count change. Agents refresh every `[ui].agents_secs`,
 git every `[ui].git_secs` and right after an action.
 
 | Key | |
 |---|---|
 | `↑↓` `j/k` `PgUp/PgDn` | move |
-| `⏎` | its herdr agent (one waiting on you first): focus it. None: a second `⏎` opens the project in herdr -- a new workspace named after it (a tab, if it has one) running its last conversation again (`claude/pi --continue` where it ran) as an agent named after the project; a new claude when there is none. |
-| `n` | a fresh claude in the project (second `n` confirms), in a new tab of its herdr workspace or a new workspace |
+| `⏎` | on a project, its main checkout; on a worktree, that worktree. Its herdr agent (one waiting on you first): focus it. None: a second `⏎` opens the project in herdr -- a new workspace named after it (a tab, if it has one) running that folder's last conversation again (`claude/pi --continue`) as an agent named after the project (or the worktree's branch); a new claude when there is none. A worktree without a workspace opens with `herdr worktree open`, grouped under its repo's in herdr's sidebar. |
+| `v` | its herdr agent (one waiting on you first) in a popup over the board, without leaving it; `ctrl+b q` closes it. With no session yet, its last conversation is resumed in the background first (as `⏎` would, without taking the focus or asking twice), then shown. |
+| `n` | a fresh claude in the selected folder (second `n` confirms), in a new tab of its herdr workspace or a new workspace |
 | `w` | a new worktree: asks the branch, then (second `w`) `git fetch`, `git worktree add -b <branch> <repo>/.worktrees/<branch, / as ->` off the current branch, `herdr worktree open` titled after it and a claude named after it. The main checkout is never touched. |
-| `t` | a shell in the project (herdr popup) |
-| `g` | `git log --graph` and `git status` (herdr popup, `q` closes) |
+| `t` | a shell in the selected folder (herdr popup) |
+| `g` | its `git log --graph` and `git status` (herdr popup, `q` closes) |
 | `o` | the remote in the browser (`wslview`, `explorer.exe`, `xdg-open`) |
 | `d` | show/hide the dormant projects |
 | `/` | filter by name (`Esc` clears) |
@@ -93,8 +101,57 @@ stays on screen and the board shows its last lines.
 ## Inside herdr
 
 `herdr/` is a herdr plugin: the **Taller** workspace (`open`), the board as an
-overlay over anything (`peek`) and the popups the board opens (`shell`,
-`git`). `scripts/install.sh` links it (`link_herdr_plugin`); by hand:
+overlay over anything (`peek`) and the popups the board opens (`agent`,
+`shell`, `git`).
+
+```
+╭ minion king ─────────────────────────╮╭ 📂 Projectes ──────────╮
+│ the orchestrator: /taller:orchestra- ││ the list, no taller    │
+│ tor, a claude in ~/src               ││ than its rows          │
+│                                      │├ <project> ─────────────┤
+│                                      ││ the selection's detail │
+╰──────────────────────────────────────╯╰────────────────────────╯
+```
+
+`herdr/open.sh` builds it, in a tab called `TALLER`: the first pane
+(`minion king`) runs the orchestrator
+-- a claude named `[taller].orchestrator_agent` (`taller`) in the first of
+`[taller].roots` (`~/src`; `~` if it's missing), with `agent_args`, its
+"trust this folder?" for that folder answered -- continuing the newest claude
+conversation held there (it already knows its role), or, with none, a new
+one given `/taller:orchestrator`; it keeps 60% of the width, and the board runs beside
+it with `TALLER_LAYOUT=column` (the detail always below the list), its
+pane unlabelled so herdr draws no "Taller" around its own sections, which
+are title lines rather than boxes there (herdr's frame is enough). The
+orchestrator running anywhere already is only focused, and so is an
+existing Taller workspace: close it to get a new layout.
+`TALLER_LABEL=<label>` and `TALLER_ORCH=<name>` build a second one, to try
+changes without touching yours.
+
+### The orchestrator
+
+`plugin/` is a Claude Code plugin, `taller`, loaded through
+`CLAUDE_CODE_PLUGIN_DIRS` (`ai/claude/settings.json`) like Octopilot's: its
+skill `/taller:orchestrator` is the chat's role. It answers about every
+project and session (what's waiting on you, what exists only on this
+machine, what a session is on), and acts through `taller.py`'s subcommands,
+the board's own actions, which never take your focus:
+
+```sh
+python3 taller.py sessions                       # every open herdr session
+python3 taller.py show <project> [--worktree <branch>]
+python3 taller.py resume <project> [--worktree <branch>]
+python3 taller.py new <project> [--worktree <branch>] [--prompt <text>]
+python3 taller.py worktree <project> <branch> [--prompt <text>]
+python3 taller.py prompt <agent> <text>
+```
+
+It reads freely and starts or resumes sessions when asked, but asks first
+before anything that publishes (`git push`, PRs), deletes (a worktree, a
+branch, a session) or edits a project, and before writing into another
+session (`prompt`, `--prompt`).
+
+`scripts/install.sh` links the herdr plugin (`link_herdr_plugin`); by hand:
 
 ```sh
 herdr plugin link ~/.dotfiles/ai/taller/herdr

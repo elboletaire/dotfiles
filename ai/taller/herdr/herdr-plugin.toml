@@ -29,6 +29,16 @@ title = "Taller"
 placement = "split"
 command = ["bash", "../taller.sh"]
 
+# Opened by the board (`v`): the selected row's agent, over the board;
+# `ctrl+b q` detaches herdr's attach client, which closes the popup.
+[[panes]]
+id = "agent"
+title = "Agent"
+placement = "popup"
+width = "92%"
+height = "88%"
+command = ["bash", "-c", "exec \"${HERDR_BIN_PATH:-herdr}\" agent attach \"$TALLER_AGENT\""]
+
 # Opened by the board (`t`): a shell in the selected project.
 [[panes]]
 id = "shell"

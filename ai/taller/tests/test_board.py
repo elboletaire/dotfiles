@@ -42,8 +42,14 @@ class BoardCase(TallerCase):
         self.model.sync = True
         self.model.projects = [
             project("alpha", self.alpha, last_touch=now - 60, agents=[
-                agent("waiting", name="ha", path=self.alpha)],
-                flags=["unpushed"], ahead=1),
+                agent("waiting", name="ha", path=self.alpha),
+                agent("working", name="alpha-wt", path=self.wt, id="w2")],
+                flags=["unpushed"], ahead=1,
+                worktrees=[{"path": self.wt, "branch": "feat/x", "dirty": 2,
+                            "ahead": None}],
+                exchanges={self.alpha: None, self.wt: {
+                    "tool": "claude", "path": self.wt, "user": "wt q",
+                    "agent": "wt a", "title": "WT", "at": now - 60}}),
             project("beta", self.beta, remote=None, flags=["no_remote"],
                     last_touch=now - 7200,
                     last_exchange={"tool": "claude", "path": self.beta,
@@ -77,6 +83,10 @@ class BoardCase(TallerCase):
                              if p["name"] == name)
         self.b.build_rows()
 
+    def go_path(self, path):
+        self.b.cursor = path
+        self.b.build_rows()
+
     def keys(self, seq):
         for k in board.split_keys(seq):
             self.b.handle(k, None, None)
@@ -93,10 +103,11 @@ class BoardCase(TallerCase):
 class ListTest(BoardCase):
     def test_sections_in_order_and_dormant_collapsed(self):
         rows = [(r[0], r[1] if r[0] == "head" else
-                 r[1]["name"] if r[0] == "project" else len(r[1]))
+                 r[1]["name"] if r[0] == "project" else
+                 r[2]["branch"] if r[0] == "worktree" else len(r[1]))
                 for r in self.b.rows]
         self.assertEqual(rows, [
-            ("head", "need"), ("project", "alpha"),
+            ("head", "need"), ("project", "alpha"), ("worktree", "feat/x"),
             ("head", "working"), ("project", "busy"),
             ("head", "parked"), ("project", "plain"), ("project", "beta"),
             ("head", "dormant"), ("dormant", 2)])
@@ -124,7 +135,21 @@ class ListTest(BoardCase):
         self.assertIn("sense git", next(ln for ln in out.splitlines()
                                         if " plain " in ln))
 
+    def test_worktree_rows_sit_under_their_project(self):
+        lines = self.text(self.b.list_panel(100, 30), 100).splitlines()
+        i = next(i for i, ln in enumerate(lines) if " alpha " in ln)
+        self.assertIn("└ feat-x", lines[i + 1])
+        self.assertIn("feat/x", lines[i + 1])
+        self.assertIn("✎2", lines[i + 1])
+        self.assertIn("◐", lines[i + 1])        # its own agent
+        self.assertNotIn("✎2", lines[i])        # not the main checkout's
+        self.assertNotIn("◐", lines[i])
+
     def test_moving_skips_heads(self):
+        self.keys("j")
+        self.assertEqual(self.b.cursor, self.wt)
+        self.assertEqual(self.b.selected()["branch"], "feat/x")
+        self.assertEqual(self.b.project()["name"], "alpha")
         self.keys("j")
         self.assertEqual(self.b.project()["name"], "busy")
         self.keys("jjj")
@@ -163,12 +188,35 @@ class ListTest(BoardCase):
         self.assertIn("?? dirty.txt", out)
         self.assertIn("↑1 per pujar", out)
 
+    def test_detail_follows_the_worktree(self):
+        self.go_path(self.wt)
+        out = self.text(self.b.detail_panel(self.b.selected(), 70, 40), 70)
+        self.assertIn("alpha ⑂ feat/x", out)
+        self.assertIn("alpha-wt", out)
+        self.assertNotIn(" ha ", out)
+        self.assertIn("«WT»", out)
+        self.assertIn("tu    wt q", out)
+        self.assertIn("?? w1.txt", out)          # the worktree's own changes
+
     def test_narrow_puts_the_detail_below(self):
         self.b.console = Console(width=90, height=40, force_terminal=True)
         lines = self.text(self.b.render(), 90).splitlines()
-        top = next(i for i, ln in enumerate(lines) if "Taller" in ln)
+        top = next(i for i, ln in enumerate(lines) if "Projectes" in ln)
         detail = next(i for i, ln in enumerate(lines) if "─ alpha " in ln)
         self.assertGreater(detail, top + 3)
+
+    def test_column_stacks_even_when_wide_and_fits_the_list(self):
+        # herdr frames the pane: the sections are title lines, not boxes.
+        with mock.patch.object(board, "COLUMN", True):
+            lines = self.text(self.b.render(), 150, 60).splitlines()
+        self.assertFalse(any("╭" in ln or "│" in ln for ln in lines))
+        top = next(i for i, ln in enumerate(lines)
+                   if ln.startswith("📂 Projectes ─"))
+        detail = next(i for i, ln in enumerate(lines)
+                      if ln.startswith("alpha ─"))
+        # Below the list, right after its rows rather than halfway down.
+        self.assertEqual(detail - top, len(self.b.rows) + 3)
+        self.assertTrue(lines[top + 1].startswith(" 🔴"))   # indented by one
 
     def test_footer_follows_the_project(self):
         foot = self.b.footer().plain
@@ -202,6 +250,60 @@ class ActTest(BoardCase):
         self.assertIn("herdr workspace create --label beta", msg)
         self.assertIn("agent start beta --kind claude", msg)
         self.assertIn("--continue", msg)
+
+    def test_enter_on_a_worktree_focuses_its_agent(self):
+        self.go_path(self.wt)
+        with self.dry():
+            self.keys("\r")
+            self.wait()
+        self.assertEqual(self.b.flash[0], "dry-run: herdr agent focus alpha-wt")
+
+    def test_enter_on_a_worktree_without_agent_resumes_there(self):
+        alpha = self.model.projects[0]
+        alpha["agents"] = alpha["agents"][:1]
+        self.go_path(self.wt)
+        with self.dry():
+            self.keys("\r")
+            self.assertIn("prem ⏎ de nou per obrir feat-x a herdr: claude "
+                          "--continue («WT»)", self.b.confirm["msg"])
+            self.keys("\r")
+            self.wait()
+        msg = self.b.flash[0]
+        self.assertIn(f"herdr worktree open --cwd {self.alpha} --path "
+                      f"{self.wt}", msg)
+        self.assertIn("agent start feat-x --kind claude", msg)
+
+    def test_v_shows_the_agent_in_a_popup(self):
+        with mock.patch.object(board, "DRY_RUN", True):
+            self.keys("v")
+            self.assertIn("--entrypoint agent", self.b.flash[0])
+            self.assertIn("--env TALLER_AGENT=ha", self.b.flash[0])
+            # Titled as the row is in the list.
+            self.assertIn("herdr pane rename '<popup>' alpha", self.b.flash[0])
+            self.go_path(self.wt)
+            self.keys("v")
+            self.assertIn("--env TALLER_AGENT=alpha-wt", self.b.flash[0])
+            self.assertIn("herdr pane rename '<popup>' feat-x", self.b.flash[0])
+        # No session yet: its last conversation resumes in the background
+        # (no focus taken, no second press), then the popup opens on it.
+        self.go("beta")
+        self.assertIn("v mostra", self.b.footer().plain)
+        with self.dry(), mock.patch.object(board, "DRY_RUN", True):
+            self.keys("v")
+            self.wait()
+        msg = self.b.flash[0]
+        self.assertIn("herdr workspace create --label beta", msg)
+        self.assertIn("--no-focus", msg)
+        self.assertNotIn("--focus ", msg)
+        self.assertIn("--continue", msg)
+        self.assertIn("--entrypoint agent", msg)
+        self.assertIn("--env TALLER_AGENT=beta", msg)
+        self.assertIsNone(self.b.confirm)
+
+    def test_first_pane_id(self):
+        self.assertEqual(board.first_pane_id({"plugin_pane": {
+            "entrypoint": "agent", "pane": {"pane_id": "w1:p3"}}}), "w1:p3")
+        self.assertIsNone(board.first_pane_id({"type": "ok"}))
 
     def test_moving_drops_the_confirmation(self):
         self.go("beta")
@@ -266,7 +368,7 @@ class OnceTest(TallerCase):
             env=env, capture_output=True, text=True, timeout=60)
         self.assertEqual(out.returncode, 0, out.stderr)
         text = out.stdout
-        self.assertIn("Taller", text)
+        self.assertIn("Projectes", text)
         self.assertIn("beta", text)
         self.assertIn("filtre «beta»", text)
         self.assertIn("prem n de nou", text)

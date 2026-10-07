@@ -12,9 +12,12 @@ hide = ["interviews", "foundation"]
 # Idle for longer than this (days since the last commit or conversation) is
 # "dormant": collapsed into one line.
 dormant_days = 14
-# Extra claude arguments for the agents the board starts (⏎, n, w), e.g.
-# ["--model", "haiku"]. Not passed to pi.
+# Extra claude arguments for the agents the board starts (⏎, n, w) and the
+# orchestrator, e.g. ["--model", "haiku"]. Not passed to pi.
 agent_args = []
+# The herdr agent name of the chat beside the board (herdr/open.sh); it
+# runs in the first of `roots`.
+orchestrator_agent = "taller"
 
 [ui]
 # Seconds between refreshes of agent state; files are re-read on change.

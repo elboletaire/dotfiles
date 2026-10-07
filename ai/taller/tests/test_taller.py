@@ -1,5 +1,6 @@
 """Tests for taller.py against real throwaway git repos, fake transcripts
 under a temp HOME and a fake herdr executable on PATH."""
+import io
 import json
 import os
 import subprocess
@@ -149,6 +150,16 @@ class DiscoveryTest(TallerCase):
         self.assertFalse(arr["git"])
         self.assertEqual(arr["path"], self.docker)
         self.assertIn("no_git", arr["flags"])
+
+    def test_an_agent_in_a_root_itself_brings_no_project(self):
+        # The Taller orchestrator runs in the first root: the folder holding
+        # the projects is not one of them.
+        self.herdr_out["result"]["agents"].append(
+            {"name": "taller", "agent": "claude", "agent_status": "idle",
+             "workspace_id": "w7", "pane_id": "p7", "cwd": self.src})
+        ps = self.collect()
+        self.assertNotIn("src", ps)
+        self.assertEqual(set(ps), {"alpha", "beta", "extra", "docker"})
 
     def test_hide_by_full_path(self):
         self.cfg["taller"]["hide"] = [self.beta]
@@ -376,6 +387,50 @@ class TranscriptTest(TallerCase):
         self.assertEqual(a["last_exchange"]["path"], self.wt)
         self.assertEqual(a["last_touch"], taller.iso_epoch("2099-01-01T00:00:00Z"))
         self.assertEqual(taller.resume_cmd(a), ["env", "-C", self.wt, "claude", "--continue"])
+
+    def test_each_folder_keeps_its_own_conversation(self):
+        self.claude(self.alpha, "old.jsonl", [
+            {"type": "user", "message": {"role": "user", "content": "root"}}], age=3600)
+        self.claude(self.wt, "new.jsonl", [
+            {"type": "user", "timestamp": "2099-01-01T00:00:00Z",
+             "message": {"role": "user", "content": "in worktree"}}])
+        a = self.collect()["alpha"]
+        self.assertEqual(a["exchanges"][self.alpha]["user"], "root")
+        self.assertEqual(a["exchanges"][self.wt]["user"], "in worktree")
+        # The main checkout: its own agents and conversation only.
+        main = taller.folder(a)
+        self.assertEqual((main["path"], main["worktree"]), (self.alpha, None))
+        self.assertEqual([x["name"] for x in main["agents"]], ["ha"])
+        self.assertEqual(main["last_exchange"]["user"], "root")
+        self.assertEqual(taller.resume_cmd(main),
+                         ["env", "-C", self.alpha, "claude", "--continue"])
+        # The worktree, shaped like a project of its own.
+        w = taller.folder(a, self.wt)
+        self.assertEqual((w["path"], w["repo"], w["name"]),
+                         (self.wt, self.alpha, "feat/x"))
+        self.assertEqual((w["branch"], w["dirty"], w["worktrees"]),
+                         ("feat/x", 2, []))
+        self.assertEqual([x["name"] for x in w["agents"]], ["alpha-wt"])
+        self.assertEqual(w["last_exchange"]["user"], "in worktree")
+        # Without a workspace, it opens grouped under the repo's in herdr's
+        # sidebar, as `w` does.
+        plan = taller.resume_plan(w, taller.agent_name(w["name"]))
+        self.assertEqual(plan[0], ["herdr", "worktree", "open", "--cwd",
+                                   self.alpha, "--path", self.wt, "--label",
+                                   "X", "--focus"])
+        self.assertEqual(plan[1][3], "feat-x")
+        self.assertEqual(taller.fresh_plan(w, "feat-x")[0][:3],
+                         ["herdr", "worktree", "open"])
+        # With one, a tab in it.
+        self.assertEqual(taller.resume_plan(w, "feat-x", "w2")[0][:3],
+                         ["herdr", "tab", "create"])
+        # The agent runs, and its trust prompt is answered, in the worktree.
+        w["agents"] = []
+        with mock.patch.object(taller, "launch", return_value=(True, "ok")) as la, \
+                mock.patch.object(taller, "herdr_names", return_value=set()), \
+                mock.patch.object(taller, "find_workspace", return_value=None):
+            taller.resume_project(w)
+        self.assertEqual(la.call_args.args[2:4], (self.wt, self.wt))
 
     def test_tail_reads_only_the_end(self):
         path = os.path.join(self.t, "big.jsonl")
@@ -862,6 +917,64 @@ esac
         self.assertFalse(os.path.exists(os.path.join(self.beta, ".worktrees")))
 
 
+class CliTest(TallerCase):
+    """taller.py's subcommands, what the Taller orchestrator runs."""
+
+    def cli(self, *argv):
+        self.fakes()
+        out = io.StringIO()
+        with mock.patch.object(taller, "load_config", return_value=self.cfg), \
+                mock.patch.object(sys, "stdout", out):
+            code = taller.main(list(argv))
+        return code, out.getvalue()
+
+    def test_show_a_project_and_a_worktree(self):
+        code, out = self.cli("show", "alpha")
+        self.assertEqual(code, 0)
+        d = json.loads(out)
+        self.assertEqual((d["path"], d["branch"]), (self.alpha, "main"))
+        self.assertEqual([a["name"] for a in d["agents"]], ["ha"])
+        self.assertEqual(d["details"]["changes"], ["?? dirty.txt"])
+        self.assertEqual([w["branch"] for w in d["worktrees"]], ["feat/x"])
+        code, out = self.cli("show", "ALPHA", "--worktree", "feat-x")
+        d = json.loads(out)
+        self.assertEqual((d["path"], d["branch"]), (self.wt, "feat/x"))
+        self.assertEqual([a["name"] for a in d["agents"]], ["alpha-wt"])
+
+    def test_unknown_names_say_what_there_is(self):
+        code, out = self.cli("show", "nope")
+        self.assertEqual(code, 1)
+        self.assertIn("alpha", out)
+        code, out = self.cli("show", "alpha", "--worktree", "nope")
+        self.assertEqual(code, 1)
+        self.assertIn("feat/x", out)
+
+    def test_sessions(self):
+        code, out = self.cli("sessions")
+        self.assertEqual(code, 0)
+        self.assertIn("alpha-wt", out)
+        self.assertIn("alpha ⑂ feat/x", out)
+        self.assertIn("treballant", out)
+
+    def test_actions_keep_the_focus_and_prompt_after(self):
+        with mock.patch.dict(os.environ, {"TALLER_DRY_RUN": "1"}):
+            code, out = self.cli("resume", "beta")
+            self.assertEqual(code, 0)
+            self.assertIn("--no-focus", out)
+            self.assertNotIn("--focus ", out)
+            code, out = self.cli("worktree", "beta", "feat/y", "--prompt",
+                                 "fix it")
+            self.assertEqual(code, 0)
+            self.assertIn("git -C " + self.beta + " worktree add -b feat/y", out)
+            self.assertIn("--no-focus", out)
+            self.assertIn("dry-run: herdr agent prompt feat-y 'fix it'", out)
+            code, out = self.cli("new", "alpha", "--worktree", "feat/x")
+            self.assertIn(f"--cwd {self.wt}", out)
+            code, out = self.cli("prompt", "ha", "hola")
+            self.assertEqual(out.strip(), "dry-run: herdr agent prompt ha hola")
+        self.assertFalse(os.path.exists(os.path.join(self.beta, ".worktrees")))
+
+
 class DetailsTest(TallerCase):
     def test_commits_and_changes(self):
         d = taller.details(self.alpha)
@@ -875,6 +988,13 @@ class DetailsTest(TallerCase):
         d = taller.details(self.alpha, n_changes=8)
         self.assertEqual((len(d["changes"]), d["changes_total"]), (8, 13))
 
+    def test_an_unstaged_change_keeps_its_leading_space(self):
+        # " M" lists first: stripping the output would eat the path's first
+        # letter once the columns shift.
+        write(os.path.join(self.alpha, "a.txt"), "changed\n")
+        d = taller.details(self.alpha)
+        self.assertEqual(d["changes"], [" M a.txt", "?? dirty.txt"])
+
     def test_key_follows_head_and_index(self):
         p = project("alpha", self.alpha)
         k1 = taller.details_key(p)
@@ -885,6 +1005,13 @@ class DetailsTest(TallerCase):
         self.assertNotEqual(k1, k2)
         run("git", "commit", "-q", "-m", "more", cwd=self.alpha)
         self.assertNotEqual(k2, taller.details_key(p))
+
+    def test_key_of_a_worktree_follows_its_head(self):
+        p = project("feat/x", self.wt, branch="feat/x")
+        k1 = taller.details_key(p)
+        run("git", "add", ".", cwd=self.wt)
+        run("git", "commit", "-q", "-m", "wt", cwd=self.wt)
+        self.assertNotEqual(k1, taller.details_key(p))
 
     def test_broken_path(self):
         d = taller.details(os.path.join(self.t, "nope"))

@@ -38,7 +38,9 @@ import tty
 from rich.console import Console, Group
 from rich.layout import Layout
 from rich.live import Live
+from rich.padding import Padding
 from rich.panel import Panel
+from rich.rule import Rule
 from rich.table import Table
 from rich.text import Text
 
@@ -52,6 +54,10 @@ DRY_RUN = taller.dry_run()
 CONFIRM_SECS = 8       # window for the second press
 FLASH_SECS = 8
 SIDE_MIN = 120         # from this width the detail sits beside the list
+# The Taller workspace runs the board as a column beside the orchestrator
+# (herdr/open.sh): the detail always goes below the list there.
+COLUMN = os.environ.get("TALLER_LAYOUT") == "column"
+LIST_SHARE = 0.55      # of the column's height, for the list
 SIDE_SHARE = 0.42      # of the width, for the detail when beside
 ENTER = ("\r", "\n")
 
@@ -268,11 +274,11 @@ class Model:
 # -------------------------------------------------------------------- view
 
 def row_flags(p):
-    """✎ uncommitted (worktrees too), ↑ unpushed, ⚠ no remote, ✗ git error."""
+    """✎ uncommitted, ↑ unpushed, ⚠ no remote, ✗ git error -- of the folder
+    alone: each worktree has its own row."""
     t = Text(no_wrap=True)
-    dirty = (p["dirty"] or 0) + sum(w["dirty"] for w in p["worktrees"])
-    if dirty:
-        t.append(f"✎{dirty} ", style="yellow")
+    if p["dirty"]:
+        t.append(f"✎{p['dirty']} ", style="yellow")
     if p["ahead"]:
         t.append(f"↑{p['ahead']} ", style="cyan")
     if p["git"] and "no_remote" in p["flags"]:
@@ -281,6 +287,46 @@ def row_flags(p):
         t.append("✗ ", style="red")
     t.rstrip()
     return t
+
+
+def first_pane_id(d):
+    """The first pane_id anywhere in a herdr result (a plugin popup's sits at
+    .plugin_pane.pane.pane_id)."""
+    if isinstance(d, dict):
+        if isinstance(d.get("pane_id"), str):
+            return d["pane_id"]
+        for v in d.values():
+            found = first_pane_id(v)
+            if found:
+                return found
+    return None
+
+
+def chrome():
+    """(columns, rows) a section's frame takes: a box's borders and padding,
+    or in the column (herdr frames the pane already) a title line and a
+    one-column indent."""
+    return (2, 1) if COLUMN else (4, 2)
+
+
+def section(body, title, height, style):
+    """A titled section of the screen: a box, or in the column a title line
+    over the body, indented by one."""
+    if COLUMN:
+        return Group(Rule(title, align="left", style=style),
+                     Padding(body, (0, 0, 0, 1)))
+    return Panel(body, title=title, title_align="left", height=height,
+                 border_style=style, padding=(0, 1))
+
+
+def row_path(r):
+    """The folder a list row stands for; None for heads and the dormant
+    line."""
+    if r[0] == "project":
+        return r[1]["path"]
+    if r[0] == "worktree":
+        return r[2]["path"]
+    return None
 
 
 def agent_glyphs(agents):
@@ -296,7 +342,7 @@ class Board:
     def __init__(self, model, console):
         self.m = model
         self.console = console
-        self.cursor = None        # selected project's path
+        self.cursor = None        # selected folder's path (project or worktree)
         self.show_dormant = False
         self.filter = ""
         self.input = None         # {"kind": filter|branch, "prompt", "buf"}
@@ -320,7 +366,8 @@ class Board:
 
     def build_rows(self):
         """[("head", section, n) | ("project", p, section) |
-        ("dormant", projects)], and the cursor kept on a project."""
+        ("worktree", p, worktree, section) | ("dormant", projects)], and the
+        cursor kept on a project or a worktree."""
         projects = self.visible(self.m.snapshot())
         groups = taller.sections(projects)
         rows = []
@@ -332,19 +379,36 @@ class Board:
             if sec == "dormant" and not (self.show_dormant or self.filter):
                 rows.append(("dormant", ps))
                 continue
-            rows += [("project", p, sec) for p in ps]
+            for p in ps:
+                rows.append(("project", p, sec))
+                rows += [("worktree", p, w, sec) for w in p["worktrees"]]
         self.rows = rows
-        paths = [r[1]["path"] for r in rows if r[0] == "project"]
+        paths = self.paths()
         if self.cursor not in paths:
             self.cursor = paths[0] if paths else None
         return rows
 
+    def paths(self):
+        """The folders the cursor can be on, in list order."""
+        return [row_path(r) for r in self.rows if row_path(r)]
+
+    def row(self):
+        return next((r for r in self.rows if row_path(r) == self.cursor),
+                    None)
+
     def project(self):
-        return next((r[1] for r in self.rows if r[0] == "project"
-                     and r[1]["path"] == self.cursor), None)
+        """The selected row's project (a worktree's: its repo)."""
+        r = self.row()
+        return r[1] if r else None
+
+    def selected(self):
+        """The selected folder (taller.folder): the main checkout or a
+        worktree, what the actions and the detail work on."""
+        r = self.row()
+        return taller.folder(r[1], self.cursor) if r else None
 
     def move(self, d):
-        paths = [r[1]["path"] for r in self.rows if r[0] == "project"]
+        paths = self.paths()
         if not paths:
             return
         i = paths.index(self.cursor) if self.cursor in paths else 0
@@ -362,15 +426,19 @@ class Board:
         root = Layout()
         root.split_column(Layout(name="body", size=body_h),
                           Layout(foot, name="foot", size=foot_h))
-        p = self.project()
-        if width >= SIDE_MIN:
+        p = self.selected()
+        if width >= SIDE_MIN and not COLUMN:
             side_w = max(40, int(width * SIDE_SHARE))
             root["body"].split_row(
                 Layout(self.list_panel(width - side_w, body_h), name="list"),
                 Layout(self.detail_panel(p, side_w, body_h), name="detail",
                        size=side_w))
         else:
-            list_h = max(6, body_h // 2)
+            list_h = max(6, int(body_h * (LIST_SHARE if COLUMN else 0.5)))
+            if COLUMN:
+                # No taller than its rows (title line, header and a blank
+                # line): the detail gets the rest.
+                list_h = min(list_h, max(6, len(self.rows) + 3))
             root["body"].split_column(
                 Layout(self.list_panel(width, list_h), name="list",
                        size=list_h),
@@ -404,23 +472,22 @@ class Board:
         return t
 
     def list_panel(self, width, height):
-        inner_h = height - 2
-        title = Text("🛠  Taller", style="bold")
+        cw, ch = chrome()
+        inner_h = height - ch
+        title = Text("📂 Projectes", style="bold")
         if self.m.projects is None:
             msg = self.m.err or "llegint els projectes…"
-            return Panel(Text(msg, style="red" if self.m.err else "dim"),
-                         title=title, title_align="left", height=height,
-                         border_style="green")
-        head = self.header(width - 4)
+            return section(Text(msg, style="red" if self.m.err else "dim"),
+                           title, height, "green")
+        head = self.header(width - cw)
         self.list_h = max(3, inner_h - 2)
-        table = self.table(width - 4, self.list_h)
+        table = self.table(width - cw, self.list_h)
         parts = [head, Text(""), table]
         if not self.rows:
             parts.append(Text("cap projecte" + (" amb aquest filtre"
                                                 if self.filter else ""),
                               style="dim"))
-        return Panel(Group(*parts), title=title, title_align="left",
-                     height=height, border_style="green", padding=(0, 1))
+        return section(Group(*parts), title, height, "green")
 
     def table(self, width, room):
         tb = Table(box=None, expand=True, pad_edge=False, show_edge=False,
@@ -433,8 +500,8 @@ class Board:
         tb.add_column("wt", no_wrap=True, justify="right")
         tb.add_column("ago", no_wrap=True, justify="right", min_width=3)
         rows = self.rows
-        idx = next((i for i, r in enumerate(rows) if r[0] == "project"
-                    and r[1]["path"] == self.cursor), 0)
+        idx = next((i for i, r in enumerate(rows)
+                    if row_path(r) == self.cursor), 0)
         start = 0
         if len(rows) > room:
             start = max(0, min(idx - room // 3, len(rows) - room))
@@ -449,6 +516,24 @@ class Board:
                 tb.add_row("", "", Text(f"{names}", style="dim italic",
                                         no_wrap=True, overflow="ellipsis"),
                            Text("d desplega", style="dim"), "", "", "")
+            elif r[0] == "worktree":
+                p, w = r[1], r[2]
+                f = taller.folder(p, w["path"])
+                sel = w["path"] == self.cursor
+                dim = r[3] == "dormant"
+                fork = "└ " if w is p["worktrees"][-1] else "├ "
+                name = Text(no_wrap=True, overflow="ellipsis")
+                name.append(fork, style="grey50")
+                name.append(os.path.basename(w["path"]),
+                            style="bold" if sel else
+                            ("grey50" if dim else ""))
+                branch = Text(w["branch"] or "(detached)",
+                              style="grey50" if dim else "magenta")
+                at = (f["last_exchange"] or {}).get("at")
+                touch = Text(ago(now - at) if at else "", style="dim")
+                tb.add_row("▶" if sel else "", agent_glyphs(f["agents"]),
+                           name, branch, row_flags(f), "", touch,
+                           style="reverse" if sel else None)
             else:
                 p = r[1]
                 sel = p["path"] == self.cursor
@@ -463,26 +548,27 @@ class Board:
                           style="dim")
                 touch = Text(ago(now - p["last_touch"]) if p["last_touch"]
                              else "–", style="dim")
-                tb.add_row("▶" if sel else "", agent_glyphs(p["agents"]),
-                           name, branch, row_flags(p), wt, touch,
+                main = taller.folder(p)
+                tb.add_row("▶" if sel else "", agent_glyphs(main["agents"]),
+                           name, branch, row_flags(main), wt, touch,
                            style="reverse" if sel else None)
         return tb
 
     # .. the detail
 
     def detail_panel(self, p, width, height):
-        inner_w, inner_h = width - 4, height - 2
+        cw, ch = chrome()
+        inner_w, inner_h = width - cw, height - ch
         if not p:
-            return Panel(Text("cap projecte seleccionat", style="dim"),
-                         title=Text("Detall", style="bold"),
-                         title_align="left", height=height,
-                         border_style="grey35")
+            return section(Text("cap projecte seleccionat", style="dim"),
+                           Text("Detall", style="bold"), height, "grey35")
         lines = self.detail_lines(p, inner_w)
         if len(lines) > inner_h:
             lines = lines[:inner_h - 1] + [Text("…", style="dim")]
-        return Panel(Group(*lines), title=Text(p["name"], style="bold"),
-                     title_align="left", height=height, border_style="grey35",
-                     padding=(0, 1))
+        title = (f"{p['repo_name']} ⑂ {p['name']}" if p.get("worktree")
+                 else p["name"])
+        return section(Group(*lines), Text(title, style="bold"), height,
+                       "grey35")
 
     def detail_lines(self, p, width):
         now = time.time()
@@ -611,11 +697,12 @@ class Board:
         return t
 
     def keys(self):
-        p = self.project()
+        p = self.selected()
         keys = [("↑↓", "mou")]
         if p:
             a = taller.pick_agent(p)
             keys.append(("⏎", f"→ {a['name']}" if a else "reprèn a herdr"))
+            keys.append(("v", "mostra"))
             keys.append(("n", "agent nou"))
             if p["git"]:
                 keys.append(("w", "worktree"))
@@ -658,7 +745,7 @@ class Board:
         moves = {"j": 1, "\x1b[B": 1, "k": -1, "\x1b[A": -1,
                  "\x1b[6~": page, "\x1b[5~": -page,
                  "\x1b[H": -10 ** 6, "\x1b[F": 10 ** 6}
-        p = self.project()
+        p = self.selected()
         if key in moves:
             self.move(moves[key])
         elif key == "\x1b":
@@ -680,7 +767,9 @@ class Board:
         elif key == "n":
             self.fresh(p)
         elif key == "w":
-            self.worktree(p)
+            self.worktree(self.project())
+        elif key == "v":
+            self.agent_popup(p)
         elif key == "t":
             self.shell(p, live, term)
         elif key == "g":
@@ -807,20 +896,68 @@ class Board:
         return {a["name"] for p in self.m.snapshot() for a in p["agents"]
                 if a["host"] == "herdr"}
 
-    def popup(self, entrypoint, cwd):
-        """One of the plugin's popups; False when not inside herdr."""
+    def open_popup(self, entrypoint, cwd, env=None, title=None):
+        """One of the plugin's popups, its pane labelled `title` when given.
+        -> (ok, message); not ok when not inside herdr."""
         if not IN_HERDR and not DRY_RUN:
-            return False
+            return False, "només funciona dins de herdr"
         args = ["herdr", "plugin", "pane", "open", "--plugin", PLUGIN_ID,
                 "--entrypoint", entrypoint, "--placement", "popup",
                 "--width", "92%", "--height", "88%", "--cwd", cwd]
+        for k, v in (env or {}).items():
+            args += ["--env", f"{k}={v}"]
+        rename = ["herdr", "pane", "rename", "<popup>", title] if title else None
         if DRY_RUN:
-            self.say("dry-run: " + shlex.join(args))
-            return True
+            return True, "dry-run: " + " ; ".join(
+                shlex.join(a) for a in (args, rename) if a)
         code, out, err = taller.sh(args, timeout=20)
         if code != 0:
-            self.say(f"popup de herdr fallida: {clip(err or out, 100)}")
-        return code == 0
+            return False, f"popup de herdr fallida: {clip(err or out, 100)}"
+        pane = first_pane_id((taller._json(out) or {}).get("result"))
+        if rename and pane:
+            taller.herdr(["pane", "rename", pane, title], timeout=10)
+        return True, ""
+
+    def popup(self, entrypoint, cwd, env=None, title=None):
+        """open_popup(), saying how it went. -> ok."""
+        ok, msg = self.open_popup(entrypoint, cwd, env, title)
+        if msg and (ok or IN_HERDR or DRY_RUN):
+            self.say(msg)
+        return ok
+
+    @staticmethod
+    def list_name(p):
+        """A folder() as its row reads in the list: the project's name, or
+        a worktree's folder."""
+        return os.path.basename(p["path"]) if p.get("worktree") else p["name"]
+
+    def agent_popup(self, p):
+        """The folder's agent (one waiting on you first) in a popup over the
+        board, without leaving it. With none, its last conversation is
+        resumed in the background first (no focus taken), then shown."""
+        a = taller.pick_agent(p)
+        if a:
+            if self.popup("agent", p["path"], {"TALLER_AGENT": a["name"]},
+                          self.list_name(p)):
+                if not DRY_RUN:
+                    self.say("ctrl+b q tanca la finestra")
+            else:
+                self.say("b només funciona dins de herdr")
+            return
+
+        def work(status):
+            ok, msg, name = taller.resume_project(p, self.agent_args(),
+                                                  status, focus=False)
+            if not ok:
+                return ok, msg
+            ok, shown = self.open_popup("agent", p["path"],
+                                        {"TALLER_AGENT": name},
+                                        self.list_name(p))
+            if DRY_RUN:
+                return ok, f"{msg} ; {shown}"
+            return ok, ("ctrl+b q tanca la finestra" if ok
+                        else f"{name} engegat, però {shown}")
+        self.run(f"engegant {p['name']} en segon pla…", work)
 
     def shell(self, p, live, term):
         if self.popup("shell", p["path"]):
