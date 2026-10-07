@@ -706,14 +706,28 @@ def herdr_agent(name):
     return ((data or {}).get("result") or {}).get("agent")
 
 
-def find_workspace(label):
+def workspaces():
+    """herdr's workspace list; [] when it can't be had."""
+    if not shutil.which("herdr"):
+        return []
     code, data, _ = herdr(["workspace", "list"], timeout=AGENT_TIMEOUT)
     if code != 0:
-        return None
-    for w in ((data or {}).get("result") or {}).get("workspaces") or []:
+        return []
+    return ((data or {}).get("result") or {}).get("workspaces") or []
+
+
+def find_workspace(label):
+    for w in workspaces():
         if w.get("label") == label:
             return w.get("workspace_id")
     return None
+
+
+def checkout_of(w):
+    """The folder a herdr workspace is a git checkout workspace of (the ones
+    `herdr worktree open` makes: the worktree's, and the repo's parent one it
+    adds when missing), or None."""
+    return norm((w.get("worktree") or {}).get("checkout_path"))
 
 
 def inside(path, root):
@@ -975,16 +989,21 @@ def pick_agent(p):
 
 def project_workspace(p):
     """herdr workspace of the project (or of a folder()): the one its herdr
-    agents run in, or one labelled with its name -- for a worktree, the one
-    `herdr worktree open` made (titled after the branch), else the repo's.
-    None when there is none."""
+    agents run in, else the one herdr keeps for that very checkout, else one
+    labelled after it (a worktree's branch title, the project's name). Never
+    the repo's for a worktree: that's the parent `herdr worktree open` puts
+    the worktree's own workspace under. None when there is none."""
     for a in p["agents"]:
         if a["host"] == "herdr" and a.get("id"):
             return a["id"]
-    if p.get("worktree"):
-        return (find_workspace(branch_title(p["branch"] or p["name"]))
-                or find_workspace(p["repo_name"]))
-    return find_workspace(p["name"])
+    spaces = workspaces()
+    for w in spaces:
+        if checkout_of(w) == p["path"]:
+            return w.get("workspace_id")
+    label = branch_title(p["branch"] or p["name"]) if p.get("worktree") \
+        else p["name"]
+    return next((w.get("workspace_id") for w in spaces
+                 if w.get("label") == label and not checkout_of(w)), None)
 
 
 def web_url(remote):

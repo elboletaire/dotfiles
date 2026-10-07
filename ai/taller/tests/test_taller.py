@@ -240,6 +240,45 @@ class GitStateTest(TallerCase):
         self.assertTrue(taller.finish(p4, 14, now)["dormant"])
 
 
+def wt_project(self, **kw):
+    """alpha with its worktree, as a TallerCase test hands it to the
+    actions."""
+    p = {"name": "alpha", "path": self.alpha, "git": True,
+         "branch": "main", "agents": [], "last_touch": 1000,
+         "worktrees": [{"path": self.wt, "branch": "feat/x", "dirty": 0,
+                        "ahead": None}],
+         "exchanges": {self.alpha: None, self.wt: {"at": 900}},
+         "last_exchange": None}
+    p.update(kw)
+    return p
+
+
+class WorkspaceTest(TallerCase):
+    proj = wt_project
+
+    def ws(self, spaces, path=None):
+        with mock.patch.object(taller, "workspaces", return_value=spaces):
+            return taller.project_workspace(taller.folder(self.proj(), path))
+
+    def test_a_worktree_never_lands_in_the_repos_workspace(self):
+        # `herdr worktree open` for another worktree made the repo's parent
+        # workspace, labelled after it: a second worktree must get its own,
+        # not a tab there.
+        parent = {"workspace_id": "w6", "label": "alpha",
+                  "worktree": {"checkout_path": self.alpha}}
+        self.assertIsNone(self.ws([parent], self.wt))
+        self.assertIsNone(self.ws([dict(parent, worktree=None)], self.wt))
+        # The main checkout does use it.
+        self.assertEqual(self.ws([parent]), "w6")
+
+    def test_a_worktree_finds_its_own_by_checkout_then_label(self):
+        own = {"workspace_id": "w7", "label": "whatever",
+               "worktree": {"checkout_path": self.wt}}
+        self.assertEqual(self.ws([own], self.wt), "w7")
+        self.assertEqual(self.ws([{"workspace_id": "w8", "label": "X"}],
+                                 self.wt), "w8")
+
+
 class RemoteTest(unittest.TestCase):
     def test_forms(self):
         cases = {
