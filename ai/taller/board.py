@@ -739,7 +739,8 @@ class Board:
         if self.input:
             return self.handle_input(key)
         if key in ("q", "\x03"):
-            return False
+            return not self.ask("quit", "q",
+                                "prem q o ctrl-c de nou per sortir")
         self.build_rows()
         page = max(1, self.list_h - 2)
         moves = {"j": 1, "\x1b[B": 1, "k": -1, "\x1b[A": -1,
@@ -1014,8 +1015,16 @@ class Terminal:
         self.saved = termios.tcgetattr(self.fd)
 
     def __enter__(self):
-        tty.setcbreak(self.fd)
+        self.cbreak()
         return self
+
+    def cbreak(self):
+        """cbreak without ISIG, so ctrl-c reaches handle() as \\x03 (and
+        asks first) instead of killing the board."""
+        tty.setcbreak(self.fd)
+        attrs = termios.tcgetattr(self.fd)
+        attrs[3] &= ~termios.ISIG
+        termios.tcsetattr(self.fd, termios.TCSADRAIN, attrs)
 
     def __exit__(self, *a):
         termios.tcsetattr(self.fd, termios.TCSADRAIN, self.saved)
@@ -1036,7 +1045,7 @@ class Terminal:
             print(f"failed: {e}")
             time.sleep(2)
         finally:
-            tty.setcbreak(self.fd)
+            self.cbreak()
             live.start(refresh=True)
 
 

@@ -91,7 +91,7 @@ git every `[ui].git_secs` and right after an action.
 | `d` | show/hide the dormant projects |
 | `/` | filter by name (`Esc` clears) |
 | `u` | refresh now |
-| `q` | quit |
+| `q` | quit (press it, or `ctrl-c`, twice: the first press only asks) |
 
 Agents it starts are always named (`[a-z][a-z0-9_-]{0,31}`, from the project
 or branch, `-2`... when taken), so herdr lists them by name. Claude's "trust

@@ -305,6 +305,20 @@ class ActTest(BoardCase):
             "entrypoint": "agent", "pane": {"pane_id": "w1:p3"}}}), "w1:p3")
         self.assertIsNone(board.first_pane_id({"type": "ok"}))
 
+    def test_quit_asks_first(self):
+        self.assertTrue(self.b.handle("q", None, None))
+        self.assertIn("prem q o ctrl-c de nou", self.b.confirm["msg"])
+        self.assertFalse(self.b.handle("q", None, None))
+
+    def test_ctrl_c_asks_first_too(self):
+        self.assertTrue(self.b.handle("\x03", None, None))
+        self.assertFalse(self.b.handle("\x03", None, None))
+
+    def test_quit_is_dropped_by_another_key(self):
+        self.keys("q")
+        self.keys("\x1b")
+        self.assertTrue(self.b.handle("q", None, None))
+
     def test_moving_drops_the_confirmation(self):
         self.go("beta")
         self.keys("n")
