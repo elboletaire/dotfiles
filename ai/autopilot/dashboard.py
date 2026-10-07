@@ -408,17 +408,18 @@ class Model:
                 out["notes"].append(e)
             elif kind in PICK_ROWS:
                 out["pick"].append(e)
-            elif kind in DONE_ROWS:
-                out["done"].append(e)
             # herdr's live state is seconds old; the snapshot can be minutes
-            # old. An agent mid-turn -- prompted by the orchestrator or by
-            # hand -- is running, whatever its last report or row says.
-            elif e["driver"] == "agent" and e["agent"] == "running" \
-                    and kind not in ORCH_ROWS:
+            # old. A tracked item's agent mid-turn -- prompted by the
+            # orchestrator or by hand -- is running, whatever its last report
+            # or row says, DONE included.
+            elif it is not None and e["agent"] == "running" \
+                    and kind not in ORCH_ROWS and kind != "GONE":
                 e["needs"] = False
                 if kind not in RUN_ROWS:
                     e["note"] = f"working again · was {kind.lower()}"
                 out["running"].append(e)
+            elif kind in DONE_ROWS:
+                out["done"].append(e)
             elif e["needs"]:
                 out["needs"].append(e)
             elif kind in ORCH_ROWS:

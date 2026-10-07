@@ -787,8 +787,13 @@ def scan(state, refresh=False, info=None):
                     if (r.get("author") or {}).get("login") == me
                     and r.get("state") in ("APPROVED", "CHANGES_REQUESTED")]
             if mine and mine[-1].get("state") == "APPROVED":
-                if live.get(sess, {}).get("state") != "running":
-                    active -= 1
+                # A review the user asked for anyway (`go`) is still work in
+                # progress, and holds its slot, until its agent stops.
+                if live.get(sess, {}).get("state") == "running":
+                    rows.append(("WORKING", k, f"mode=comment {smeta} "
+                                               "reviewing (approved before)"))
+                    continue
+                active -= 1
                 rows.append(("DONE", k, f"mode=comment {smeta} approved by you "
                                         "-> no further reviews"))
                 continue
