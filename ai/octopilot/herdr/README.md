@@ -96,13 +96,13 @@ dashboards share one refresh.
 |---|---|
 | `↑↓` / `jk` | move |
 | `⏎` | go to the agent, in its own workspace |
-| `b` | the agent in a popup over the dashboard; `ctrl+b q` closes it and leaves the agent running |
+| `v` | the agent in a popup over the dashboard; `ctrl+b q` closes it and leaves the agent running |
 | `a` | go to the prompter (the orchestrator if there is none) |
 | `t` | shell in the item's worktree |
 | `o` | PR or issue in the browser |
 | `g` / `n` | on a Pick next row: queue `go <key>` / `no <key>` for the orchestrator (press twice; past `WIND_DOWN_AT` the second press confirms starting anyway) |
 | `R` | on a CAPPED row: grant another `MAX_REVIEW_ROUNDS` review rounds (press twice) |
-| `v` / `x` | on a PUSHED (stale) row: queue a re-review / ack the new commits (press twice) |
+| `e` / `x` | on a PUSHED (stale) row: queue a re-review / ack the new commits (press twice) |
 | `i` | start an investigation: type the repo and the question |
 | `P` | pause / resume octopilot (press twice) |
 | `z` | detach a tracked item: closes its workspace, keeps the worktree, stops tracking it (press twice) |

@@ -753,10 +753,10 @@ class Dashboard:
         if kind == "CAPPED":
             keys.append(("R", "another round"))
         if kind == "PUSHED":
-            keys += [("v", "re-review"), ("x", "ack")]
+            keys += [("e", "re-review"), ("x", "ack")]
         if tracked:
             keys.append(("z", "detach"))
-        keys += [("b", "agent popup"), ("t", "shell"),
+        keys += [("v", "agent popup"), ("t", "shell"),
                  ("o", "browser"), ("i", "investigate"), ("a", "prompter"),
                  ("r", "refresh"),
                  ("d", f"done (+{self.hidden_done} hidden)" if self.hidden_done
@@ -866,7 +866,7 @@ class Dashboard:
                 self.attach(e["session"], live, term)
             else:
                 self.say("no session for this row")
-        elif key == "b":
+        elif key == "v":
             self.agent_popup(e)
         elif key == "t":
             if e["path"] and os.path.isdir(e["path"]):
@@ -896,10 +896,10 @@ class Dashboard:
             elif self.ask("R", e["key"], f"press R again to grant {e['key']} "
                           f"another {MAX_REVIEW_ROUNDS} review rounds"):
                 self.run_scan("reset-rounds", e["key"])
-        elif key in ("v", "x"):
+        elif key in ("e", "x"):
             if e["kind"] != "PUSHED":
-                self.say("v/x only apply to PUSHED (stale) rows")
-            elif key == "v" and self.ask("v", e["key"], "press v again to ask "
+                self.say("e/x only apply to PUSHED (stale) rows")
+            elif key == "e" and self.ask("e", e["key"], "press e again to ask "
                                          f"for a re-review of {e['key']}"):
                 self.to_orch(f"re-review {e['key']}")
             elif key == "x" and self.ask("x", e["key"], "press x again to ack "
