@@ -20,6 +20,7 @@ import fcntl
 import json
 import os
 import select
+import shutil
 import subprocess
 import sys
 import termios
@@ -44,6 +45,16 @@ STATE_DIR = os.path.dirname(STATE_FILE)
 EVENTS_FILE = os.path.join(STATE_DIR, "events.jsonl")
 SNAPSHOT_FILE = os.path.join(STATE_DIR, "snapshot.json")
 SNAPSHOT_LOCK = SNAPSHOT_FILE + ".lock"
+# What each item last sent a desktop notification for, shared by every open
+# dashboard so only one of them notifies.
+NOTIFIED_FILE = os.path.join(STATE_DIR, "notified.json")
+NOTIFIED_LOCK = NOTIFIED_FILE + ".lock"
+NOTIFY_WHY = {"READY": "ready to merge", "CAPPED": "out of review rounds",
+              "PUSHED": "stale: pushed, never re-requested",
+              "STALLED": "agent not reporting", "stalled": "agent not reporting",
+              "CLOSED": "closed without merging", "blocked": "agent is blocked",
+              "failed": "agent's CI is failing", "capped": "out of review rounds",
+              "asking": "agent is asking something"}
 REFRESH_SECS = int(os.environ.get("DASHBOARD_REFRESH_SECS", "120"))
 MAX_REVIEW_ROUNDS = int(os.environ.get("MAX_REVIEW_ROUNDS", "3"))
 AGENT_STALL_MIN = int(os.environ.get("AGENT_STALL_MIN", "35"))
@@ -117,6 +128,15 @@ def ago(secs):
 def short(key):
     """vocdoni/vocdoni-app#452 -> vocdoni-app#452"""
     return key.split("/", 1)[1] if "/" in key else key
+
+
+def desktop(title, body):
+    """Fire-and-forget KDE/freedesktop notification."""
+    try:
+        subprocess.Popen(["notify-send", "-a", "PR Autopilot", title, body],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except OSError:
+        pass
 
 
 def split_key(key):
@@ -297,6 +317,7 @@ class Model:
         while True:
             time.sleep(5)
             data, _ = self.build()
+            self.notify(data)
             cur = {}
             for section in ("needs", "orch", "running", "done"):
                 for e in data[section]:
@@ -309,6 +330,31 @@ class Model:
             if stale:
                 last_at = time.time()
             last = cur
+
+    def notify(self, data):
+        """A desktop notification when an item enters Needs you, once per
+        item and reason; herdr's own toasts stay inside herdr. The first run
+        only records what is already there, so a fresh dashboard does not
+        replay old news."""
+        if self.snap is None or not shutil.which("notify-send"):
+            return
+        now_needs = {e["key"]: e for e in data["needs"]}
+        with open(NOTIFIED_LOCK, "w") as lk:
+            fcntl.flock(lk.fileno(), fcntl.LOCK_EX)
+            first = not os.path.exists(NOTIFIED_FILE)
+            sent = read_json(NOTIFIED_FILE) or {}
+            out = {}
+            for k, e in now_needs.items():
+                why = e["why"] or "needs you"
+                out[k] = why
+                if not first and sent.get(k) != why:
+                    desktop(f"🔴 {short(k)}: {NOTIFY_WHY.get(why, why)}",
+                            f"{e['title']}\n{(e['note'] or '')[:200]}")
+            if out != sent or first:
+                tmp = f"{NOTIFIED_FILE}.tmp.{os.getpid()}"
+                with open(tmp, "w") as fh:
+                    json.dump(out, fh)
+                os.replace(tmp, NOTIFIED_FILE)
 
     def start(self):
         for fn in (self.github_loop, self.agents_loop, self.publish_loop):
@@ -416,6 +462,11 @@ class Model:
         needs = (kind in NEEDS_ROWS or stalled
                  or (rep_live and rep.get("state") in REPORT_NEEDS)
                  or (agent_state == "waiting" and kind not in DONE_ROWS))
+        # Why it needs the user, for the desktop notification: one per reason.
+        why = (kind if kind in NEEDS_ROWS else "stalled" if stalled
+               else rep.get("state") if rep_live
+               and rep.get("state") in REPORT_NEEDS
+               else "asking" if agent_state == "waiting" else None)
         if rep_live:
             note = f"{rep.get('state')}: {rep.get('msg') or ''}"
         elif stalled:
@@ -449,7 +500,8 @@ class Model:
                 "quiet": quiet, "note": note, "needs": needs,
                 "pick_kind": pick_kind, "path": sinfo.get("path"),
                 "branch": it.get("branch"), "pr": pr,
-                "pane": ag.get("pane"), "open": bool(sess and sess in sessions)}
+                "pane": ag.get("pane"), "open": bool(sess and sess in sessions),
+                "why": why}
 
     def orch_target(self, state, sessions):
         """-> (address, label). Addresses are "herdr:<agent>"."""

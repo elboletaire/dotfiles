@@ -171,7 +171,9 @@ inbox. The first line of the message must be that one line -- the
 orchestrator reads it as a status, and a human reads it as a summary. Put any
 detail on the lines after it, inside the same quotes. Never message the
 orchestrator any other way (`herdr agent prompt`): that types
-into its pane, over whatever the user is writing there.
+into its pane, over whatever the user is writing there. Never send desktop
+notifications (`PushNotification`) either: the dashboard tells the user when
+your item needs them.
 
 If you are going to be working for more than half an hour without pushing and
 without a CI wait in flight, call

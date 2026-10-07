@@ -55,6 +55,19 @@ rows = [["state_icon", "workspace"],
         ["$ap_note"]]
 ```
 
+Notifications: the dashboard sends a desktop notification (`notify-send`) when
+an item enters 🔴 Needs you -- once per item and reason, never on repeats --
+and the orchestrator and its agents send none of their own. Keep herdr's own
+per-turn notifications inside herdr so they do not drown it out:
+
+```toml
+[ui.toast]
+delivery = "herdr"   # in-app toasts only; "off" silences them entirely
+
+[ui.sound.agents]
+claude = "off"       # no state-change sounds from Claude agents (all of them)
+```
+
 The dashboard also runs outside herdr: `~/.dotfiles/ai/autopilot/dashboard.sh`.
 It needs `uv` (which provides `rich`); there is nothing else to install.
 

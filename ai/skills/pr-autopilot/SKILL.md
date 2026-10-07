@@ -135,7 +135,7 @@ the dashboard's `g`/`n` keys send) still work. Report `UNCLONED` and
 | `STALLED` | An agent-driven item that has neither pushed nor sent a heartbeat for `AGENT_STALL_MIN` (35m). **Take no action** -- do not reboot it, do not re-prompt it. Report the branch, the quiet time and the round count, and let the user decide. It usually means the agent crashed, its background CI wait never returned, or its report never arrived. |
 | `WORKING` | Nothing. Report branch and age. A `driver=agent` row also shows `rounds=N/M quiet=Xm` -- it is running its own loop and needs nothing from you. If `age` is large and `state=idle`, say so -- the user decides. |
 | `CAPPED` | Autopilot hit `MAX_REVIEW_ROUNDS` on this PR and stopped on its own. **Take no action.** Report it once with the round count and the head sha, and say the PR is waiting on the user: merge it, review it on github.com (which resets the budget), or run `$A reset-rounds <key>` to grant another round. Never send another review prompt to a capped item. |
-| `READY` | `PushNotification` once: "PR #N in <repo> ready to merge". Do not merge. Do not re-notify on later ticks for the same head sha. |
+| `READY` | Report it once. Do not merge. The dashboard already sent the user a desktop notification. |
 | `DONE` | Report once. A posted review holds no slot; while its session is still running the scan shows `WORKING ... reviewing, not posted yet` instead, which does. `mode=comment` work ends here -- there is nothing to merge and nothing to push. |
 | `PUSHED` | **Stale PR.** The author of a PR we reviewed pushed new commits and never re-requested the review, and the branch has been quiet for `RE_REVIEW_QUIET_HOURS` (4h). Never review it on your own. Put it in 🔴 Needs you as a stale PR, with the quiet time. The user replies `re-review <#>` (you do the `REVIEW` action for it, then `BOOTING` next tick) or `ack <#>` (`$A ack-push <key>`, which stops the flag until the next push or re-request). |
 | `GONE` | The user removed this item's session by hand. The scan has already untracked it, and it no longer holds a slot. Report it once. Take no action. |
@@ -312,7 +312,7 @@ if an agent says `ready` and the table disagrees, the table wins.
    increments on `mark-reviewed` and the table enforces it by printing `CAPPED`
    instead of `REVIEW`. Act on the row you are given; never hand-roll a review
    send for a capped item.
-1. **Never merge.** `READY` notifies; the user merges.
+1. **Never merge.** The user merges.
 2. **Never push to a `mode=comment` branch** -- no rebase, no fan-out, no
    commits. It is someone else's work and you were asked only to review it.
 3. **A GitHub review is a first-class input.** `FEEDBACK` rows come from the
@@ -329,10 +329,13 @@ if an agent says `ready` and the table disagrees, the table wins.
    finds the agent wherever it runs. Exit 4 means the agent is waiting on an
    approval or a question -- nothing was sent; report it, never answer it.
 8. Report in the Tick report layout above. Do not paste prompt bodies back.
-9. **`$A snapshot` is the dashboard's, not yours.** It is a read-only scan that
+9. **Never send desktop notifications** (`PushNotification`). The dashboard
+   notifies the user once when an item enters 🔴 Needs you, and nothing else
+   is worth interrupting them for.
+10. **`$A snapshot` is the dashboard's, not yours.** It is a read-only scan that
    saves nothing, so acting on its rows would skip the state transitions the
    real tick records. Ticks always use `$A scan`.
-10. **Repo conventions belong to the repo, not to you.** Each repo's AGENTS.md
+11. **Repo conventions belong to the repo, not to you.** Each repo's AGENTS.md
     decides its base branch, PR target, branch flow (`main`/`develop`/`stage`/
     `lts`...) and how work is split into PRs. Never add your own guidance on
     any of these to a prompt or relay, and never "correct" an agent on them.
