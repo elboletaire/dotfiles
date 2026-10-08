@@ -190,16 +190,26 @@ def herdr_error(data):
     return ((data or {}).get("error") or {}).get("code") or ""
 
 
-def herdr_sessions():
-    """herdr worktree workspaces as [{id,title,path,worktree:{branch,
-    main_repo_path}}]; None when herdr could not be asked."""
+def herdr_workspaces():
+    """Every open herdr workspace, worktree or not; None when herdr could not
+    be asked."""
     if not shutil.which("herdr"):
         return []
     code, data, _ = herdr(["workspace", "list"])
     if code != 0 or not data:
         return None
+    return (data.get("result") or {}).get("workspaces", [])
+
+
+def herdr_sessions(workspaces=None):
+    """herdr worktree workspaces as [{id,title,path,worktree:{branch,
+    main_repo_path}}]; None when herdr could not be asked."""
+    if workspaces is None:
+        workspaces = herdr_workspaces()
+    if workspaces is None:
+        return None
     by_repo = {}
-    for w in (data.get("result") or {}).get("workspaces", []):
+    for w in workspaces:
         wt = w.get("worktree") or {}
         if wt.get("is_linked_worktree") and wt.get("repo_root"):
             by_repo.setdefault(wt["repo_root"], []).append((w, wt))
@@ -244,11 +254,14 @@ def herdr_live():
 
 
 def all_sessions():
-    """-> (sessions, herdr answered). When herdr did not answer, no item may
-    be taken for removed: that would untrack live work every time the herdr
-    server hiccups."""
-    rows = herdr_sessions()
-    return (rows or []), rows is not None
+    """-> (sessions, herdr answered, open workspace ids). When herdr did not
+    answer, no item may be taken for removed: that would untrack live work
+    every time the herdr server hiccups. The ids cover every workspace, not
+    only worktree ones: a tracked main checkout is open too."""
+    workspaces = herdr_workspaces()
+    rows = herdr_sessions(workspaces)
+    ids = {w.get("workspace_id") for w in workspaces or []}
+    return (rows or []), rows is not None, ids
 
 
 def all_live():
@@ -551,7 +564,7 @@ def scan(state, refresh=False, info=None):
     titles, URLs and the tracked PRs' details -- for the dashboard snapshot.
     """
     me = whoami(state)
-    sessions, answered = all_sessions()
+    sessions, answered, open_ws = all_sessions()
     live = all_live()
     reg = build_registry(state.get("registry", {}), refresh,
                          state.get("ignored_paths", []))
@@ -612,7 +625,7 @@ def scan(state, refresh=False, info=None):
         # so it frees its slot; a merged PR still goes through MERGED below
         # so its cleanup and fan-out happen. Only when herdr answered:
         # silence is not removal.
-        if sess and sess not in session_paths \
+        if sess and sess not in open_ws \
                 and answered and not (
                 it.get("pr") and d and d.get("state") == "MERGED"):
             items.pop(k)
@@ -1661,6 +1674,10 @@ def dispatch(cmd, args, state):
         if not HERDR_WS.match(session):
             print(f"{session} is not a herdr workspace id (like w12)",
                   file=sys.stderr)
+            return 1
+        _, answered, open_ws = all_sessions()
+        if answered and session not in open_ws:
+            print(f"{session} is not an open herdr workspace", file=sys.stderr)
             return 1
         state["items"][k] = {"mode": mode, "branch": branch, "session": session,
                              "pr": pr, "reviewed_sha": None, "phase": "working",
