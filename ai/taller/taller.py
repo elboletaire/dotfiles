@@ -805,6 +805,18 @@ def put_to_sleep(f, whole, status=None):
     return True, f"{os.path.basename(path)} adormit ({closed})"
 
 
+def wake_folder(p):
+    """An agent started in the folder() `p`: it, and its repo when that was
+    asleep whole, are awake again (without waiting for a collect to see the
+    agent, which a short-lived one may never give it)."""
+    data = load_sleep()
+    woken = [x for x in {p["path"], p.get("repo")} if x and x in data]
+    for x in woken:
+        del data[x]
+    if woken:
+        save_sleep(data)
+
+
 def wake_up(path):
     """Drop a folder from the state file. -> (ok, message)."""
     data = load_sleep()
@@ -1493,6 +1505,8 @@ def resume_project(p, agent_args=(), status=None, focus=True):
     first = plan[0]
     where = first[first.index("--path" if "--path" in first else "--cwd") + 1]
     ok, msg = launch(plan, name, where, p["path"], status)
+    if ok and not dry_run():
+        wake_folder(p)
     return ok, msg, name
 
 
@@ -1502,6 +1516,8 @@ def fresh_agent(p, agent_args=(), status=None, focus=True):
     name = agent_name(p["name"], herdr_names())
     plan = fresh_plan(p, name, project_workspace(p), agent_args, focus)
     ok, msg = launch(plan, name, p["path"], p["path"], status)
+    if ok and not dry_run():
+        wake_folder(p)
     return ok, msg, name
 
 

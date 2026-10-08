@@ -373,6 +373,16 @@ class SleepTest(TallerCase):
             taller.sleep_plan(taller.folder(p), True, agents, spaces),
             [["herdr", "workspace", "close", "w6"]])
 
+    def test_starting_an_agent_wakes_the_folder(self):
+        taller.save_sleep({self.alpha: 1, self.wt: 1, "/other": 1})
+        f = taller.folder(self.proj(), self.wt)
+        with mock.patch.object(taller, "launch", return_value=(True, "ok")), \
+                mock.patch.object(taller, "herdr_names", return_value=set()), \
+                mock.patch.object(taller, "workspaces", return_value=[]):
+            taller.fresh_agent(f)
+        # The worktree, and its repo asleep whole; nothing else.
+        self.assertEqual(taller.load_sleep(), {"/other": 1})
+
     def test_wake_up(self):
         taller.save_sleep({self.wt: 1})
         self.assertTrue(taller.wake_up(self.wt)[0])

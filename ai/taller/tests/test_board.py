@@ -422,6 +422,26 @@ class ActTest(BoardCase):
         self.assertIn(f"worktree remove {self.wt}", self.b.flash[0])
         self.assertNotIn("--force", self.b.flash[0])
 
+    def test_a_done_agent_looked_at_in_v_is_parked(self):
+        beta = self.model.projects[1]
+        beta["agents"] = [agent("done", name="beta", path=self.beta)]
+        self.assertEqual(board.taller.section(beta), "need")
+        self.go("beta")
+        with mock.patch.object(board, "DRY_RUN", True):
+            self.keys("v")
+        self.assertIn("beta", self.model.seen)
+        self.model.mark_seen(self.model.projects)
+        self.assertEqual(board.taller.section(beta), "parked")
+        # Working again, it leaves `seen`: its next done asks for you.
+        beta["agents"] = [agent("working", name="beta", path=self.beta)]
+        self.model.mark_seen(self.model.projects)
+        self.assertNotIn("beta", self.model.seen)
+
+    def test_an_agent_seen_wakes_a_sleeping_folder_at_once(self):
+        board.taller.save_sleep({self.alpha: int(time.time()) - 600})
+        self.model.refresh_agents()      # herdr runs alpha's "ha"
+        self.assertEqual(board.taller.load_sleep(), {})
+
     def test_moving_drops_the_confirmation(self):
         self.go("beta")
         self.keys("n")

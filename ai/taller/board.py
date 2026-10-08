@@ -166,6 +166,7 @@ class Model:
         self.orphans = set()      # agent folders a collect already looked at
         self.details = {}         # path -> (key, data)
         self.wanted = None        # project whose details are due
+        self.seen = set()         # done agents looked at in a `v` popup
         self.sync = False         # --once: details inline, no thread
 
     # -- projects
@@ -174,7 +175,7 @@ class Model:
         self.collecting = True
         self.changed.set()
         try:
-            ps, err = taller.collect(self.cfg), None
+            ps, err = self.mark_seen(taller.collect(self.cfg)), None
         except Exception as e:  # noqa: BLE001 -- a bad repo must not kill the board
             ps, err = None, f"{type(e).__name__}: {e}"
         with self.lock:
@@ -198,6 +199,10 @@ class Model:
             return
         fresh = [dict(p) for p in projects]
         orphans = taller.match_agents(fresh, agents)
+        # The sleep file again too: an agent seen in a folder asleep wakes
+        # it now, not at the next collect (that a short-lived one may miss).
+        taller.apply_sleep(fresh)
+        self.mark_seen(fresh)
         for p in fresh:
             taller.wake(p, self.dormant_days)
         with self.lock:
@@ -209,6 +214,28 @@ class Model:
         if new:
             self.kick_collect.set()
         self.changed.set()
+
+    def ack(self, agent):
+        """A done agent looked at: idle from now on, as herdr makes it when
+        its tab is focused -- a popup's `herdr agent attach` doesn't."""
+        if agent["state"] == "done":
+            self.seen.add(agent["name"])
+            self.kick_agents.set()
+
+    def mark_seen(self, projects):
+        """Done agents in `seen` shown as idle; one that is anything but done
+        again leaves `seen`, so its next done asks for you again."""
+        for p in projects:
+            agents = []
+            for a in p["agents"]:
+                if a["name"] in self.seen:
+                    if a["state"] == "done":
+                        a = dict(a, state="idle")
+                    else:
+                        self.seen.discard(a["name"])
+                agents.append(a)
+            p["agents"] = agents
+        return projects
 
     def collect_loop(self):
         while True:
@@ -1045,6 +1072,7 @@ class Board:
         if a:
             if self.popup("agent", p["path"], {"TALLER_AGENT": a["name"]},
                           self.list_name(p)):
+                self.m.ack(a)
                 if not DRY_RUN:
                     self.say("ctrl+b q tanca la finestra")
             else:
