@@ -16,6 +16,21 @@ export MODEL_COLD_REVIEW OCTOPILOT_ORCH DASHBOARD_REFRESH_SECS
 if [[ "${1:-}" == "doorbell" ]]; then
   events="$(dirname "$STATE_FILE")/events.jsonl"
   touch "$events"
+  # `doorbell --once`, for a background Bash job when Monitor is off: exit on
+  # the first report or request, or at once if the inbox already holds one.
+  # The tail starts before the inbox check so nothing slips between them, and
+  # --pid ends it with this script (a `| head -n 1` leaves the pipe running
+  # until the next events, so the job never exits).
+  if [[ "${2:-}" == "--once" ]]; then
+    exec 3< <(tail -n 0 -F --pid=$$ "$events" 2>/dev/null)
+    if python3 -c 'import json, sys; sys.exit(not json.load(open(sys.argv[1])).get("inbox"))' \
+      "$STATE_FILE" 2>/dev/null; then
+      echo "inbox pending"
+      exit
+    fi
+    grep -m 1 -E '"kind": "(report|request)"' <&3
+    exit
+  fi
   tail -n 0 -F "$events" 2>/dev/null |
     grep --line-buffered -E '"kind": "(report|request)"'
   exit
