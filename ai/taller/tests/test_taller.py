@@ -1132,6 +1132,35 @@ esac
         self.assertFalse(ok)
         self.assertIn("ja existeix", msg)
 
+    def test_new_worktree_branches_off_origin_not_the_local_branch(self):
+        # alpha's local main is a commit ahead of origin/main: the worktree
+        # starts from origin/main, tracks nothing, and main stays as it was.
+        p = project("alpha", self.alpha, remote="/alpha.git")
+        _, local, _ = taller.git(self.alpha, "rev-parse", "main")
+        _, origin, _ = taller.git(self.alpha, "rev-parse", "origin/main")
+        ok, msg, _ = taller.new_worktree(p, "fix/z")
+        self.assertTrue(ok, msg)
+        wt = os.path.join(self.alpha, ".worktrees", "fix-z")
+        _, head, _ = taller.git(wt, "rev-parse", "HEAD")
+        self.assertEqual(head, origin)
+        self.assertNotEqual(head, local)
+        code, _, _ = taller.git(wt, "rev-parse", "--abbrev-ref", "@{upstream}")
+        self.assertNotEqual(code, 0)
+        _, after, _ = taller.git(self.alpha, "rev-parse", "main")
+        self.assertEqual(after, local)
+
+    def test_worktree_plan_falls_back_to_the_local_branch(self):
+        # A remote without the current branch, and no remote at all.
+        p = project("alpha", self.alpha, branch="feat/x", remote="/alpha.git")
+        plan = taller.worktree_plan(p, "fix/z", "fix-z")
+        wt = os.path.join(self.alpha, ".worktrees", "fix-z")
+        self.assertEqual(plan[0][3], "fetch")
+        self.assertEqual(plan[1], ["git", "-C", self.alpha, "worktree", "add",
+                                   "-b", "fix/z", wt, "feat/x"])
+        plan = taller.worktree_plan(self.proj(), "fix/z", "fix-z")
+        self.assertEqual(plan[0][3:6], ["worktree", "add", "-b"])
+        self.assertEqual(plan[0][-1], "main")
+
     def test_check_branch(self):
         p = self.proj()
         self.assertIsNone(taller.check_branch(p, "fix/x"))
@@ -1230,9 +1259,26 @@ class CliTest(TallerCase):
             self.assertIn("dry-run: herdr agent prompt feat-y 'fix it'", out)
             code, out = self.cli("new", "alpha", "--worktree", "feat/x")
             self.assertIn(f"--cwd {self.wt}", out)
+            code, out = self.cli("worktree", "alpha", "feat/z")
+            self.assertIn("worktree add --no-track -b feat/z", out)
+            self.assertIn("origin/main", out)
             code, out = self.cli("prompt", "ha", "hola")
             self.assertEqual(out.strip(), "dry-run: herdr agent prompt ha hola")
         self.assertFalse(os.path.exists(os.path.join(self.beta, ".worktrees")))
+
+    def test_agent_args_go_after_the_configured_ones(self):
+        self.cfg["taller"]["agent_args"] = ["--model", "haiku"]
+        with mock.patch.dict(os.environ, {"TALLER_DRY_RUN": "1"}):
+            for argv in (["new", "beta"], ["resume", "beta"],
+                         ["worktree", "beta", "feat/y"]):
+                code, out = self.cli(*argv, "--agent-args",
+                                     "--model claude-sonnet-5-5 --advisor "
+                                     "claude-opus-5-5")
+                self.assertEqual(code, 0, out)
+                self.assertIn("-- --model haiku --model claude-sonnet-5-5 "
+                              "--advisor claude-opus-5-5", out)
+            code, out = self.cli("new", "beta", "--agent-args=--verbose")
+            self.assertIn("-- --model haiku --verbose", out)
 
 
 class DetailsTest(TallerCase):

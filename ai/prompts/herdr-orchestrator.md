@@ -18,22 +18,23 @@ REPO=$(git rev-parse --show-toplevel)
 
 ## Always fetch first
 
-Every workspace request starts with `git fetch origin`, no exceptions. Both flows depend on origin being current: tracking needs the remote ref to exist locally, and creating needs the base branch to be up to date.
+Every workspace request starts with `git fetch origin`, no exceptions. Both flows depend on origin being current: tracking needs the remote ref to exist locally, and creating branches off the remote base. Never `git pull`, check out or otherwise touch the main checkout -- I edit it by hand.
 
 ## Creating a workspace
 
-When I say **create** a branch (e.g. "create feat/user-auth"), it does not exist yet -- it starts blank, off the freshly updated current branch:
+When I say **create** a branch (e.g. "create feat/user-auth"), it does not exist yet -- it starts blank, off origin's copy of the current branch, never the possibly stale local one. Make the worktree with git, untracked, then open it in herdr:
 
 ```bash
 git fetch origin
-git pull
-herdr worktree create --cwd "$REPO" --branch <branch> \
-  --base "$(git branch --show-current)" \
-  --path "$REPO/.worktrees/<branch with / as ->" \
-  --label "<Human Readable Title>" --no-focus
+BASE=$(git -C "$REPO" branch --show-current)
+WT="$REPO/.worktrees/<branch with / as ->"
+if git show-ref --verify --quiet "refs/remotes/origin/$BASE"; then
+  git worktree add --no-track -b <branch> "$WT" "origin/$BASE"
+else
+  git worktree add -b <branch> "$WT" "$BASE"   # not on origin, or no remote
+fi
+herdr worktree open --cwd "$REPO" --path "$WT" --label "<Human Readable Title>" --no-focus
 ```
-
-The `git pull` matters -- the point is to branch off the *updated* current branch, not a stale local one.
 
 ## Tracking a workspace
 
@@ -52,7 +53,7 @@ herdr worktree open --cwd "$REPO" --path "$WT" --label "<Human Readable Title>" 
 
 ## Starting its agent
 
-Both commands return JSON; take the new workspace's root pane from `.result.root_pane.pane_id` and start claude in it, named after the branch (lowercase `[a-z0-9-]`, at most 32 characters, unique in `herdr agent list`):
+`herdr worktree open` returns JSON; take the new workspace's root pane from `.result.root_pane.pane_id` and start claude in it, named after the branch (lowercase `[a-z0-9-]`, at most 32 characters, unique in `herdr agent list`):
 
 ```bash
 herdr agent start <name> --kind claude --pane <root-pane-id>

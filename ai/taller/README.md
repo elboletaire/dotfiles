@@ -86,7 +86,7 @@ git every `[ui].git_secs` and right after an action.
 | `⏎` | on a project, its main checkout; on a worktree, that worktree. Its herdr agent (one waiting on you first): focus it. None: a second `⏎` opens the project in herdr -- a new workspace named after it (a tab, if it has one) running that folder's last conversation again (`claude/pi --continue`) as an agent named after the project (or the worktree's branch); a new claude when there is none. A worktree without a workspace opens with `herdr worktree open`, grouped under its repo's in herdr's sidebar. |
 | `v` | its herdr agent (one waiting on you first) in a popup over the board, without leaving it; `ctrl+b q` closes it. A done agent looked at this way counts as seen (idle, so the project leaves «Et necessita»), as herdr counts one whose tab gets the focus, until it works again. With no session yet, its last conversation is resumed in the background first (as `⏎` would, without taking the focus or asking twice), then shown. |
 | `n` | a fresh claude in the selected folder (second `n` confirms), in a new tab of its herdr workspace or a new workspace |
-| `w` | a new worktree: asks the branch, then (second `w`) `git fetch`, `git worktree add -b <branch> <repo>/.worktrees/<branch, / as ->` off the current branch, `herdr worktree open` titled after it and a claude named after it. The main checkout is never touched. |
+| `w` | a new worktree: asks the branch, then (second `w`) `git fetch`, `git worktree add --no-track -b <branch> <repo>/.worktrees/<branch, / as -> origin/<current branch>` (the local branch when origin has no such branch, or there is no remote), `herdr worktree open` titled after it and a claude named after it. The main checkout is never touched. |
 | `t` | a shell in the selected folder (herdr popup) |
 | `g` | its `git log --graph` and `git status` (herdr popup, `q` closes) |
 | `o` | the remote in the browser (`wslview`, `explorer.exe`, `xdg-open`) |
@@ -144,11 +144,16 @@ the board's own actions, which never take your focus:
 ```sh
 python3 taller.py sessions                       # every open herdr session
 python3 taller.py show <project> [--worktree <branch>]
-python3 taller.py resume <project> [--worktree <branch>]
-python3 taller.py new <project> [--worktree <branch>] [--prompt <text>]
-python3 taller.py worktree <project> <branch> [--prompt <text>]
+python3 taller.py resume <project> [--worktree <branch>] [--agent-args <args>]
+python3 taller.py new <project> [--worktree <branch>] [--prompt <text>] [--agent-args <args>]
+python3 taller.py worktree <project> <branch> [--prompt <text>] [--agent-args <args>]
 python3 taller.py prompt <agent> <text>
 ```
+
+`--agent-args` adds claude arguments for that one session, after
+`[taller].agent_args`, split like a shell would:
+`--agent-args "--model claude-sonnet-5-5 --advisor claude-opus-5-5"`. A
+single argument needs the `=` form: `--agent-args=--verbose`.
 
 It reads freely and starts or resumes sessions when asked, but asks first
 before anything that publishes (`git push`, PRs), deletes (a worktree, a

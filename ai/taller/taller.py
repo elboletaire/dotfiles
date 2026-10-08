@@ -1450,16 +1450,24 @@ def check_branch(p, branch):
 
 def worktree_plan(p, branch, name, agent_args=(), focus=True):
     """herdr-orchestrator.md's "create", without touching the main checkout:
-    fetch, a new branch off the current one in <repo>/.worktrees/<branch>,
-    opened in herdr as a workspace (grouped under the repo's) titled after
-    the branch, and claude in it named `name`."""
+    fetch, a new branch in <repo>/.worktrees/<branch> off origin/<current
+    branch> (untracked; the local one when origin has no such branch, so a
+    stale local branch is never the base), opened in herdr as a workspace
+    (grouped under the repo's) titled after the branch, and claude in it
+    named `name`."""
     repo = p["path"]
     wt = worktree_dir(repo, branch)
     steps = []
+    base = p.get("branch") or "HEAD"
+    add = ["git", "-C", repo, "worktree", "add", "-b", branch, wt, base]
     if p.get("remote"):
         steps.append(["git", "-C", repo, "fetch", "--quiet"])
-    steps.append(["git", "-C", repo, "worktree", "add", "-b", branch, wt,
-                  p.get("branch") or "HEAD"])
+        code, _, _ = git(repo, "show-ref", "--verify", "--quiet",
+                         f"refs/remotes/origin/{base}")
+        if code == 0:
+            add = ["git", "-C", repo, "worktree", "add", "--no-track", "-b",
+                   branch, wt, f"origin/{base}"]
+    steps.append(add)
     steps.append(["herdr", "worktree", "open", "--cwd", repo, "--path", wt,
                   "--label", branch_title(branch), _focus(focus)])
     steps.append(start_argv(name, "claude", agent_args))
@@ -1618,18 +1626,23 @@ def cli(argv):
     import argparse
     ap = argparse.ArgumentParser(prog="taller.py")
     sub = ap.add_subparsers(dest="cmd", required=True)
+    agent_help = ("extra claude arguments, after [taller].agent_args, "
+                  'e.g. --agent-args "--model sonnet"')
     for cmd in ("show", "resume", "new", "remove"):
         sp = sub.add_parser(cmd)
         sp.add_argument("project")
         sp.add_argument("--worktree", required=cmd == "remove")
         if cmd == "new":
             sp.add_argument("--prompt")
+        if cmd in ("resume", "new"):
+            sp.add_argument("--agent-args", default="", help=agent_help)
         if cmd == "remove":
             sp.add_argument("--force", action="store_true")
     sp = sub.add_parser("worktree")
     sp.add_argument("project")
     sp.add_argument("branch")
     sp.add_argument("--prompt")
+    sp.add_argument("--agent-args", default="", help=agent_help)
     sp = sub.add_parser("prompt")
     sp.add_argument("agent")
     sp.add_argument("text")
@@ -1659,7 +1672,8 @@ def cli(argv):
         ok, msg = remove_worktree(f, a.force)
         print(msg if ok else f"no s'ha pogut: {msg}")
         return 0 if ok else 1
-    args = list(cfg["taller"].get("agent_args") or [])
+    args = list(cfg["taller"].get("agent_args") or []) + \
+        shlex.split(a.agent_args)
     if a.cmd == "resume":
         ok, msg, name = resume_project(f, args, focus=False)
     elif a.cmd == "new":

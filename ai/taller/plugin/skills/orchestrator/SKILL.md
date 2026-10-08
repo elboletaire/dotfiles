@@ -26,12 +26,18 @@ reads the projects fresh (about 2 seconds).
 | `python3 $T --json` | the same, in full |
 | `python3 $T sessions` | every open herdr session: agent, state, where (`<project>` or `<project> ⑂ <branch>`), tool |
 | `python3 $T show <project> [--worktree <branch>]` | one folder: agents, last exchange, last commits, changed files, worktrees |
-| `python3 $T resume <project> [--worktree <branch>]` | its last conversation again, as a named herdr agent |
-| `python3 $T new <project> [--worktree <branch>] [--prompt <text>]` | a fresh claude there |
-| `python3 $T worktree <project> <branch> [--prompt <text>]` | fetch, a new branch off the current one in `<repo>/.worktrees/`, its own workspace and claude |
+| `python3 $T resume <project> [--worktree <branch>] [--agent-args <args>]` | its last conversation again, as a named herdr agent |
+| `python3 $T new <project> [--worktree <branch>] [--prompt <text>] [--agent-args <args>]` | a fresh claude there |
+| `python3 $T worktree <project> <branch> [--prompt <text>] [--agent-args <args>]` | fetch, a new untracked branch off `origin/<current branch>` (the local one when origin lacks it) in `<repo>/.worktrees/`, its own workspace and claude |
 | `python3 $T remove <project> --worktree <branch> [--force]` | close the worktree's herdr session and workspace, `git worktree remove` it and delete its local branch; never a whole project. Refuses, saying what would be lost, when it has uncommitted files or commits on no remote, unless `--force` |
 | `python3 $T prompt <agent> <text>` | type a message into a session and send it |
 | `herdr agent read <agent>` | what a session's screen shows now (read-only) |
+
+`--agent-args` passes extra claude arguments to that session, after
+`[taller].agent_args`, as one shell-split string: use it when the user
+asks for a model or similar, e.g.
+`--agent-args "--model claude-sonnet-5-5 --advisor claude-opus-5-5"`
+(`--agent-args=--verbose` for a single argument).
 
 Projects match by name in any case, or by path; worktrees by branch,
 folder name or path. A name that doesn't match prints what there is.
