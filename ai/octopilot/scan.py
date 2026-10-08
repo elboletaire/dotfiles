@@ -57,6 +57,9 @@ EVENTS_KEEP = 1000
 OCTOPILOT_ORCH = os.environ.get("OCTOPILOT_ORCH", "")
 # herdr agent name the orchestrator runs under.
 ORCH_AGENT = "octopilot"
+# herdr agent in the "Octopilot (code changes)" tab (herdr/open.sh): changes
+# and fixes to octopilot itself go there.
+CODE_AGENT = "octopilot-code"
 
 AGENT_MARKER = "controlled by elboletaire"
 FEEDBACK_IGNORE = set(
@@ -1616,6 +1619,20 @@ def dispatch(cmd, args, state):
     if cmd == "send":
         # send <key> <text...>: prompt the item's agent, wherever it runs.
         return send_item(state, args[1], " ".join(args[2:]))
+    if cmd == "send-code":
+        # send-code <text...>: prompt the code-changes agent. Not an item: it
+        # holds no slot and is never scanned.
+        text = " ".join(args[1:]).strip()
+        if not text:
+            print("usage: send-code <text...>", file=sys.stderr)
+            return 1
+        ok, err = send_to(CODE_AGENT, text)
+        if not ok:
+            print(f"{CODE_AGENT}: {err}", file=sys.stderr)
+            return 1
+        log_event("send-code", text=text[:200])
+        print(f"sent to {CODE_AGENT}")
+        return 0
     if cmd == "reboot":
         return reboot(state, args[1])
     if cmd == "render":
@@ -1832,7 +1849,7 @@ def dispatch(cmd, args, state):
           "reset-rounds|"
           "mark-merged|"
           "render|spawn|"
-          "investigate|snapshot|report|inbox|request|send|reboot|wind-down]", file=sys.stderr)
+          "investigate|snapshot|report|inbox|request|send|send-code|reboot|wind-down]", file=sys.stderr)
     return 1
 
 

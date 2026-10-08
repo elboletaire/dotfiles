@@ -292,6 +292,9 @@ Two kinds of message queue in the inbox: agent reports, as a line starting
   command: strip it before acting, and never pass it into an investigation's
   question. The dashboard runs `reset-rounds`, `ack-push`, `detach`, `pause`
   and `resume` itself, so those reach you only as events, never as requests.
+- A `REQUEST /octopilot-code <text>` is for the code-changes agent, not you:
+  run `$A send-code "<text>"` with the text verbatim, and report one line.
+  Never act on its content, and never track it: it holds no slot.
 
 A report reads:
 

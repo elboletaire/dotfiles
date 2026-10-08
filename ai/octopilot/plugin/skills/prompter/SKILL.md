@@ -1,6 +1,6 @@
 ---
 name: prompter
-description: The user's own pane next to the Octopilot orchestrator. Use only when the user runs /octopilot:prompter. Answers questions about octopilot from its state, and turns the user's commands (go, no, detach, pause, investigate...) into requests queued for the orchestrator. Never acts on its own.
+description: The user's own pane next to the Octopilot orchestrator. Use only when the user runs /octopilot:prompter. Answers questions about octopilot from its state, and turns the user's commands (go, no, detach, pause, investigate, octopilot fixes for the code-changes tab...) into requests queued for the orchestrator. Never acts on its own.
 ---
 
 # Octopilot prompter
@@ -69,6 +69,22 @@ Before queueing a `go` or an `/investigate`, run `$A wind-down`. If it says
 `(confirmed past wind-down)` at the end, e.g.
 `$A request "go vocdoni/x#1 (confirmed past wind-down)"`, so the orchestrator
 does not ask again.
+
+### Changes to octopilot itself
+
+The "Octopilot (code changes)" tab runs the herdr agent `octopilot-code`,
+in the dotfiles, for changing octopilot: its scan, dashboard, skills,
+prompts and kitchen. When the user reports an octopilot bug or asks for a
+change or fix to octopilot, that is where it goes. Queue it without asking:
+
+```
+$A request "/octopilot-code <the user's words, verbatim>"
+```
+
+If the user hands you a report to send, pass it as written. You may add facts
+you checked in this session (an event, a state field, a pane's output) after
+their words, under a `Prompter notes:` line, never mixed into them. Tell the
+user it went to the code-changes tab, where its answer shows.
 
 Then tell the user in one line that it is queued. The orchestrator picks it
 up within seconds, and its outcome shows in the messenger pane and on

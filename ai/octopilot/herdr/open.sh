@@ -19,7 +19,7 @@ PROMPTER_AGENT="octopilot-prompter"
 MESSENGER_RATIO=0.35                   # the messenger pane's share: room for the takoyaki band
 MAIN_TAB="OCTOPILOT"
 CODE_TAB="Octopilot (code changes)"
-CODE_AGENT="octopilot-code"
+CODE_AGENT="octopilot-code"            # scan.py's CODE_AGENT
 CODE_CWD="$(cd "$DIR/../.." && pwd)"   # the dotfiles checkout
 
 # Split the orchestrator's pane down and start the prompter in the new pane.
@@ -91,10 +91,11 @@ root=$(jq -r '.result.root_pane.pane_id' <<<"$created")
 "$H" pane rename "$root" "messenger" >/dev/null
 name_main_tab "$root"
 
-# A fresh claude, named so workers and the dashboard can address it. It waits
-# for you: type /octopilot:messenger to start ticking.
+# A fresh claude, named so workers and the dashboard can address it, started
+# ticking straight away.
 "$H" agent start "$name" --kind claude --pane "$root" \
-  --timeout 60000 >/dev/null || true
+  --timeout 60000 >/dev/null &&
+  "$H" agent prompt "$name" "/octopilot:messenger" >/dev/null || true
 
 # The dashboard first, so it takes the full height on the right; the prompter
 # then splits only the left column.
