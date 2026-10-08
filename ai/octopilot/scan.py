@@ -691,6 +691,11 @@ def scan(state, refresh=False, info=None):
                 # calls still resolve after the re-key.
                 it.setdefault("prev_keys", []).append(k)
                 items[nk] = items.pop(k)
+                # The list row has no checks; without the detail the new PR
+                # shows with no title or CI until the next scan.
+                d = pr_detail(slug, found["number"])
+                if d:
+                    details[nk] = d
                 if found.get("state") == "MERGED":
                     if nk not in handled:
                         rows.append(("MERGED", nk, f"branch={it.get('branch')} {smeta}"))
