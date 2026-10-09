@@ -28,9 +28,25 @@ TEXT_FLAGS = {"--body", "-b", "--title", "-t", "--notes", "--message", "-m"}
 # Flags whose value is a path to body text.
 FILE_FLAGS = {"--body-file", "-F", "--notes-file", "--notes-from-tag"}
 
+# Home paths are matched case-sensitively and only where they read as a
+# filesystem path: not after a URL host or an HTTP verb, and not inside a
+# backticked API route. `/users/verify/code` or `PUT /users/me` are routes.
+HOME_PATHS = [
+    (re.compile(r"(?:(?<=file://)|(?<![\w.\-/~]))/home/[A-Za-z0-9_.\-]+"),
+     "absolute home path"),
+    (re.compile(
+        r"(?:(?<=file://)|(?<![\w.\-/~]))/Users/[A-Za-z0-9_.\-]+/"
+        r"(?:\.[\w.\-]+|Desktop|Documents|Downloads|Library|Applications|Movies|Music|"
+        r"Pictures|Public|Sites|Developer|Projects|projects|Code|code|src|dev|work|"
+        r"workspace|repos|git|go|bin|tmp|[\w\-]+\.[A-Za-z0-9]{1,8}\b)"),
+     "absolute macOS home path"),
+]
+HTTP_VERB_BEFORE_RE = re.compile(r"\b(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+$")
+BACKTICK_SPAN_RE = re.compile(r"`[^`\n]*`")
+API_ROUTE_RE = re.compile(
+    r"^`\s*(?:(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+\S|[^`]*(?:\{|/:\w))")
+
 ENV_LEAKS = [
-    (r"/home/[A-Za-z0-9_.\-]+", "absolute home path"),
-    (r"/Users/[A-Za-z0-9_.\-]+", "absolute macOS home path"),
     (r"\$HOME\b", "$HOME"),
     (r"~/\.(claude|config|dotfiles|local|nvm|ssh|agents|pi)\b", "local dotfile path"),
     (r"\.claude/(plugins|skills|projects|settings|commands|agents)", "local Claude Code layout"),
@@ -143,12 +159,30 @@ def collect_text(tokens, heredocs):
     return "\n".join(chunks)
 
 
+def home_path_hit(text, pattern):
+    """First match of pattern that reads as a real path, not an API route."""
+    routes = [m.span() for m in BACKTICK_SPAN_RE.finditer(text)
+              if API_ROUTE_RE.search(m.group(0))]
+    for m in pattern.finditer(text):
+        line_start = text.rfind("\n", 0, m.start()) + 1
+        if HTTP_VERB_BEFORE_RE.search(text[line_start:m.start()]):
+            continue
+        if any(a < m.start() < b for a, b in routes):
+            continue
+        return m
+    return None
+
+
 def scan(text):
     hits = []
     for pattern, label in SECRETS:
         m = re.search(pattern, text)
         if m:
             hits.append(("secret", label, m.group(0)[:12] + "..."))
+    for pattern, label in HOME_PATHS:
+        m = home_path_hit(text, pattern)
+        if m:
+            hits.append(("local environment", label, m.group(0)[:60]))
     for pattern, label in ENV_LEAKS:
         m = re.search(pattern, text, re.IGNORECASE)
         if m:

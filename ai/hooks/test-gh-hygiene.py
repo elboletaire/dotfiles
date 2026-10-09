@@ -52,6 +52,26 @@ case("secret: private key", DENY,
 case("aoe tooling mention", DENY,
      "gh pr comment 1 --body " + q("Reproduced after I ran aoe add . -w feat/x -l"))
 case("tmux mention", DENY, "gh pr comment 1 --body " + q("Only reproduces inside tmux panes."))
+# Home paths: real ones are blocked, API routes that look like them are not.
+def body(text):
+    return "gh pr create --title " + q("feat: x") + " --body " + q(text)
+case("route: lowercase /users/verify/code", ALLOW,
+     body("Adds the `/users/verify/code` endpoint for email verification."))
+case("route: PUT /users/me", ALLOW, body("Clients now call PUT /users/me to update the profile."))
+case("route: backticked PUT /Users/me", ALLOW, body("Use `PUT /Users/me/Documents` to upload."))
+case("route: backticked path params", ALLOW, body("See `/Users/{id}/avatar.png` and `/Users/:id/Library`."))
+case("route: URL host before /Users", ALLOW,
+     body("Proxied from https://api.example.com/Users/jane/Documents now."))
+case("route: /users/<id> placeholder", ALLOW, body("GET /users/<id>/profile returns 404."))
+case("route: URL host before /home", ALLOW, body("Redirects to https://example.com/home/feed."))
+case("route: GET /home/feed", ALLOW, body("GET /home/feed is now paginated."))
+case("leak: macOS home subdir", DENY, body("Fails with /Users/jane/Projects/app/build."))
+case("leak: macOS home dotdir", DENY, body("Config read from /Users/jane/.config/app.toml."))
+case("leak: macOS home file", DENY, body("Wrote the log to /Users/jane/debug.log."))
+case("leak: backticked macOS path", DENY, body("Crash in `/Users/jane/Documents/app/main.go`."))
+case("leak: file:// macOS path", DENY, body("Open file:///Users/jane/Desktop/report.html."))
+case("leak: /home path", DENY, body("Fails under /home/jane/src/app."))
+case("leak: backticked /home path", DENY, body("See `/home/jane/.cache/app`."))
 case("escape hatch GH_HYGIENE=off", ALLOW,
      f"gh pr comment 51 --body {q(LEAK)}", {"GH_HYGIENE": "off"})
 
