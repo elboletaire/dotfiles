@@ -42,18 +42,25 @@ CATALOGUE = {
     "family": [("r", "research", "investiga la família")],
     "branch": [("r", "research", "investiga la branca")],
     "person": [("r", "research", "investiga la persona"),
-               ("e", "interview", "preguntes d'entrevista")],
+               ("e", "interview", "preguntes d'entrevista"),
+               ("o", "testimony", "afegeix un testimoni")],
     "item": [("i", "item", "investiga el punt")],
 }
+# Actions with no uppercase twin: their prompt ends where the user's own
+# words go (the relative's answers), so it is only ever prefilled.
+PREFILL_ONLY = {"testimony"}
 
 
 def catalogue(kind):
     """-> [{key, what, label, mode}] for a selection kind: each lowercase
-    action (mode "prefill") and its uppercase twin (mode "send")."""
+    action (mode "prefill") and its uppercase twin (mode "send"), when it
+    has one."""
     out = []
     for key, what, label in CATALOGUE.get(kind, []):
         out.append({"key": key, "what": what, "label": label,
                     "mode": "prefill"})
+        if what in PREFILL_ONLY:
+            continue
         out.append({"key": key.upper(), "what": what, "label": label,
                     "mode": "send"})
     return out
@@ -249,6 +256,27 @@ def interview_prompt(cfg, tree, sel, person=None):
         "No registris res encara: les respostes vindran després."])
 
 
+def testimony_prompt(cfg, tree, sel, person=None):
+    """Recording what the selected relative answered. Ends in a colon: the
+    prompt is only prefilled, and the user types or pastes the answers
+    right after it."""
+    skill = cfg["arbre"].get("interview_skill") or "family-interview"
+    slug = sel["person"]
+    name = person_name(person, slug)
+    return " ".join([
+        f"Fes servir la skill {skill} per registrar les respostes de {name}"
+        f"{life(person)} (`{slug}`), {_person_where(tree, sel)}: és el "
+        "familiar que ha respost.",
+        "Punt de partida: " + lookup_cmd("--family", slug) + " (els parents "
+        "de qui pot parlar) i " + lookup_cmd("--items", "<slug>...") + " per "
+        "als que surtin a les respostes.",
+        "Si van numerades, són les de la llista de preguntes que vam "
+        "preparar.",
+        "Si no t'ho dic, pregunta'm per quin canal han arribat i qui me les "
+        "ha passat abans de crear la font.",
+        "Les respostes:"])
+
+
 def item_prompt(cfg, tree, sel, refs=None):
     """The research prompt for one pending item: names it, its branch and
     its category, and asks for the research skill. `refs` are the person
@@ -304,6 +332,8 @@ def _target(sel):
 
 def _label(tree, sel, what, person):
     kind = sel.get("kind")
+    if what == "testimony":
+        return f"testimoni de {person_name(person, sel['person'])}"
     if what == "interview":
         return f"entrevista a {person_name(person, sel['person'])}"
     if kind == "family":
@@ -332,6 +362,8 @@ def build(cfg, tree, selection, key, person=None, refs=None):
     what = act["what"]
     if what == "interview":
         text = interview_prompt(cfg, tree, selection, person)
+    elif what == "testimony":
+        text = testimony_prompt(cfg, tree, selection, person)
     elif kind == "family":
         text = family_prompt(cfg, tree, selection)
     elif kind == "branch":

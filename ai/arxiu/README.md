@@ -122,6 +122,7 @@ prompt to the background research agent after a second press.
 | branch | `r` / `R` | research that branch (group), its open items first, `lookup.py rama/<key>…` |
 | person | `r` / `R` | research this person only (full name and slug, branch, family), `lookup.py <slug>` |
 | person | `e` / `E` | `family-interview` (`[arbre].interview_skill`): the numbered question list for this person as the relative being interviewed, nothing recorded yet |
+| person | `o` | `family-interview` (`[arbre].interview_skill`): record this person's answers, as the relative who answered, `lookup.py --family <slug>`; it ends in `Les respostes:`, for you to type or paste them after it. Prefill only: no `O` |
 | item | `i` / `I` | research this pending item (branch, category, text), `lookup.py` of the people and sources it mentions |
 
 | Key | Does |
@@ -130,6 +131,7 @@ prompt to the background research agent after a second press.
 | `⏎` / space, `→` / `←` | open / close a family, branch, the people or a category; `←` on a leaf goes to its parent |
 | `Esc` | back out to the branch, closed |
 | `Tab` | the list or the right column |
+| `m` | the selection's actions as a menu in the right column, and the lookup: `↑↓` and `⏎`, or the action's key (uppercase sends) |
 | `l` | `uv run scripts/lookup.py <query>` in the tree, in an overlay (empty = the selection: a slug, a source id, `rama/<key>…`) |
 | `v` | validate the tree now |
 | `w` | open the built site (`build/web/index.html`); never builds it |

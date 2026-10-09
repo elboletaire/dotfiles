@@ -55,7 +55,7 @@ class CatalogueTest(unittest.TestCase):
         keys = {k: [a["key"] for a in actions.catalogue(k)]
                 for k in ("family", "branch", "person", "item")}
         self.assertEqual(keys, {"family": ["r", "R"], "branch": ["r", "R"],
-                                "person": ["r", "R", "e", "E"],
+                                "person": ["r", "R", "e", "E", "o"],
                                 "item": ["i", "I"]})
         self.assertEqual(actions.catalogue(None), [])
 
@@ -126,6 +126,19 @@ class PromptTest(TreeCase):
         self.assertIn("lookup.py --family rosa-puig-vidal", text)
         self.assertNotIn("genealogy-research", text)
         self.assertEqual(p["label"], "entrevista a Rosa Puig Vidal")
+
+    def test_person_testimony_is_prefill_only(self):
+        s = sel("person", family="ferrer", branch="puig",
+                person="rosa-puig-vidal")
+        p = actions.build(CFG, self.arbre, s, "o",
+                          person=self.person("rosa-puig-vidal"))
+        self.assertIn("skill family-interview", p["prompt"])
+        self.assertIn("registrar les respostes de Rosa Puig Vidal", p["prompt"])
+        self.assertIn("lookup.py --family rosa-puig-vidal", p["prompt"])
+        self.assertTrue(p["prompt"].endswith("Les respostes:"))
+        self.assertEqual(p["mode"], "prefill")
+        self.assertEqual(p["label"], "testimoni de Rosa Puig Vidal")
+        self.assertIsNone(actions.build(CFG, self.arbre, s, "O"))
 
     def test_person_without_record_uses_the_slug(self):
         p = actions.build(CFG, self.arbre, sel("person", family="ferrer",

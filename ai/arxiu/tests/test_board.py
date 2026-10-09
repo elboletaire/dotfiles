@@ -131,6 +131,7 @@ class ListTest(BoardCase):
         foot = self.b.footer().plain
         self.assertIn("e preguntes d'entrevista", foot)
         self.assertIn("R/E → inv", foot)
+        self.assertIn("m menú", foot)
         item = next(n for n in self.b.nodes if n["kind"] == "item")
         self.go(item["id"])
         self.assertIn("i investiga el punt", self.b.footer().plain)
@@ -203,6 +204,46 @@ class ActTest(BoardCase):
         self.assertIn("està treballant", self.b.flash[0])
         self.assertIn("R ho envia a inv", self.b.flash[0])
         self.assertEqual(self.mutating(), [])
+
+    def person(self):
+        self.b.opened.update({n["id"]: True for n in self.b.nodes})
+        self.b.refresh_nodes()
+        self.b.opened.update({n["id"]: True for n in self.b.nodes})
+        self.b.refresh_nodes()
+        self.go(next(n for n in self.b.nodes if n["kind"] == "person")["id"])
+
+    def test_menu_lists_the_person_actions(self):
+        self.person()
+        self.b.handle("m", None, None)
+        self.assertEqual([e[0] for e in self.b.menu["entries"]],
+                         ["r", "e", "o", "l"])
+        self.b.render()
+        self.assertIn("afegeix un testimoni", self.b.footer().plain
+                      + self.b.menu_panel(20).renderable.plain)
+        self.b.handle("\x1b", None, None)
+        self.assertIsNone(self.b.menu)
+
+    def test_menu_enter_prefills_the_testimony(self):
+        self.agent("orq", "idle", pane="w1:p2")
+        self.person()
+        self.b.handle("m", None, None)
+        self.b.handle("j", None, None)
+        self.b.handle("j", None, None)
+        self.b.handle("\r", None, None)
+        self.assertIsNone(self.b.menu)
+        self.wait()
+        sent = self.calls()[-2]
+        self.assertEqual(sent[:3], ["pane", "send-text", "w1:p2"])
+        self.assertTrue(sent[3].endswith("Les respostes:"))
+
+    def test_menu_uppercase_sends_but_not_the_testimony(self):
+        self.person()
+        self.b.handle("m", None, None)
+        self.b.handle("O", None, None)
+        self.assertIsNotNone(self.b.menu)
+        self.b.handle("R", None, None)
+        self.assertIsNone(self.b.menu)
+        self.assertIn("prem R de nou", self.b.confirm[3])
 
 
 if __name__ == "__main__":

@@ -479,6 +479,7 @@ class Board:
         self.confirm = None       # (action, key, deadline, message, preview)
         self.input = None         # {"prompt", "buf", "default"}
         self.overlay = None       # {"title", "lines", "scroll"}
+        self.menu = None          # {"title", "entries", "at"}: the actions menu
         self.list_h = 10
         self.last = None          # the cursor's node, when it was last seen
 
@@ -545,8 +546,9 @@ class Board:
             return root
         left = Layout(self.tree_panel(tree, tree_agents, width - right_w,
                                       body_h), name="left")
-        right = Layout(self.side_panel(tree, people, queue, right_w, body_h),
-                       name="right", size=right_w)
+        side = self.menu_panel(body_h) if self.menu else \
+            self.side_panel(tree, people, queue, right_w, body_h)
+        right = Layout(side, name="right", size=right_w)
         root["body"].split_row(left, right)
         return root
 
@@ -866,6 +868,76 @@ class Board:
                      title_align="left", subtitle=sub, subtitle_align="right",
                      height=height, border_style="cyan")
 
+    def menu_entries(self, sel):
+        """[(key, label, mode)] of the actions menu: the selection's
+        actions (the lowercase ones; an uppercase key sends) and the
+        lookup, or [] when it has no actions."""
+        out = [(a["key"], a["label"], a["mode"])
+               for a in actions.catalogue(sel["kind"])
+               if a["mode"] == "prefill"]
+        if out:
+            out.append(("l", "consulta la fitxa", "lookup"))
+        return out
+
+    def menu_panel(self, height):
+        """The actions menu, in the right column: the list stays in sight."""
+        m = self.menu
+        orch = self.m.cfg["arbre"].get("orchestrator_agent") or "orquestrador"
+        research = self.m.cfg["arbre"].get("research_agent") or "recerca"
+        t = Text()
+        for i, (key, label, mode) in enumerate(m["entries"]):
+            on = i == m["at"]
+            t.append(" ▶ " if on else "   ", style="bold cyan")
+            t.append(f" {key} ", style="bold black on cyan" if on else "bold")
+            t.append(f" {label}\n", style="bold" if on else "")
+            if mode == "prefill":
+                t.append(f"       → {orch}", style="dim")
+                if actions.find(m["kind"], key.upper()):
+                    t.append(f" · {key.upper()} → {research}", style="dim")
+                t.append("\n")
+        sub = Text(" ⏎ o la tecla · Esc tanca ", style="dim")
+        return Panel(t, title=Text(m["title"], style="bold"),
+                     title_align="left", subtitle=sub, subtitle_align="right",
+                     height=height, border_style="cyan")
+
+    def open_menu(self):
+        sel = self.selection()
+        entries = self.menu_entries(sel)
+        if not entries:
+            self.say("res a fer amb aquesta selecció")
+            return
+        title = "Accions"
+        if sel["kind"] == "person":
+            node = self.node()
+            title += " · " + actions.person_name(
+                (node or {}).get("person"), sel["person"])
+        self.menu = {"title": title, "kind": sel["kind"], "entries": entries,
+                     "at": 0}
+
+    def handle_menu(self, key):
+        m = self.menu
+        entries = m["entries"]
+        if key in ("\x1b", "q", "m"):
+            self.menu = None
+        elif key in ("j", "\x1b[B"):
+            m["at"] = min(len(entries) - 1, m["at"] + 1)
+        elif key in ("k", "\x1b[A"):
+            m["at"] = max(0, m["at"] - 1)
+        else:
+            if key in ("\r", "\n"):
+                key = entries[m["at"]][0]
+            if key == "l" or actions.find(m["kind"], key):
+                self.menu = None
+                self.run_key(key)
+        return True
+
+    def run_key(self, key):
+        """A key as if pressed on the list: an action, or the lookup."""
+        if key == "l":
+            self.start_lookup_input()
+        else:
+            self.act(key)
+
     def action_keys(self, kind):
         """The footer's part for the selection's actions: each lowercase
         key, then the uppercase ones together."""
@@ -904,7 +976,9 @@ class Board:
             t.append(" " + clip(self.flash[0], self.console.size[0] - 2),
                      style="bold cyan")
             t.append("\n")
-        if self.overlay:
+        if self.menu:
+            keys = [("↑↓", "mou"), ("⏎", "tria"), ("Esc/m", "tanca")]
+        elif self.overlay:
             keys = [("j/k", "desplaça"), ("Esc/q", "tanca")]
         else:
             n = self.node()
@@ -915,6 +989,8 @@ class Board:
             elif n and n["kind"] in OPEN_BY_DEFAULT:
                 keys.append(("⏎", "tanca" if n["open"] else "obre"))
             keys += self.action_keys(kind)
+            if actions.catalogue(kind):
+                keys.append(("m", "menú"))
             keys += [("l", "consulta"), ("v", "valida"), ("w", "web"),
                      ("a", "recerca"), ("t", "terminal"), ("u", "refresca"),
                      ("Tab", "llista" if self.focus == "panel"
@@ -964,6 +1040,8 @@ class Board:
     def handle(self, key, live, term):
         if self.input:
             return self.handle_input(key)
+        if self.menu:
+            return self.handle_menu(key)
         if self.overlay:
             o = self.overlay
             if key in ("\x1b", "q", "\r", "\n"):
@@ -1026,10 +1104,9 @@ class Board:
             self.m.kick_agents.set()
             self.say("refrescant…")
         elif key == "l":
-            hint = self.lookup_default()
-            self.input = {"prompt": "consulta" + (f" (buit = {hint})"
-                                                  if hint else ""),
-                          "buf": "", "default": hint}
+            self.start_lookup_input()
+        elif key == "m":
+            self.open_menu()
         elif key == "v":
             if self.m.validate(force=True):
                 self.say("validant l'arbre en segon pla…")
@@ -1052,6 +1129,12 @@ class Board:
         return ("tecles: " + " · ".join(
             f"{a['key']} {a['label']}" for a in actions.catalogue(kind)
             if a["mode"] == "prefill")) if keys else ""
+
+    def start_lookup_input(self):
+        hint = self.lookup_default()
+        self.input = {"prompt": "consulta" + (f" (buit = {hint})"
+                                              if hint else ""),
+                      "buf": "", "default": hint}
 
     def lookup_default(self):
         sel = self.selection()
