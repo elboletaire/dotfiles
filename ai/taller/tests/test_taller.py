@@ -745,7 +745,7 @@ class HerdrNativeTest(unittest.TestCase):
         os.makedirs(self.bin)
         self.log = os.path.join(t, "calls.log")
         self.cfg = {"arbre": {"path": self.tree, "research_agent": "inv",
-                              "agent_args": ["--model", "haiku"]}}
+                              "agent_args": ["--model", "claude-haiku-5-5[1m]"]}}
         s = self.state
         # agent.json present = the agent exists; start.json is what
         # `agent start` answers (and its exit code in start.code); start
@@ -820,7 +820,7 @@ esac
             f"herdr tab create --workspace w2 --cwd {self.tree} --label inv "
             "--env ARXIU_ROLE=research --no-focus",
             "herdr agent start inv --kind claude --pane w2:p7 --timeout 60000 "
-            "-- --model haiku",
+            "-- --model claude-haiku-5-5[1m]",
             "herdr agent prompt inv hola"])
         self.assertTrue(any("engegant inv" in s for s in seen), seen)
 
@@ -994,16 +994,16 @@ class BoardLogicTest(unittest.TestCase):
             wt = os.path.join(d, "wt")
             os.makedirs(wt)
             p = project("alpha", d, last_exchange={"tool": "claude", "path": wt})
-            plan = taller.resume_plan(p, "alpha", None, ["--model", "haiku"])
+            plan = taller.resume_plan(p, "alpha", None, ["--model", "claude-haiku-5-5[1m]"])
             self.assertEqual(plan[0], ["herdr", "workspace", "create", "--label",
                                        "alpha", "--cwd", wt, "--focus"])
             self.assertEqual(plan[1][:8], ["herdr", "agent", "start", "alpha",
                                            "--kind", "claude", "--pane", "<pane>"])
-            self.assertEqual(plan[1][-4:], ["--", "--model", "haiku", "--continue"])
+            self.assertEqual(plan[1][-4:], ["--", "--model", "claude-haiku-5-5[1m]", "--continue"])
             # pi gets no claude args; a worktree that is gone falls back to
             # the project; an existing workspace gets a tab.
             p["last_exchange"] = {"tool": "pi", "path": os.path.join(d, "gone")}
-            plan = taller.resume_plan(p, "alpha", "w7", ["--model", "haiku"])
+            plan = taller.resume_plan(p, "alpha", "w7", ["--model", "claude-haiku-5-5[1m]"])
             self.assertEqual(plan[0], ["herdr", "tab", "create", "--workspace", "w7",
                                        "--cwd", d, "--label", "alpha", "--focus"])
             self.assertEqual(plan[1][5], "pi")
@@ -1080,13 +1080,13 @@ esac
         self.herdr_agents([{"name": "beta", "agent_status": "idle", "cwd": "/x",
                             "workspace_id": "w1", "pane_id": "w1:p1"}])
         p = self.proj(last_exchange={"tool": "claude", "path": self.beta})
-        ok, msg, name = taller.resume_project(p, ["--model", "haiku"])
+        ok, msg, name = taller.resume_project(p, ["--model", "claude-haiku-5-5[1m]"])
         self.assertTrue(ok, msg)
         self.assertEqual(name, "beta-2")   # "beta" is taken
         self.assertEqual(self.mutating(), [
             f"herdr workspace create --label beta --cwd {self.beta} --focus",
             "herdr agent start beta-2 --kind claude --pane w9:p1 --timeout 60000 "
-            "-- --model haiku --continue"])
+            "-- --model claude-haiku-5-5[1m] --continue"])
 
     def test_resume_goes_into_the_projects_workspace(self):
         self.workspaces([{"label": "beta", "workspace_id": "w4"}])
@@ -1298,11 +1298,11 @@ class ConfigTest(unittest.TestCase):
                              [os.path.expanduser("~/src")])
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "t.toml")
-            write(path, '[taller]\nagent_args = ["--model", "haiku"]\n')
+            write(path, '[taller]\nagent_args = ["--model", "claude-haiku-5-5[1m]"]\n')
             with mock.patch.dict(os.environ, {"TALLER_CONFIG": path,
                                               "ARXIU_CONFIG": "/nonexistent.toml"}):
                 self.assertEqual(taller.load_config()["taller"]["agent_args"],
-                                 ["--model", "haiku"])
+                                 ["--model", "claude-haiku-5-5[1m]"])
         cfg = taller.load_config(os.path.join(taller.HERE, "config.toml"))
         self.assertIn(os.path.expanduser("~/.dotfiles"), cfg["taller"]["extra"])
         self.assertEqual(cfg["taller"]["agent_args"], [])

@@ -13,7 +13,7 @@ hide = ["interviews", "foundation"]
 # "dormant": collapsed into one line.
 dormant_days = 14
 # Extra claude arguments for the agents the board starts (⏎, n, w) and the
-# orchestrator, e.g. ["--model", "haiku"]. Not passed to pi.
+# orchestrator, e.g. ["--model", "claude-haiku-5-5[1m]"]. Not passed to pi.
 agent_args = []
 # The herdr agent name of the chat beside the board (herdr/open.sh); it
 # runs in the first of `roots`.

@@ -40,7 +40,7 @@ as an overlay (`peek`), the board puts the detail beside the list, as below.
 It needs `uv` (which provides `rich`) and `python3` >= 3.11. Settings are in
 `config.toml` next to it (or `$TALLER_CONFIG`): the roots, extra folders,
 hidden ones, `dormant_days`, `agent_args` (extra claude arguments for the
-agents it starts, e.g. `["--model", "haiku"]`) and the refresh periods.
+agents it starts, e.g. `["--model", "claude-haiku-5-5[1m]"]`) and the refresh periods.
 
 - `taller.sh --once` prints one frame and exits (`COLUMNS`/`LINES` set the
   size); `--keys '<keys>'` replays keys first, e.g. `--keys 'jj\r'`.

@@ -86,7 +86,7 @@ with `ARXIU_ROLE=orchestrator` in its pane's environment, which Tecla reads.
 The board has the focus. If the workspace exists it is focused; if an agent
 with the orchestrator's name already runs anywhere, that agent is focused
 instead of starting a second one. `[arbre].agent_args` adds claude arguments
-to the agents Arxiu starts (e.g. `["--model", "haiku"]`). An `ARXIU_CONFIG`
+to the agents Arxiu starts (e.g. `["--model", "claude-haiku-5-5[1m]"]`). An `ARXIU_CONFIG`
 (or `ARXIU_QUEUE`) given to `open.sh` reaches the board too.
 
 ## The list

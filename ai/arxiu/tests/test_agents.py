@@ -130,7 +130,7 @@ class ResearchTest(HerdrCase):
             f"tab create --workspace w2 --cwd {self.tree} --label inv "
             "--env ARXIU_ROLE=research --no-focus",
             "agent start inv --kind claude --pane w2:p7 --timeout 60000 "
-            "-- --model haiku",
+            "-- --model claude-haiku-5-5[1m]",
             "agent prompt inv hola"])
         self.assertTrue(any("engegant inv" in s for s in seen), seen)
 

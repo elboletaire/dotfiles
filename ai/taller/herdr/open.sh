@@ -35,7 +35,7 @@ if [ -n "$ws" ]; then
 fi
 
 # Orchestrator name, its folder (the first root: where the projects are)
-# and extra claude args (flags like --model haiku: no spaces inside one),
+# and extra claude args (flags like --model claude-haiku-5-5[1m]: no spaces inside one),
 # one per line.
 mapfile -t conf < <(python3 -c 'import sys, tomllib, os
 try:

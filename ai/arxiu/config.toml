@@ -11,7 +11,7 @@ path = "~/src/arbre"
 # isn't running.
 orchestrator_agent = "arbre"
 research_agent = "investigacio"
-# Extra claude arguments for the agents Arxiu starts, e.g. ["--model", "haiku"].
+# Extra claude arguments for the agents Arxiu starts, e.g. ["--model", "claude-haiku-5-5[1m]"].
 # agent_args = []
 # Skills the prompts ask for: research (r, i) and interview questions (e).
 research_skill = "genealogy-research"

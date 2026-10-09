@@ -67,7 +67,7 @@ esac
         self.cfg = {"arbre": {"path": self.tree, "orchestrator_agent": "orq",
                               "research_agent": "inv",
                               "research_skill": "genealogy-research",
-                              "agent_args": ["--model", "haiku"]},
+                              "agent_args": ["--model", "claude-haiku-5-5[1m]"]},
                     "ui": {"agents_secs": 3}}
 
     def workspaces(self, rows):

@@ -30,7 +30,7 @@ if [ -n "$ws" ]; then
 fi
 
 # tree, orchestrator name and extra claude args, one per line (args NUL-free
-# and space-free: they are flags like --model haiku).
+# and space-free: they are flags like --model claude-haiku-5-5[1m]).
 mapfile -t conf < <(python3 -c 'import sys, tomllib, os
 try:
     cfg = tomllib.load(open(sys.argv[1], "rb")).get("arbre", {})

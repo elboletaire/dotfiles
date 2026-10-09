@@ -40,15 +40,18 @@ REVIEW_LEVEL_COMMENT="high"
 # session and run on whatever it was spawned with; the model cannot be changed
 # without restarting the session, which would destroy its conversation.
 #
-# Accepts an alias (opus/sonnet/haiku) or a full model id. Empty means "do not
-# pass --model", i.e. inherit the global default. The bare aliases give the
-# standard context window; append [1m] for 1M context (quoted, since [..] is a
-# glob). Standard-context workers were auto-compacting mid review loop.
-MODEL_WORK='opus[1m]'              # issue -> implementation, ambiguous spec
-MODEL_INVESTIGATE='opus[1m]'       # open-ended question
-MODEL_REVIEW_FIX='opus[1m]'        # own/assigned PR: rebase, 3 review rounds, CI waits -- the longest-lived session
-MODEL_REVIEW_COMMENT='opus[1m]'    # public review of someone else's PR
-MODEL_COLD_REVIEW=opus       # the Agent-tool review pass inside the loop
+# A full model id, never a bare alias: an alias resolves to whatever the
+# gateway maps it to, and that has started old models. Empty means "do not
+# pass --model", i.e. inherit the global default. Append [1m] for 1M context
+# (quoted, since [..] is a glob). Standard-context workers were
+# auto-compacting mid review loop.
+MODEL_WORK='claude-opus-5-5[1m]'               # issue -> implementation, ambiguous spec
+MODEL_INVESTIGATE='claude-opus-5-5[1m]'        # open-ended question
+MODEL_REVIEW_FIX='claude-opus-5-5[1m]'         # own/assigned PR: rebase, 3 review rounds, CI waits -- the longest-lived session
+MODEL_REVIEW_COMMENT='claude-opus-5-5[1m]'     # public review of someone else's PR
+MODEL_COLD_REVIEW=opus                         # the Agent-tool review pass inside the loop; that
+                                               # tool takes only aliases, so settings.json pins
+                                               # opus to a full id (ANTHROPIC_DEFAULT_OPUS_MODEL)
 
 # Max concurrent work/review sessions octopilot will run. Candidates above the
 # cap queue as PROPOSE rows instead of spawning.

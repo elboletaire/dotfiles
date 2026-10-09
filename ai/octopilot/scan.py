@@ -35,10 +35,10 @@ RE_REVIEW_QUIET_HOURS = float(os.environ.get("RE_REVIEW_QUIET_HOURS", "4"))
 # the claude command line rather than inherited, so the orchestrator's own
 # model never decides what the workers run on.
 MODEL_FOR = {
-    "work": os.environ.get("MODEL_WORK", "opus"),
-    "investigate": os.environ.get("MODEL_INVESTIGATE", "opus"),
-    "review-fix": os.environ.get("MODEL_REVIEW_FIX", "sonnet"),
-    "review-comment": os.environ.get("MODEL_REVIEW_COMMENT", "opus"),
+    "work": os.environ.get("MODEL_WORK", "claude-opus-5-5[1m]"),
+    "investigate": os.environ.get("MODEL_INVESTIGATE", "claude-opus-5-5[1m]"),
+    "review-fix": os.environ.get("MODEL_REVIEW_FIX", "claude-opus-5-5[1m]"),
+    "review-comment": os.environ.get("MODEL_REVIEW_COMMENT", "claude-opus-5-5[1m]"),
 }
 MODEL_COLD_REVIEW = os.environ.get("MODEL_COLD_REVIEW", "opus")
 STALE_HOURS = int(os.environ.get("STALE_HOURS", "48"))
@@ -1240,7 +1240,7 @@ def spawn_herdr(key_, path, base, branch, title, new_branch, model):
     args = ["agent", "start", name, "--kind", "claude", "--pane", pane,
             "--timeout", "60000"]
     if model:
-        # argv straight to claude, no shell: opus[1m] needs no quoting here.
+        # argv straight to claude, no shell: a [1m] suffix needs no quoting here.
         args += ["--", "--model", model]
     # The pane's shell may still be starting; agent start needs its prompt.
     for attempt in range(3):
