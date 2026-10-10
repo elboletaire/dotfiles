@@ -517,8 +517,9 @@ symlink_ai() {
   link_ai "$ai/pi/agents" ~/.pi/agent/agents
   link_ai "$ai/pi/AGENTS.md" ~/.pi/agent/AGENTS.md
 
-  # Claude global instructions.
+  # Claude global instructions and subagent definitions.
   link_ai "$ai/claude/CLAUDE.md" ~/.claude/CLAUDE.md
+  link_ai "$ai/claude/agents" ~/.claude/agents
 
   # Skills: managed by APM (Agent Package Manager).
   # Treat the ai/ directory as a local APM package. A global install reads the
