@@ -538,7 +538,9 @@ symlink_ai() {
       replace_existing=1
       validation_root="$(mktemp -d)" || return 1
       echo "Validating the updated dotfiles skill graph..."
-      if ! (cd "$ai" && apm install --frozen --root "$validation_root" --target agent-skills,claude); then
+      # apm >= 0.33 reads the lock from --root, so --frozen needs it there.
+      if ! cp "$ai/apm.lock.yaml" "$validation_root/" ||
+        ! (cd "$ai" && apm install --frozen --root "$validation_root" --target agent-skills,claude); then
         echo "ERROR: updated dotfiles skill graph failed validation" >&2
         rm -rf "$validation_root"
         return 1
