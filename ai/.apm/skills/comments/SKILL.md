@@ -1,11 +1,11 @@
 ---
 name: comments
-description: Use whenever writing, adding, editing or reviewing code comments (doc comments, inline comments, JSDoc), and when asked to trim, shorten or clean up the comments on a branch. Keeps comments to 1-3 lines that carry the why, and trims a branch's comments without losing anything only they said.
+description: Use whenever writing, adding, editing or reviewing code comments (doc comments, inline comments, JSDoc), and when asked to trim, shorten or clean up comments, on a branch or across a whole project, package or folder. Keeps comments to 1-3 lines that carry the why, and trims existing ones without losing anything only they said.
 ---
 
 # Code comments
 
-- **Trimming a branch's comments** (`/comments trim`, a request to trim or clean them up, or a diff that adds blocks over 3 lines): follow [trim.md](trim.md).
+- **Trimming comments** (`/comments trim` for a branch, `/comments trim project [path]` for the whole project or a folder, a request to trim or clean them up, or a diff that adds blocks over 3 lines): follow [trim.md](trim.md).
 - **Anything else:** the rules below apply every time you write or change a comment.
 
 ## Writing comments
