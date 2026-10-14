@@ -60,7 +60,7 @@ MAX_ACTIVE=6
 # Local time (HH:MM) from which the day winds down: every tick reminds you to
 # close what is open rather than start anything new, and a "go" asks for
 # confirmation before spawning. Empty disables it.
-WIND_DOWN_AT="15:00"
+WIND_DOWN_AT="16:00"
 
 # How many self-review rounds octopilot runs on one PR before it stops and
 # hands back. Each round is one review-fix pass; the counter increments on
