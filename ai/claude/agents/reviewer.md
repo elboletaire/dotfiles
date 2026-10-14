@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: Reviews one worker's change, its diff against the task, and runs the tests. Read-only; reports must-fix and should-fix findings for the worker to address. Use after every worker task.
-model: claude-sonnet-5-5[1m]
+model: claude-gpt-6-astra
 disallowedTools: Edit, Write, NotebookEdit, Agent
 ---
 
