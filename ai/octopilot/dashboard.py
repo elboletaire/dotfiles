@@ -462,16 +462,21 @@ class Model:
         # scan.py's STALLED rule, applied live: the snapshot can be two
         # minutes behind, and the red Quiet column used to say "stalled"
         # while the row still sat under Running.
+        # An agent that reported and stopped is not stalled, it is done.
         stalled = (it.get("driver") == "agent" and kind in RUN_ROWS | {"NEW"}
                    and quiet is not None and quiet >= AGENT_STALL_MIN * 60
-                   and agent_state != "running")
+                   and agent_state != "running" and not rep_live)
+        # A read-only investigation never gets a PR, so no READY row: its
+        # `ready` report is the moment the user has something to read.
+        rep_needs = REPORT_NEEDS | ({"ready"} if it.get("read_only")
+                                    else set())
         needs = (kind in NEEDS_ROWS or stalled
-                 or (rep_live and rep.get("state") in REPORT_NEEDS)
+                 or (rep_live and rep.get("state") in rep_needs)
                  or (agent_state == "waiting" and kind not in DONE_ROWS))
         # Why it needs the user, for the desktop notification: one per reason.
         why = (kind if kind in NEEDS_ROWS else "stalled" if stalled
                else rep.get("state") if rep_live
-               and rep.get("state") in REPORT_NEEDS
+               and rep.get("state") in rep_needs
                else "asking" if agent_state == "waiting" else None)
         if rep_live:
             note = f"{rep.get('state')}: {rep.get('msg') or ''}"
@@ -921,13 +926,17 @@ class Dashboard:
                  f"{args[0]} exit {code}")
 
     def investigate(self, live, term):
-        """/investigate <repo> <question>, typed here and queued."""
+        """/investigate [--read-only] <repo> <question>, typed here and
+        queued."""
         repo = term.read_line(live, "Investigate -- repo (owner/repo or name): ")
         question = repo and term.read_line(live, "Question: ")
         if not (repo and question):
             self.say("investigation cancelled")
             return
-        cmd = f"/investigate {repo} {question}"
+        ro = term.read_line(live, "Read-only (a report, no commits or PR)? "
+                            "[y/N] ")
+        flag = "--read-only " if ro.lower() in ("y", "yes") else ""
+        cmd = f"/investigate {flag}{repo} {question}"
         if scan.wind_down() == "yes":
             ok = term.read_line(live, f"🌇 Past {scan.WIND_DOWN_AT} -- start it "
                                 "anyway? [y/N] ")

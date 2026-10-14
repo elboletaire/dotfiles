@@ -37,6 +37,8 @@ RE_REVIEW_QUIET_HOURS = float(os.environ.get("RE_REVIEW_QUIET_HOURS", "4"))
 MODEL_FOR = {
     "work": os.environ.get("MODEL_WORK", "claude-opus-5-5[1m]"),
     "investigate": os.environ.get("MODEL_INVESTIGATE", "claude-opus-5-5[1m]"),
+    "investigate-readonly": os.environ.get("MODEL_INVESTIGATE",
+                                           "claude-opus-5-5[1m]"),
     "review-fix": os.environ.get("MODEL_REVIEW_FIX", "claude-opus-5-5[1m]"),
     "review-comment": os.environ.get("MODEL_REVIEW_COMMENT", "claude-opus-5-5[1m]"),
 }
@@ -346,8 +348,11 @@ NEW_IGNORED = []
 
 def clone_dirs():
     """Git clones directly under each CLONE_ROOTS folder. Only a real `.git`
-    directory counts: a worktree's `.git` is a file, so worktrees are skipped."""
-    out = []
+    directory counts: a worktree's `.git` is a file, so worktrees are skipped.
+
+    A symlink to a clone that is already listed is the same clone: it is
+    dropped, or `gh repo view` would re-probe it on every tick."""
+    found = []
     for root in CLONE_ROOTS:
         root = os.path.expanduser(root)
         try:
@@ -357,8 +362,15 @@ def clone_dirs():
         for n in names:
             p = os.path.join(root, n)
             if os.path.isdir(os.path.join(p, ".git")):
-                out.append(p)
-    return out
+                found.append(p)
+    keep, seen = set(), set()
+    # Real directories first, so the symlink is the one dropped.
+    for p in sorted(found, key=os.path.islink):
+        real = os.path.realpath(p)
+        if real not in seen:
+            seen.add(real)
+            keep.add(p)
+    return [p for p in found if p in keep]
 
 
 def build_registry(old, refresh=False, old_ignored=None):
@@ -1137,7 +1149,8 @@ def find_session(repo_path, branch):
     return None
 
 
-def spawn(state, key_, branch, title, new_branch, question=None):
+def spawn(state, key_, branch, title, new_branch, question=None,
+          read_only=False):
     me = whoami(state)
     slug, num, kind = split_key(key_)
     reg = state.get("registry", {})
@@ -1159,6 +1172,8 @@ def spawn(state, key_, branch, title, new_branch, question=None):
 
     tmpl = {"issue": "work", "investigate": "investigate"}.get(
         kind, "review-fix" if mode == "fix" else "review-comment")
+    if read_only:
+        tmpl = "investigate-readonly"
     model = MODEL_FOR.get(tmpl, "")
 
     host = spawn_herdr(key_, path, base, branch, title, new_branch, model)
@@ -1169,6 +1184,8 @@ def spawn(state, key_, branch, title, new_branch, question=None):
     item.update({k: v for k, v in host.items() if k != "warning"})
     if question:
         item["question"] = question
+    if read_only:
+        item["read_only"] = True
     state["items"][key_] = item
     save(state)
     log_event("spawn", key_, mode=mode, branch=branch, session=item["session"],
@@ -1366,7 +1383,8 @@ ROW_FIELD = re.compile(r"(\w+)=(\S+)")
 # Item fields the dashboard shows; the rest of an item is bookkeeping.
 SNAPSHOT_ITEM_FIELDS = ("mode", "branch", "session", "pr", "driver", "phase",
                         "review_rounds", "last_seen", "last_note",
-                        "last_report", "added", "question", "reviewed_sha")
+                        "last_report", "added", "question", "reviewed_sha",
+                        "read_only")
 
 
 def parse_extra(extra):
@@ -1543,6 +1561,32 @@ def report(state, args):
 INBOX_MAX = 200
 
 
+def send_code(state, text=None):
+    """Queue `text` for the code-changes agent and deliver the queue, oldest
+    first. -> (delivered, error of the first failed send or None).
+
+    A request that cannot be delivered (the tab closed, the agent gone) stays
+    queued in `code_pending` and is retried on every tick, so it is never
+    lost. Caller holds the lock."""
+    q = state.setdefault("code_pending", [])
+    if text:
+        q.append({"at": int(time.time()), "text": text})
+    sent, err = 0, None
+    while q:
+        ok, err = send_to(CODE_AGENT, q[0]["text"])
+        if not ok:
+            if text:  # once per request, not once per tick
+                log_event("send-code-pending", text=text[:200],
+                          error=str(err)[:200])
+            break
+        log_event("send-code", text=q.pop(0)["text"][:200])
+        sent, err = sent + 1, None
+    if not q:
+        state.pop("code_pending", None)
+    save(state)
+    return sent, err
+
+
 def to_inbox(state, text):
     """Queue one message for the orchestrator. Caller holds the lock."""
     box = state.setdefault("inbox", [])
@@ -1596,6 +1640,11 @@ def dispatch(cmd, args, state):
             state["orch"] = orch
         save(state)
         render(rows, active, n, state, untracked)
+        if state.get("code_pending"):
+            sent, err = send_code(state)
+            left = len(state.get("code_pending") or [])
+            print(f"CODE     {sent} queued request(s) delivered to {CODE_AGENT}"
+                  + (f", {left} still pending ({err})" if left else ""))
         counts = {}
         for kind, _, _ in rows:
             counts[kind] = counts.get(kind, 0) + 1
@@ -1631,12 +1680,14 @@ def dispatch(cmd, args, state):
         if not text:
             print("usage: send-code <text...>", file=sys.stderr)
             return 1
-        ok, err = send_to(CODE_AGENT, text)
-        if not ok:
-            print(f"{CODE_AGENT}: {err}", file=sys.stderr)
-            return 1
-        log_event("send-code", text=text[:200])
-        print(f"sent to {CODE_AGENT}")
+        sent, err = send_code(state, text)
+        if err:
+            # Kept, not dropped: the tab may just be closed for now.
+            print(f"{CODE_AGENT}: {err} -- kept, {len(state['code_pending'])} "
+                  "pending; every tick retries them. Do not resend.")
+            return 0
+        print(f"sent to {CODE_AGENT}" + (f" ({sent} with earlier queued)"
+                                         if sent > 1 else ""))
         return 0
     if cmd == "reboot":
         return reboot(state, args[1])
@@ -1647,16 +1698,20 @@ def dispatch(cmd, args, state):
         if it_.get("question"):
             subs.setdefault("QUESTION", it_["question"])
             subs.setdefault("BRANCH", it_.get("branch", ""))
-        print(render_prompt(args[1], subs))
+        # A read-only item never gets a prompt that tells it to commit and
+        # open a PR, whatever template the caller asked for.
+        tmpl = "investigate-readonly" if it_.get("read_only") else args[1]
+        print(render_prompt(tmpl, subs))
         return 0
     if cmd == "spawn":
         # spawn <key> <branch> <title> [--new]
         return spawn(state, args[1], args[2], args[3], "--new" in args[4:])
     if cmd == "investigate":
-        # investigate <slug> <name> <branch> <title> <question>
+        # investigate <slug> <name> <branch> <title> <question> [--read-only]
         slug_, name, branch, title, question = args[1:6]
         return spawn(state, key(slug_, name, "investigate"), branch, title,
-                     True, question=question)
+                     True, question=question,
+                     read_only="--read-only" in args[6:])
     if cmd == "siblings":
         print_siblings(state, args[1],
                        args[2] if len(args) > 2 else None)

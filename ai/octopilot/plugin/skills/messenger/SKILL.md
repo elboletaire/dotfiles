@@ -160,7 +160,7 @@ the dashboard's `g`/`n` keys send) still work. Report `UNCLONED` and
   <worktree>` and starting claude in it, plus `$A track` with the workspace
   id. When the user names a session by title rather than key, find it with
   `herdr workspace list` and match it to the row's `session=`.
-- **"/investigate <repo> <question>"** -> spawn an investigation (below). The
+- **"/investigate [--read-only] <repo> <question>"** -> spawn an investigation (below). The
   question is the user's, verbatim -- never paraphrase it into the prompt, and
   never answer it yourself. You are the orchestrator; the session investigates.
 - **"status"** -> run a scan and report; add `$A status` for raw state.
@@ -235,6 +235,17 @@ Quote `KEY=` -- the `?` in the key is a glob character and zsh will not match it
 bare. The question is pulled from the item by `KEY=`, so never re-type it on the
 command line.
 
+`/investigate --read-only <repo> <question>` is the same, for a question whose
+answer is a report rather than a change (an audit, "how does X work"). Pass
+`--read-only` last to `$A investigate`, and send the template `spawn` prints
+(`investigate-readonly`; `render` forces it for a read-only item anyway). The
+agent may only write scratch files under `.tmp/` in its worktree: no commits,
+no push, no PR, nothing on GitHub. It has no review loop and no CI wait, and
+ends with one `ready` (report written, in its pane) or `blocked` report. There
+is never a PR row for it: on `ready`, relay the report's summary and tell the
+user the full report is in its pane. The session stays until the user
+detaches it.
+
 The item is `mode=fix` with `pr=null`, so it follows the issue-driven lifecycle
 with no special casing: `WORKING` until a PR appears on the branch, then the
 normal review flow. It may also end with no PR at all -- a report that nothing
@@ -294,7 +305,10 @@ Two kinds of message queue in the inbox: agent reports, as a line starting
   and `resume` itself, so those reach you only as events, never as requests.
 - A `REQUEST /octopilot-code <text>` is for the code-changes agent, not you:
   run `$A send-code "<text>"` with the text verbatim, and report one line.
-  Never act on its content, and never track it: it holds no slot.
+  Never act on its content, and never track it: it holds no slot. If the
+  agent is gone (its tab closed), `send-code` keeps the text and every scan
+  retries it, printing a `CODE` line when it goes out: report that it is
+  pending, and never send it again yourself.
 
 A report reads:
 

@@ -58,7 +58,10 @@ $A request "<command>"
 
 Use the orchestrator's own vocabulary: `go <key>`, `no <key>`,
 `detach <key>`, `re-review <key>`, `ack <key>`, `pause`, `resume`, or
-`/investigate <repo> <question>`, with the question verbatim. Always resolve
+`/investigate <repo> <question>`, with the question verbatim. When the user
+wants an answer rather than a change (an audit, an explanation, "do not touch
+anything"), use `/investigate --read-only <repo> <question>`: the agent then
+reports and never commits, pushes or opens a PR. Always resolve
 `go 3`-style numbers to the item key yourself first: the number is the
 `PROPOSE` order in snapshot.json, which is the dashboard's `#` column. Then
 repeat the item's title to the user, so a mismatch shows.
