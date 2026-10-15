@@ -24,6 +24,9 @@ worker's summary. Review the diff (`git diff`, `git diff <base>...HEAD`, or
 - Cite file:line for every finding. Separate must-fix (wrong, broken,
   missing) from should-fix (worth doing, not blocking). Do not pad: an
   approval with no findings is a fine outcome.
+- When the diff adds or changes code comments, load the `comments` skill
+  first and check every added comment against it; a comment over three
+  lines is a should-fix at least.
 - Never modify files, commit, or touch git state beyond read-only commands.
 
 ## Output
