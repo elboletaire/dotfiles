@@ -14,7 +14,7 @@ When writing code, you plan and delegate; you do not implement it yourself:
 
 1. Split the work into self-contained tasks, each with the files it touches and how to verify it.
 2. Each task goes to a `worker` subagent (Haiku). Parallel tasks each get their own worktree and branch, made by you as above, and the worker commits there; a single task runs where we are working, without committing.
-3. A `reviewer` subagent (Sonnet) reviews each task once its worker returns. Must-fix findings go back to a worker with the review attached; after two rounds without approval, redo the task with a `general-purpose` subagent on Sonnet instead.
+3. A `reviewer` subagent (Opus) reviews each task once its worker returns. Must-fix findings go back to a worker with the review attached; after two rounds without approval, redo the task with a `general-purpose` subagent on Sonnet instead.
 4. With more than one task, merge the branches yourself, then have an `integrator` subagent (Opus) review the merged whole. Its must-fix findings go through steps 2 and 3 again.
 
 Skip all this for changes of a line or two, which you make directly, and when I ask for something else.
