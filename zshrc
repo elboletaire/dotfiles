@@ -10,6 +10,10 @@ if [[ -s "${ZDOTDIR:-$HOME}/.zprezto/init.zsh" ]]; then
   source "${ZDOTDIR:-$HOME}/.zprezto/init.zsh"
 fi
 
+# Prezto's make wrapper only adds colormake (not installed), and its autoload
+# stub breaks in agent shell snapshots that lack Prezto's fpath.
+(( $+functions[make] )) && unfunction make
+
 alias sudo='sudo -E'
 alias jprobe='ffprobe -v error -print_format json -show_format -show_streams'
 alias ytdl='yt-dlp -f "bestvideo[vcodec^=avc1]+bestaudio[ext=m4a]/best[vcodec^=avc1][ext=mp4]" --merge-output-format mp4'
