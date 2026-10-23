@@ -92,26 +92,39 @@ comment and silently truncates the argument.
    git rev-parse HEAD > "$(git rev-parse --git-dir)/octopilot-review-base"
    ```
 
+   **Every round: review the merge result.** The section below applies to
+   each round, rebuilt fresh, since `{{BASE}}` may have moved. A merge
+   conflict there is not a review finding: report `blocked` with the
+   conflicting files and stop (the round you claimed is spent; do not
+   review). Fixes still go on `{{BRANCH}}`, in this worktree, never in the
+   merge worktree. This loop posts no inline comments, and from round 2 on
+   the scope is the fix range below, not the whole PR.
+
+{{MERGE}}
+
    **Pass 1 -- candidates (nothing is changed).** Give the subagent only the
-   PR number and branch -- no history, no summary of what you already did, no
-   defence of your earlier choices.
+   PR number, the branch and the merge-result worktree -- no history, no
+   summary of what you already did, no defence of your earlier choices.
 
    *Round 1* -- the whole PR:
 
-   > Run `{{REVIEW_CMD}} {{REVIEW_LEVEL}} {{PR}}` on branch `{{BRANCH}}`,
+   > In worktree <$mwt> ({{REPO}} PR #{{PR}} merged into current
+   > `{{BASE}}`), run `{{REVIEW_CMD}} {{REVIEW_LEVEL}} {{PR}}`,
    > without `--fix` and without `--comment`. Return a numbered list of
    > candidate findings: file, line, the claimed defect, and whether it would
    > block a merge. Change nothing and post nothing.
 
    *Round 2 and later* -- only the fix diff. Read the base back with
-   `cat "$(git rev-parse --git-dir)/octopilot-review-base"`. If a rebase has
-   rewritten it (`git merge-base --is-ancestor <base> HEAD` fails), use the
+   `cat "$(git rev-parse --git-dir)/octopilot-review-base"` -- call it
+   `<review-base>`, not to be confused with the merge's `$base`. If a rebase
+   has rewritten it (`git merge-base --is-ancestor <review-base> HEAD` fails), use the
    commit on `HEAD` with the same subject line instead; if there is none,
    review the commits you made after round 1 by name. Give the subagent the
    range and the list of findings those commits were meant to fix:
 
-   > On {{REPO}} PR #{{PR}} (branch `{{BRANCH}}`, worktree <path>), review
-   > **only** `git diff <base>..HEAD` at `{{REVIEW_LEVEL_FOLLOWUP}}` depth --
+   > On {{REPO}} PR #{{PR}} (branch `{{BRANCH}}`; read and test in worktree
+   > <$mwt>, the PR merged into current `{{BASE}}`), review
+   > **only** `git diff <review-base>..<$head>` at `{{REVIEW_LEVEL_FOLLOWUP}}` depth --
    > the rest of the PR was already reviewed. These commits were meant to
    > fix: <numbered list of the CONFIRMED findings, file:line and defect>.
    > Check that each one is actually fixed, and that the diff introduces no
@@ -123,13 +136,17 @@ comment and silently truncates the argument.
    This pass casts a wide net, so some candidates are false positives.
 
    **Pass 2 -- verification.** A second, separate subagent gets only the PR
-   number, the branch, this worktree's path and the numbered candidate list --
-   not pass 1's reasoning, and no hint of which ones you believe:
+   number, the branch, the merge-result worktree's path and base sha, and the
+   numbered candidate list -- not pass 1's reasoning, and no hint of which
+   ones you believe:
 
    > Verify each candidate finding on {{REPO}} PR #{{PR}} (branch
-   > `{{BRANCH}}`, worktree <path>) independently. For each one, read the
-   > code, trace the call path, and run the tests or a small repro when that
-   > settles it. Return one verdict per candidate:
+   > `{{BRANCH}}`) independently, in worktree <$mwt>: the PR merged into
+   > current `{{BASE}}` (<$base>). For each one, read the code, trace the
+   > call path, and run the tests or a small repro when that settles it. A
+   > candidate may be rejected as pre-existing only if the same defect exists
+   > at <$base> without the PR; if it appears only once the PR meets code on
+   > `{{BASE}}` today, it is the PR's. Return one verdict per candidate:
    > - CONFIRMED -- with the concrete input or state that makes it go wrong,
    >   the file:line, and what you ran or read to confirm it;
    > - REJECTED -- with the reason it does not hold.

@@ -10,6 +10,11 @@ scope is: did the new commits fix what we raised, and did they break
 anything? Do not raise issues in code the new commits did not touch, and do
 not re-raise anything we did not raise before.
 
+{{MERGE}}
+
+Here the scope is narrower than the whole PR diff: only the new commits
+(step 2). They are still read and tested in the merge result.
+
 ## 1. What we asked for
 
 Collect the findings from the user's account's most recent review on this PR:
@@ -21,7 +26,7 @@ answer to weigh, not an omission.
 
 ## 2. What changed
 
-`git fetch origin` and look at `{{PREV}}..origin/{{BRANCH}}`: `git log` and
+Look at `{{PREV}}..$head` (the head the merge section fetched): `git log` and
 `git diff`. If `{{PREV}}` is no longer in the branch history (the author
 rebased or force-pushed), use `git range-diff` against `origin/{{BASE}}` to
 isolate the author's changes, and say so in your report. If the range is
@@ -38,17 +43,19 @@ Post nothing yet.
 ## 3. Verify, in a fresh subagent
 
 Use the `Agent` tool with `model: {{COLD_REVIEW_MODEL}}`. Give it the PR
-number, the branch, this worktree's path, the commit range, the numbered
-earlier findings with your draft statuses, and the new-issue candidates --
-not your reasoning:
+number, the branch, the merge-result worktree's path and base sha, the commit
+range, the numbered earlier findings with your draft statuses, and the
+new-issue candidates -- not your reasoning:
 
-> On {{REPO}} PR #{{PR}} (worktree <path>, range <range>), check each item
-> independently against the code. For each earlier finding, confirm or
-> correct its status (FIXED / PARTLY FIXED / NOT FIXED / ANSWERED), citing
-> the file:line you read or the test you ran. For each new-issue candidate,
-> return CONFIRMED with the concrete input or state that breaks it and what
-> you ran or read, or REJECTED with the reason. Do not add findings outside
-> the commit range. Do not post anything to GitHub.
+> On {{REPO}} PR #{{PR}} (range <range>), check each item independently
+> against the code in worktree <$mwt>: the PR merged into current `{{BASE}}`
+> (<$base>). For each earlier finding, confirm or correct its status (FIXED /
+> PARTLY FIXED / NOT FIXED / ANSWERED), citing the file:line you read or the
+> test you ran. For each new-issue candidate, return CONFIRMED with the
+> concrete input or state that breaks it and what you ran or read, or
+> REJECTED with the reason. A candidate may be rejected as pre-existing only
+> if the same defect exists at <$base> without the PR. Do not add findings
+> outside the commit range. Do not post anything to GitHub.
 
 Use its verdicts, not your draft. A status or candidate it could not back
 with evidence does not go in the review.
@@ -63,13 +70,15 @@ with evidence does not go in the review.
    - "Request changes" otherwise.
    The body is short: one line per earlier finding with its status (and the
    commit that fixed it, when there is one), then any CONFIRMED new issue,
-   inline on its line with its evidence. Nothing about the rest of the PR.
+   inline on its line with its evidence, anchored to the PR head. Nothing
+   about the rest of the PR.
    - Never mention recall, candidates, or unverified findings. Everything you
      post was verified.
    - If a post fails, check the PR before retrying, so the same review does
      not go up twice.
 
-Then report one paragraph: the verdict, how many earlier findings were fixed
-or still open, and new issues confirmed and rejected.
+Then report one paragraph: the verdict, the base sha you merged into, how
+many earlier findings were fixed or still open, and new issues confirmed and
+rejected.
 
 {{HYGIENE}}

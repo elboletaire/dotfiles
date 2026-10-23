@@ -1101,6 +1101,12 @@ def render_prompt(name, subs):
     # Set unconditionally: this placeholder lives inside the LOOP fragment,
     # not in the template body, so an `in body` test would never fire.
     subs.setdefault("COLD_REVIEW_MODEL", MODEL_COLD_REVIEW)
+    # Read whenever the file exists, for the same reason: MERGE may sit inside
+    # the LOOP fragment. Without the file the sweep below strips the placeholder.
+    merge = os.path.join(pdir, "shared", "merge-result.md")
+    if os.path.exists(merge):
+        with open(merge) as fh:
+            subs.setdefault("MERGE", fh.read().strip())
     if "{{CONTEXT}}" in body and "CONTEXT" not in subs and subs.get("ISSUE") \
             and subs.get("REPO"):
         subs["CONTEXT"] = issue_context(subs["REPO"], subs["ISSUE"])
@@ -1120,11 +1126,11 @@ def render_prompt(name, subs):
     # {{PR}} and {{BRANCH}} placeholders, and if they were substituted in the
     # same pass as everything else those would survive the pass and then be
     # stripped to empty by the sweep below -- yielding `gh pr checks  -R  `.
-    for frag in ("CONTEXT", "LOOP", "HYGIENE"):
+    for frag in ("CONTEXT", "LOOP", "MERGE", "HYGIENE"):
         if frag in subs:
             body = body.replace("{{" + frag + "}}", str(subs[frag]))
     for k, v in subs.items():
-        if k in ("CONTEXT", "LOOP", "HYGIENE"):
+        if k in ("CONTEXT", "LOOP", "MERGE", "HYGIENE"):
             continue
         body = body.replace("{{" + k + "}}", str(v))
     return re.sub(r"\{\{[A-Z_]+\}\}", "", body).strip()
@@ -1851,6 +1857,20 @@ def dispatch(cmd, args, state):
             print(f"{k} reviewed={sha[:7]} "
                   f"round={it['review_rounds']}/{MAX_REVIEW_ROUNDS}")
         return 0
+    if cmd == "review-base":
+        # The base sha a review merged the PR into, so a later base move
+        # is detectable.
+        k = resolve_key(state, args[1])
+        it = state["items"].get(k)
+        if it is None:
+            print(f"unknown item {k}", file=sys.stderr)
+            return 1
+        sha = args[2]
+        it["reviewed_base"] = sha
+        save(state)
+        log_event("review-base", k, sha=sha[:7])
+        print(f"{k} reviewed_base={sha[:7]}")
+        return 0
     if cmd == "claim-round":
         k = resolve_key(state, args[1])
         it = state["items"].get(k)
@@ -1906,7 +1926,7 @@ def dispatch(cmd, args, state):
     print(f"unknown command: {cmd}", file=sys.stderr)
     print("usage: scan.sh [scan|refresh|status|pause|resume|decline|undecline|"
           "track|untrack|detach|set-phase|mark-reviewed|claim-round|heartbeat|"
-          "reset-rounds|"
+          "reset-rounds|review-base|"
           "mark-merged|"
           "render|spawn|"
           "investigate|snapshot|report|inbox|request|send|send-code|reboot|wind-down]", file=sys.stderr)
