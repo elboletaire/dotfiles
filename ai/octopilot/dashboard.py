@@ -16,8 +16,8 @@ It never acts on the table: the orchestrator does. The only things it sends
 are the ones you ask for (go/no to the orchestrator, pause/resume).
 Run it through dashboard.sh so config.sh is loaded.
 """
+import collections
 import fcntl
-import itertools
 import json
 import os
 import select
@@ -99,6 +99,8 @@ CI_GLYPH = {"pass": ("✓", "green"), "fail": ("✗", "bold red"),
             "pending": ("⏳", "yellow"), "none": ("–", "dim")}
 # The pick tree's room the board never takes: its title, eight rows, "+N more".
 PICK_MIN_LINES = 10
+# Pick repo headers are selectable under this prefix, which no row key has.
+REPO_PREFIX = "repo:"
 
 
 # ----------------------------------------------------------------- helpers
@@ -158,6 +160,11 @@ def split_key(key):
 def pick_ref(key):
     """vocdoni/vocdoni-app#452 -> #452 (the repo is the header above it)"""
     return key[len(split_key(key)[0]):] or key
+
+
+def repo_key(slug):
+    """The key of a pick repo's header line, so the header can be selected."""
+    return REPO_PREFIX + slug
 
 
 # ----------------------------------------------------------------- backend
@@ -556,6 +563,9 @@ class Dashboard:
         self.alert = None     # (key, title, deadline): the kitchen is closed
         self.selectable = []
         self.groups = []      # keys per board column, then the pick list
+        self.expanded = set() # pick repos showing their rows; the rest collapse
+        self.repos = []       # pick repo slugs, in order, as last rendered
+        self.repo_of = {}     # item key -> its repo header's key
 
     def say(self, msg):
         self.flash = (msg, time.time())
@@ -584,6 +594,30 @@ class Dashboard:
                    ("🔴 Needs you", data["needs"], "red"),
                    ("💤 Done", data["done"] if self.show_done else still_open,
                     "green")]
+        # The selection state first: the footer reads it, and it needs no
+        # heights, so it is settled before anything is measured.
+        groups = self.pick_groups(data["pick"])
+        self.repos = [slug for slug, _ in groups]
+        self.repo_of = {e["key"]: repo_key(slug)
+                        for slug, grp in groups for _, e in grp}
+        # The order j/k walk and h/l jump across: board columns, then picks.
+        # A collapsed repo's rows are not in it; its header is.
+        pick_keys = []
+        for slug, grp in groups:
+            pick_keys.append(repo_key(slug))
+            if slug in self.expanded:
+                pick_keys += [e["key"] for _, e in grp]
+        self.groups = [[e["key"] for e in rows] for _, rows, _ in columns]
+        self.groups.append(pick_keys)
+        # move() navigates by key, so a key listed twice would send ↓ back
+        # to its first copy and trap the cursor. Keep the first of each.
+        self.selectable = list(dict.fromkeys(k for g in self.groups for k in g))
+        if self.sel_key not in self.selectable:
+            # A row hidden by its repo's collapse falls back to that header.
+            fallback = self.repo_of.get(self.sel_key)
+            if fallback not in self.selectable:
+                fallback = self.selectable[0] if self.selectable else None
+            self.sel_key = fallback
         tail = [self.notes(data["notes"])] if data["notes"] else []
         tail += [self.activity(now), self.footer(data, now)]
         # Everything measured: the board gets what is left after the pick
@@ -592,16 +626,7 @@ class Dashboard:
         board = self.board(columns, self.console.height - fixed - PICK_MIN_LINES)
         head.append(board)
         pick_room = self.console.height - fixed - self.height(board) - 2
-        # The order j/k walk and h/l jump across: board columns, then picks.
-        self.groups = [[e["key"] for e in rows] for _, rows, _ in columns]
-        self.groups.append([e["key"] for e in data["pick"]])
-        self.selectable = [k for g in self.groups for k in g]
-        pick = self.pick_tree(data["pick"], max(PICK_MIN_LINES - 2, pick_room))
-        # move() navigates by key, so a key listed twice would send ↓ back
-        # to its first copy and trap the cursor. Keep the first of each.
-        self.selectable = list(dict.fromkeys(self.selectable))
-        if self.sel_key not in self.selectable:
-            self.sel_key = self.selectable[0] if self.selectable else None
+        pick = self.pick_tree(groups, max(PICK_MIN_LINES - 2, pick_room))
         return Group(*head, pick, *tail)
 
     def kitchen(self):
@@ -753,39 +778,72 @@ class Dashboard:
                      style="bold" if sel else "none", padding=(0, 1),
                      expand=True)
 
-    def pick_tree(self, rows, limit):
-        """Pick next as a tree by repo. The # is the row's place in rows, which
-        `go N` and the orchestrator both count by, so rows are not re-sorted."""
+    def pick_groups(self, rows):
+        """[(repo slug, [(#, entry)])], repos in order of first appearance. The #
+        is the row's place in rows, which `go N` and the orchestrator both count
+        by, so rows are not re-sorted, even when a repo's rows are not together."""
+        groups = {}
+        for i, e in enumerate(rows):
+            groups.setdefault(split_key(e["key"])[0], []).append((i, e))
+        return list(groups.items())
+
+    def pick_tree(self, groups, limit):
+        """Pick next as a tree by repo. A collapsed repo is its header alone,
+        with a summary of what it holds."""
+        rows = [e for _, grp in groups for _, e in grp]
         nw = len(str(len(rows)))
         rw = max((len(pick_ref(e["key"])) for e in rows), default=0)
         kw = max((len(e["pick_kind"]) for e in rows), default=0)
         width = self.console.width
-        lines = []   # (Text, entry), entry None on a repo's header line
-        for slug, grp in itertools.groupby(
-                enumerate(rows), key=lambda p: split_key(p[1]["key"])[0]):
-            grp = list(grp)
-            lines.append((Text.assemble((slug.rsplit("/", 1)[-1], "bold"),
-                                        (f"  {len(grp)}", "dim")), None))
-            for pos, (i, e) in enumerate(grp):
-                lines.append((self.pick_line(i + 1, e, pos == len(grp) - 1,
-                                             nw, rw, kw, width), e))
-        # Scroll only once the selection falls below the window.
-        sel = next((p for p, (_, e) in enumerate(lines)
-                    if e and e["key"] == self.sel_key), None)
-        start = sel - limit + 1 if sel is not None and sel >= limit else 0
-        if start and lines[start][1] is not None:
+        lines = []   # (Text, key, is a repo header, is an open repo's header)
+        for slug, grp in groups:
+            is_open = slug in self.expanded
+            hdr = repo_key(slug)
+            lines.append((self.repo_line(slug, grp, is_open, hdr == self.sel_key,
+                                         width), hdr, True, is_open))
+            if is_open:
+                for pos, (i, e) in enumerate(grp):
+                    lines.append((self.pick_line(i + 1, e, pos == len(grp) - 1,
+                                                 nw, rw, kw, width),
+                                  e["key"], False, False))
+        # Scroll only once the selection falls below the window. An open
+        # header is aimed past itself, so its first row is on screen with it.
+        sel = next((p for p, line in enumerate(lines)
+                    if line[1] == self.sel_key), None)
+        aim = sel + 1 if sel is not None and lines[sel][3] else sel
+        start = aim - limit + 1 if aim is not None and aim >= limit else 0
+        end = min(start + limit, len(lines))
+        if start and not lines[start][2]:
             # Never open mid-repo: the repo's header takes the top row.
-            head = max(p for p in range(start) if lines[p][1] is None)
-            shown = [lines[head]] + lines[start + 1:start + limit]
+            head = max(p for p in range(start) if lines[p][2])
+            shown = [head] + list(range(start + 1, end))
         else:
-            shown = lines[start:start + limit]
-        if len(shown) > 1 and shown[-1][1] is None:
-            shown.pop()   # a header with none of its rows under it
-        out = [t for t, _ in shown]
-        hidden = len(rows) - sum(1 for _, e in shown if e)
+            shown = list(range(start, end))
+        if len(shown) > 1 and lines[shown[-1]][3] and shown[-1] != sel:
+            shown.pop()   # an open header with none of its rows under it
+        out = [lines[p][0] for p in shown]
+        # Hidden rows: each item, and each collapsed repo's header (it stands
+        # for the rows under it). An open header is not counted: its rows are.
+        hidden = sum(1 for p, line in enumerate(lines)
+                     if p not in shown and not (line[2] and line[3]))
         if hidden:
             out.append(Text(f"+{hidden} more (↑/↓ to scroll)", style="dim"))
         return Group(Text(f"⚪ Pick next ({len(rows)})", style="bold"), *out)
+
+    def repo_line(self, slug, grp, is_open, sel, width):
+        line = Text()
+        line.append("▶ " if sel else "  ")
+        line.append("▾ " if is_open else "▸ ")
+        line.append(slug.rsplit("/", 1)[-1], style="bold")
+        line.append(f"  {len(grp)}", style="dim")
+        if not is_open:
+            kinds = collections.Counter(e["pick_kind"] for _, e in grp)
+            line.append("  " + " · ".join(f"{n} {k}" for k, n in kinds.items()),
+                        style="dim")
+        line.truncate(width - 1, overflow="ellipsis")
+        if sel:
+            line.stylize("reverse")
+        return line
 
     def pick_line(self, n, e, last, nw, rw, kw, width):
         sel = e["key"] == self.sel_key
@@ -849,18 +907,27 @@ class Dashboard:
                     if e["key"] == self.sel_key), None)
         kind = sel["kind"] if sel else None
         tracked = sel and sel["key"] in ((self.m.state or {}).get("items") or {})
-        keys = [("g/n", "go/no")] if kind == "PROPOSE" else []
+        repo = self.sel_repo()
+        keys = []
+        if repo:
+            keys.append(("spc", "fold" if repo in self.expanded else "open"))
+        elif self.sel_key in self.repo_of:
+            keys.append(("spc", "fold"))
+        keys += [("g/n", "go/no")] if kind == "PROPOSE" else []
         if kind == "CAPPED":
             keys.append(("R", "another round"))
         if kind == "PUSHED":
             keys += [("e", "re-review"), ("x", "ack")]
         if tracked:
             keys.append(("z", "detach"))
-        keys += [("v", "agent popup"), ("t", "shell"),
-                 ("o", "browser"), ("i", "investigate"), ("a", "prompter"),
+        if not repo:
+            keys += [("v", "agent"), ("t", "shell"), ("o", "browser")]
+        keys += [("i", "investigate"), ("a", "prompter"),
                  ("r", "refresh"),
                  ("d", f"done (+{self.hidden_done} hidden)" if self.hidden_done
-                  else "done"), ("P", "pause"), ("q", "quit")]
+                  else "done"),
+                 ("C", "open all" if self.any_collapsed() else "fold all"),
+                 ("P", "pause"), ("q", "quit")]
         for k, what in keys:
             t.append(f" {k}", style="bold")
             t.append(f" {what} ", style="dim")
@@ -875,6 +942,22 @@ class Dashboard:
                 if e["key"] == self.sel_key:
                     return e
         return None
+
+    def sel_repo(self):
+        """The slug of the selected pick repo's header, else None."""
+        if self.sel_key and self.sel_key.startswith(REPO_PREFIX):
+            return self.sel_key[len(REPO_PREFIX):]
+        return None
+
+    def any_collapsed(self):
+        return any(slug not in self.expanded for slug in self.repos)
+
+    def toggle_all(self):
+        """C: expand every repo if any is collapsed, else collapse them all."""
+        if self.any_collapsed():
+            self.expanded.update(self.repos)
+        else:
+            self.expanded.clear()
 
     def move(self, d):
         if not self.selectable:
@@ -898,6 +981,29 @@ class Dashboard:
             i += d
         if 0 <= i < len(self.groups):
             self.sel_key = self.groups[i][0]
+
+    def tree_step(self, d):
+        """h/l on the pick tree act like a file tree: l opens a repo, then steps
+        into it; h closes it, or from a row closes its repo and goes to the
+        header. A collapsed header passes h on to the board."""
+        repo = self.sel_repo()
+        if d > 0:
+            if repo is None:
+                return
+            if repo not in self.expanded:
+                self.expanded.add(repo)
+            else:
+                # repo_of, not the last frame's pick list: a fast `ll` lands
+                # here before the render that shows the repo's rows.
+                self.sel_key = next((k for k, h in self.repo_of.items()
+                                     if h == self.sel_key), self.sel_key)
+        elif repo is not None and repo not in self.expanded:
+            self.jump(-1)
+        elif repo is None:
+            self.expanded.discard(split_key(self.sel_key)[0])
+            self.sel_key = self.repo_of[self.sel_key]
+        else:
+            self.expanded.discard(repo)
 
     def ask(self, action, key, prompt):
         """Second press of the same key within CONFIRM_SECS confirms."""
@@ -946,12 +1052,16 @@ class Dashboard:
                 self.say("start cancelled")
             return True
         e = self.selected()
+        repo = self.sel_repo()
         if key in ("q", "\x03"):
             return False
         if key in ("j", "\x1b[B"):
             self.move(1)
         elif key in ("k", "\x1b[A"):
             self.move(-1)
+        elif key in ("h", "\x1b[D", "l", "\x1b[C") and (
+                repo or self.sel_key in self.repo_of):
+            self.tree_step(1 if key in ("l", "\x1b[C") else -1)
         elif key in ("h", "\x1b[D"):
             self.jump(-1)
         elif key in ("l", "\x1b[C"):
@@ -965,6 +1075,8 @@ class Dashboard:
             self.say("refreshing from GitHub…")
         elif key == "d":
             self.show_done = not self.show_done
+        elif key == "C":
+            self.toggle_all()
         elif key == "P":
             paused = bool((self.m.state or {}).get("paused"))
             verb = "resume" if paused else "pause"
@@ -976,7 +1088,19 @@ class Dashboard:
             self.open_orch(live, term)
         elif key == "i":
             self.investigate(live, term)
+        elif key in (" ", "\r", "\n") and repo:
+            if repo in self.expanded:
+                self.expanded.discard(repo)
+            else:
+                self.expanded.add(repo)
+        elif key == " " and self.sel_key in self.repo_of:
+            # Collapse the item's repo and put the cursor on its header.
+            self.expanded.discard(split_key(self.sel_key)[0])
+            self.sel_key = self.repo_of[self.sel_key]
         elif not e:
+            # A repo header has no row, so the row keys have nothing to act on.
+            if repo and key in ("v", "t", "o", "g", "n", "R", "e", "x", "z"):
+                self.say("select a row, not a repo header")
             return True
         elif key in ("\r", "\n"):
             if e["session"]:
