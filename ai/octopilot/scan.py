@@ -416,8 +416,8 @@ def home_prs(slug):
     return rows
 
 
-def search_prs(query_flag, me):
-    rows = gh_json(["search", "prs", query_flag, "--state", "open",
+def search_prs(me, *query_flags):
+    rows = gh_json(["search", "prs", *query_flags, "--state", "open",
                     "--archived=false", "--limit",
                     "60", "--json",
                     "number,repository,title,author,assignees,url"],
@@ -613,8 +613,11 @@ def scan(state, refresh=False, info=None):
             jobs[("prs", slug)] = ex.submit(home_prs, slug)
             if slug in reg:
                 jobs[("iss", slug)] = ex.submit(home_issues, slug, me)
-        jobs[("rr", "*")] = ex.submit(search_prs, f"--review-requested={me}", me)
-        jobs[("as", "*")] = ex.submit(search_prs, f"--assignee={me}", me)
+        jobs[("rr", "*")] = ex.submit(search_prs, me, f"--review-requested={me}")
+        jobs[("as", "*")] = ex.submit(search_prs, me, f"--assignee={me}")
+        # Your own PRs nobody was assigned to are yours to drive too.
+        jobs[("mine", "*")] = ex.submit(search_prs, me, f"--author={me}",
+                                        "--no-assignee")
         jobs[("oi", "*")] = ex.submit(org_issues, me)
         tracked = {k: ex.submit(pr_detail, k.split("#")[0], v["pr"])
                    for k, v in items.items() if v.get("pr")}
@@ -928,6 +931,12 @@ def scan(state, refresh=False, info=None):
     for pr in results.get(("rr", "*"), []) or []:
         k = key(pr["repo"], pr["number"])
         if k not in cand:
+            cand[k] = (pr["repo"], pr, mode_for(pr, me))
+    # Only in cloned repos: the rest (advisory forks, old experiments) would
+    # flood the UNCLONED notes.
+    for pr in results.get(("mine", "*"), []) or []:
+        k = key(pr["repo"], pr["number"])
+        if k not in cand and pr["repo"] in reg:
             cand[k] = (pr["repo"], pr, mode_for(pr, me))
 
     for k, (slug, pr, mode) in sorted(cand.items()):
