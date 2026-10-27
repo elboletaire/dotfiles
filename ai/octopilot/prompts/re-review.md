@@ -17,7 +17,8 @@ Here the scope is narrower than the whole PR diff: only the new commits
 
 ## 1. What we asked for
 
-Collect the findings from the user's account's most recent review on this PR:
+Collect the findings from the user's account's most recent review on this PR
+(skip empty `COMMENTED` entries: those are thread replies, not reviews):
 the review body (`gh pr view {{PR}} --json reviews`) and its inline comments
 (`gh api repos/{{REPO}}/pulls/{{PR}}/comments`, filtered to that review's
 id). Number them, and keep each one's file:line and what it asked for. Read

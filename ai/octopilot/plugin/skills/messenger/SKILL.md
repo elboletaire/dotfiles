@@ -130,7 +130,7 @@ the dashboard's `g`/`n` keys send) still work. Report `UNCLONED` and
 |---|---|
 | `MERGED` | `$A cleanup <key>` -- removes the session and its worktree, marks it handled, and then prints the fan-out set as `SIBLINGS:` lines of `<session> <branch> <pr> <base> <key>`. For each of those lines, `$A send <key> "$($A render rebase REPO=<slug> PR=<pr> BRANCH=<branch> BASE=<base>)"`. The set is already filtered to `mode=fix` and excludes the merged item; never widen it by hand. |
 | `REVIEW` | Only ever appears for `driver=orchestrator` items (legacy, and `mode=comment`). `$A reboot <key>` -- a fresh conversation for the agent (herdr clears it in place) and the item marked `booting`. That is the whole action -- the prompt goes out next tick, once the agent has actually rebooted. |
-| `BOOTING` | The row names the prompt as `template=`. Send exactly that one: `$A send <key> "$($A render <template> REPO=<slug> PR=<n> BRANCH=<branch> BASE=<base> PREV=<prev>)"` (`PREV=` only for `re-review`, taken from the row). Before sending, make sure the item's worktree (`worktree` in `$A status`) is on the PR's current head (fetch, then `git checkout --detach origin/<branch>` when the worktree is clean). Then `$A mark-reviewed <key> <head-sha>` with the head you checked out. `re-review` is the follow-up after the author pushed: it checks that the new commits fix what we raised and break nothing else, and it is never a second full review. `review-comment` is the first review of someone else's PR. Both verify every finding in a fresh subagent before posting. |
+| `BOOTING` | The row names the prompt as `template=`. Send exactly that one: `$A send <key> "$($A render <template> REPO=<slug> PR=<n> BRANCH=<branch> BASE=<base> PREV=<prev>)"` (`PREV=` only for `re-review`, taken from the row). Before sending, make sure the item's worktree (`worktree` in `$A status`) is on the PR's current head (fetch, then `git checkout --detach origin/<branch>` when the worktree is clean). Then `$A mark-reviewed <key> <head-sha>` with the head you checked out. `re-review` is the follow-up after the author pushed: it checks that the new commits fix what we raised and break nothing else, and it is never a second full review. `review-comment` is the first review of someone else's PR, when the user has no review of it on GitHub. Both verify every finding in a fresh subagent before posting. |
 | `FEEDBACK` | A human or a review bot left a review on a PR you own. Addressing it resets the review-round budget to 0. Bot accounts in `FEEDBACK_IGNORE_AUTHORS` (default `github-actions`) never produce these rows, for reviews as well as comments -- a CI bot that reviews on every push would otherwise reset the cap forever. `$A send <key> "$($A render address-feedback REPO=<slug> PR=<pr> BRANCH=<branch> BASE=<base>)"`, then `$A mark-feedback <key> <the since= value from the row>`. Only ever appears for `mode=fix`. |
 | `STALLED` | An agent-driven item that has neither pushed nor sent a heartbeat for `AGENT_STALL_MIN` (35m). **Take no action** -- do not reboot it, do not re-prompt it. Report the branch, the quiet time and the round count, and let the user decide. It usually means the agent crashed, its background CI wait never returned, or its report never arrived. |
 | `WORKING` | Nothing. Report branch and age. A `driver=agent` row also shows `rounds=N/M quiet=Xm` -- it is running its own loop and needs nothing from you. If `age` is large and `state=idle`, say so -- the user decides. |
@@ -189,6 +189,14 @@ report it. Never pass a model yourself.
 $A send <key> "$($A render <template> REPO=<repo> ISSUE=<n> PR=<n> \
                         BRANCH=<branch> BASE=<base>)"
 ```
+
+For someone else's PR the user already reviewed on GitHub, `spawn` prints
+`PROMPT_TEMPLATE=re-review ... PREV=<sha>`: pass `PREV=` to `render` too. It is
+a follow-up limited to the commits since that review, never a first review.
+For any `comment` PR, first put the worktree on the PR's head (as in
+`BOOTING`), and after sending run `$A mark-reviewed <key> <head-sha>`: until
+then the item reads as DONE with the old sha, and is flagged `PUSHED` hours
+later. A stack still gets `review-stack` instead, whatever `spawn` printed.
 
 A PR's mode comes from `scan.py`, never from you: `fix` when the user opened
 it or is its **assignee** (the explicit adopt signal), `comment` otherwise --

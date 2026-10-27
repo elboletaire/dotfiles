@@ -41,6 +41,7 @@ MODEL_FOR = {
                                            "claude-opus-5-5[1m]"),
     "review-fix": os.environ.get("MODEL_REVIEW_FIX", "claude-opus-5-5[1m]"),
     "review-comment": os.environ.get("MODEL_REVIEW_COMMENT", "claude-opus-5-5[1m]"),
+    "re-review": os.environ.get("MODEL_REVIEW_COMMENT", "claude-opus-5-5[1m]"),
 }
 MODEL_COLD_REVIEW = os.environ.get("MODEL_COLD_REVIEW", "opus")
 STALE_HOURS = int(os.environ.get("STALE_HOURS", "48"))
@@ -476,6 +477,24 @@ def pr_detail(slug, number):
     return d
 
 
+def last_own_review(detail, me):
+    """Commit the user's latest submitted review was made at, or None.
+
+    GitHub keeps the commit of every review, so this survives a detach or a
+    lost state.json. A thread reply is an empty COMMENTED review at the head
+    commit; counting it would skip commits nobody reviewed."""
+    own = [r for r in (detail or {}).get("reviews") or []
+           if (r.get("author") or {}).get("login") == me
+           and r.get("submittedAt")
+           and (r.get("state") in ("APPROVED", "CHANGES_REQUESTED")
+                or (r.get("state") == "COMMENTED"
+                    and (r.get("body") or "").strip()))]
+    if not own:
+        return None
+    last = max(own, key=lambda r: r["submittedAt"])
+    return (last.get("commit") or {}).get("oid") or None
+
+
 def pr_review_comments(detail):
     """REST review comments for the PR in `detail` (gh pr view has none)."""
     url = (detail or {}).get("url") or ""
@@ -665,8 +684,12 @@ def scan(state, refresh=False, info=None):
             active += 1
             # A comment item that was already reviewed gets a follow-up review
             # scoped to the author's new commits, not a second full review.
-            if it["mode"] == "comment" and it.get("reviewed_sha"):
-                tmpl = f"template=re-review PREV={it['reviewed_sha']}"
+            # Items tracked before reviewed_sha was seeded fall back to GitHub.
+            prev = it.get("reviewed_sha")
+            if it["mode"] == "comment" and not prev:
+                prev = last_own_review(d, me)
+            if it["mode"] == "comment" and prev:
+                tmpl = f"template=re-review PREV={prev}"
             elif it["mode"] == "comment":
                 tmpl = "template=review-comment"
             else:
@@ -1185,8 +1208,15 @@ def spawn(state, key_, branch, title, new_branch, question=None,
     if find_session(path, branch):
         raise SystemExit(f"a session already exists on {branch} in {slug}")
 
+    # Someone else's PR the user already reviewed (possibly before a detach)
+    # gets a follow-up, not a second full review.
+    reviewed = None
+    if kind == "pr" and mode == "comment":
+        reviewed = last_own_review(pr_detail(slug, num), me)
     tmpl = {"issue": "work", "investigate": "investigate"}.get(
         kind, "review-fix" if mode == "fix" else "review-comment")
+    if reviewed:
+        tmpl = "re-review"
     if read_only:
         tmpl = "investigate-readonly"
     model = MODEL_FOR.get(tmpl, "")
@@ -1194,7 +1224,7 @@ def spawn(state, key_, branch, title, new_branch, question=None,
     host = spawn_herdr(key_, path, base, branch, title, new_branch, model)
 
     item = {"mode": mode, "branch": branch, "pr": num if kind == "pr" else None,
-            "reviewed_sha": None, "phase": "working", "added": int(time.time()),
+            "reviewed_sha": reviewed, "phase": "working", "added": int(time.time()),
             "driver": "agent" if mode == "fix" else "orchestrator"}
     item.update({k: v for k, v in host.items() if k != "warning"})
     if question:
@@ -1212,8 +1242,10 @@ def spawn(state, key_, branch, title, new_branch, question=None,
           f"session={item['session']} {where} model={model or 'default'}")
     if host.get("warning"):
         print(f"WARNING: {host['warning']}")
-    print(f"next: `$A send {key_} ...` with the '{tmpl}' prompt")
-    print(f"PROMPT_TEMPLATE={tmpl} BASE={base} REPO={slug}")
+    print(f"next: `$A send {key_} ...` with the '{tmpl}' prompt"
+          + (" (PREV= from the last line)" if reviewed else ""))
+    prev = f" PREV={reviewed}" if reviewed else ""
+    print(f"PROMPT_TEMPLATE={tmpl} BASE={base} REPO={slug}{prev}")
     return 0
 
 
@@ -1771,9 +1803,13 @@ def dispatch(cmd, args, state):
         if answered and session not in open_ws:
             print(f"{session} is not an open herdr workspace", file=sys.stderr)
             return 1
+        reviewed = None
+        if pr and mode == "comment":
+            reviewed = last_own_review(
+                pr_detail(k.split("#")[0], pr), whoami(state))
         state["items"][k] = {"mode": mode, "branch": branch, "session": session,
-                             "pr": pr, "reviewed_sha": None, "phase": "working",
-                             "added": int(time.time())}
+                             "pr": pr, "reviewed_sha": reviewed,
+                             "phase": "working", "added": int(time.time())}
         # Name its agent so it can be addressed.
         it = state["items"][k]
         it["backend"] = "herdr"
