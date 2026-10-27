@@ -17,6 +17,7 @@ are the ones you ask for (go/no to the orchestrator, pause/resume).
 Run it through dashboard.sh so config.sh is loaded.
 """
 import fcntl
+import itertools
 import json
 import os
 import select
@@ -96,6 +97,8 @@ AGENT_GLYPH = {"running": ("◐", "yellow"), "waiting": ("⏸", "bold red"),
                "error": ("✗", "red")}
 CI_GLYPH = {"pass": ("✓", "green"), "fail": ("✗", "bold red"),
             "pending": ("⏳", "yellow"), "none": ("–", "dim")}
+# The pick tree's room the board never takes: its title, eight rows, "+N more".
+PICK_MIN_LINES = 10
 
 
 # ----------------------------------------------------------------- helpers
@@ -150,6 +153,11 @@ def split_key(key):
             slug, num = key.split(sep, 1)
             return slug, num, kind
     return key, "", "?"
+
+
+def pick_ref(key):
+    """vocdoni/vocdoni-app#452 -> #452 (the repo is the header above it)"""
+    return key[len(split_key(key)[0]):] or key
 
 
 # ----------------------------------------------------------------- backend
@@ -547,6 +555,7 @@ class Dashboard:
         self.confirm = None   # (action, key, deadline)
         self.alert = None     # (key, title, deadline): the kitchen is closed
         self.selectable = []
+        self.groups = []      # keys per board column, then the pick list
 
     def say(self, msg):
         self.flash = (msg, time.time())
@@ -561,39 +570,39 @@ class Dashboard:
         if self.alert:
             return self.kitchen()
         data, hdr = self.m.build()
-        parts = [self.header(data, hdr, now)]
-        self.selectable = []
+        head = [self.header(data, hdr, now)]
         if hdr["paused"]:
-            parts.append(Text(" ⏸  PAUSED — the orchestrator acts on nothing "
-                              "until resumed (P)", style="bold black on yellow"))
-        parts.append(self.items_table("🔴 Needs you", data["needs"], "red"))
-        parts.append(self.items_table("⏭  Next tick (orchestrator)",
-                                      data["orch"], "blue"))
-        parts.append(self.items_table("🟡 Running", data["running"], "yellow"))
-        # Done rows that still hold a workspace or session stay listed, so
-        # they can be opened or detached (z) without toggling d first.
+            head.append(Text(" ⏸  PAUSED — the orchestrator acts on nothing "
+                             "until resumed (P)", style="bold black on yellow"))
+        # Done rows that still hold a workspace or session stay on the board,
+        # so they can be opened or detached (z) without toggling d first.
         still_open = [e for e in data["done"] if e["open"]]
-        parts.append(self.items_table("💤 Done, session still open (z detaches)",
-                                      still_open, "green"))
-        if self.show_done:
-            parts.append(self.items_table(
-                "✔  Done / waiting on others",
-                [e for e in data["done"] if not e["open"]], "green"))
         self.hidden_done = 0 if self.show_done else \
             len(data["done"]) - len(still_open)
-        used = sum(self.height(p) for p in parts)
-        room = self.console.height - used - 16
-        parts.append(self.pick_table(data["pick"], max(3, room)))
-        if data["notes"]:
-            parts.append(self.notes(data["notes"]))
-        parts.append(self.activity(now))
-        parts.append(self.footer(data, now))
+        columns = [("🟡 Running", data["running"], "yellow"),
+                   ("⏭ Next tick", data["orch"], "blue"),
+                   ("🔴 Needs you", data["needs"], "red"),
+                   ("💤 Done", data["done"] if self.show_done else still_open,
+                    "green")]
+        tail = [self.notes(data["notes"])] if data["notes"] else []
+        tail += [self.activity(now), self.footer(data, now)]
+        # Everything measured: the board gets what is left after the pick
+        # tree's minimum, and the pick tree whatever the board did not take.
+        fixed = sum(self.height(p) for p in head + tail)
+        board = self.board(columns, self.console.height - fixed - PICK_MIN_LINES)
+        head.append(board)
+        pick_room = self.console.height - fixed - self.height(board) - 2
+        # The order j/k walk and h/l jump across: board columns, then picks.
+        self.groups = [[e["key"] for e in rows] for _, rows, _ in columns]
+        self.groups.append([e["key"] for e in data["pick"]])
+        self.selectable = [k for g in self.groups for k in g]
+        pick = self.pick_tree(data["pick"], max(PICK_MIN_LINES - 2, pick_room))
         # move() navigates by key, so a key listed twice would send ↓ back
         # to its first copy and trap the cursor. Keep the first of each.
         self.selectable = list(dict.fromkeys(self.selectable))
         if self.sel_key not in self.selectable:
             self.sel_key = self.selectable[0] if self.selectable else None
-        return Group(*[p for p in parts if p is not None])
+        return Group(*head, pick, *tail)
 
     def kitchen(self):
         """The kitchen-closed alert, alone and centered on the screen."""
@@ -611,11 +620,8 @@ class Dashboard:
                             height=self.console.height)
 
     def height(self, renderable):
-        if renderable is None:
-            return 0
-        if isinstance(renderable, Text):
-            return 1
-        return getattr(renderable, "row_count", 0) + 2
+        """Lines the renderable takes on this console."""
+        return len(self.console.render_lines(renderable, self.console.options))
 
     def header(self, data, hdr, now):
         t = Text()
@@ -652,65 +658,154 @@ class Dashboard:
         t.append(f"  ·  {time.strftime('%H:%M:%S')}", style="dim")
         return t
 
-    def items_table(self, title, rows, color):
-        if not rows:
-            return None
-        tb = Table(title=title, title_justify="left", title_style=f"bold {color}",
-                   box=box.SIMPLE_HEAD, expand=True, pad_edge=False,
-                   show_edge=False)
-        tb.add_column("", width=1, no_wrap=True)
-        tb.add_column("Item", no_wrap=True, style="bold")
-        tb.add_column("Title", ratio=3, no_wrap=True, overflow="ellipsis")
-        tb.add_column("State", no_wrap=True)
-        tb.add_column("CI", width=2, no_wrap=True, justify="center")
-        tb.add_column("Rnd", no_wrap=True, justify="right")
-        tb.add_column("Quiet", no_wrap=True, justify="right")
-        tb.add_column("Note", ratio=2, no_wrap=True, overflow="ellipsis")
-        for e in rows:
-            self.selectable.append(e["key"])
-            sel = e["key"] == self.sel_key
-            state = Text(e["kind"].lower())
-            if e["agent"]:
-                g, st = AGENT_GLYPH.get(e["agent"], ("?", "dim"))
-                state = Text.assemble((g + " ", st), e["kind"].lower())
-            ci = Text(*CI_GLYPH.get(e["checks"] or "", ("", "")))
-            rnd = f"{e['rounds'] or 0}/{MAX_REVIEW_ROUNDS}" \
-                if e["rounds"] is not None or e["driver"] == "agent" else ""
-            stalled = e["stalled"] or e["kind"] == "STALLED"
-            quiet = Text(ago(e["quiet"]), style="red" if stalled else "")
-            tb.add_row("▶" if sel else "", short(e["key"]),
-                       ("[draft] " if e["draft"] else "") + (e["title"] or ""),
-                       state, ci, rnd, quiet, e["note"],
-                       style="reverse" if sel else None)
-        return tb
+    def board(self, columns, budget):
+        """Four equal columns, always all shown: cards move, columns don't.
+        A column too tall for budget lines shows the cards around the selected
+        one and a "+N more" line for the rest."""
+        width = self.card_width()
+        cells = []
+        for title, rows, color in columns:
+            bodies = [self.card_body(e, width) for e in rows]
+            sel = next((i for i, e in enumerate(rows)
+                        if e["key"] == self.sel_key), None)
+            a, b = self.card_window([len(x) + 2 for x in bodies], budget - 1,
+                                    sel)
+            cards = [self.card(e, color, x)
+                     for e, x in zip(rows[a:b], bodies[a:b])]
+            if b - a < len(rows):
+                cards.append(Text(f"+{len(rows) - (b - a)} more", style="dim"))
+            cells.append(Group(Text(f"{title} ({len(rows)})", no_wrap=True,
+                                    overflow="ellipsis", style=f"bold {color}"),
+                               *(cards or [Text("—", style="dim")])))
+        # A one-cell gap between columns: the narrowest is card_width() + 4.
+        grid = Table.grid(expand=True)
+        row = []
+        for i, cell in enumerate(cells):
+            if i:
+                grid.add_column(width=1)
+                row.append("")
+            grid.add_column(ratio=1)
+            row.append(cell)
+        grid.add_row(*row)
+        return grid
 
-    def pick_table(self, rows, limit):
-        tb = Table(title=f"⚪ Pick next ({len(rows)})", title_justify="left",
-                   title_style="bold", box=box.SIMPLE_HEAD, expand=True,
-                   pad_edge=False, show_edge=False)
-        tb.add_column("", width=1, no_wrap=True)
-        tb.add_column("#", justify="right", no_wrap=True, style="dim")
-        tb.add_column("Item", no_wrap=True, style="bold")
-        tb.add_column("Title", ratio=1, no_wrap=True, overflow="ellipsis")
-        tb.add_column("Kind", no_wrap=True)
-        shown = rows
-        if self.sel_key in [e["key"] for e in rows[limit:]]:
-            idx = [e["key"] for e in rows].index(self.sel_key)
-            shown = rows[max(0, idx - limit + 1): idx + 1]
+    def card_window(self, heights, limit, sel):
+        """[a, b) of the cards shown: all when they fit in limit lines, else
+        the ones around the selected card that fit beside a "+N more" line."""
+        if sum(heights) <= limit:
+            return 0, len(heights)
+        budget = limit - 1
+        a, b = (sel, sel + 1) if sel is not None else (0, 0)
+        used = heights[a] if sel is not None else 0
+        grew = True
+        while grew:
+            grew = False
+            if b < len(heights) and used + heights[b] <= budget:
+                used += heights[b]
+                b += 1
+                grew = True
+            if a > 0 and used + heights[a - 1] <= budget:
+                a -= 1
+                used += heights[a]
+                grew = True
+        return a, b
+
+    def card_width(self):
+        """Text width inside a card: the narrowest board column less the
+        card's borders and padding."""
+        return max(4, (self.console.width - 3) // 4 - 4)
+
+    def two_lines(self, text, width, style=""):
+        """At most two lines of text, measured in cells, the second ellipsised."""
+        lines = list(Text(text).wrap(self.console, width)) or [Text("")]
+        if len(lines) > 2:
+            rest = Text(" ".join(line.plain for line in lines[1:]))
+            rest.truncate(width, overflow="ellipsis")
+            lines = [lines[0], rest]
+        if style:
+            for line in lines:
+                line.stylize(style)
+        return lines
+
+    def card_body(self, e, width):
+        """A card's lines inside its border: title, status, note."""
+        title = ("[draft] " if e["draft"] else "") + (e["title"] or "")
+        status = Text(no_wrap=True, overflow="ellipsis")
+        if e["agent"]:
+            g, st = AGENT_GLYPH.get(e["agent"], ("?", "dim"))
+            status.append(g + " ", style=st)
+        status.append(e["kind"].lower())
+        if e["checks"] in CI_GLYPH:
+            g, st = CI_GLYPH[e["checks"]]
+            status.append(f" {g}", style=st)
+        if e["rounds"] is not None or e["driver"] == "agent":
+            status.append(f" {e['rounds'] or 0}/{MAX_REVIEW_ROUNDS}")
+        stalled = e["stalled"] or e["kind"] == "STALLED"
+        status.append(f" {ago(e['quiet'])}", style="red" if stalled else "")
+        return (self.two_lines(title, width) + [status]
+                + self.two_lines(e["note"] or "", width, "dim"))
+
+    def card(self, e, color, body):
+        sel = e["key"] == self.sel_key
+        return Panel(Group(*body), title=Text(short(e["key"]), style="bold"),
+                     title_align="left", box=box.HEAVY if sel else box.ROUNDED,
+                     border_style=f"bold {color}" if sel else color,
+                     style="bold" if sel else "none", padding=(0, 1),
+                     expand=True)
+
+    def pick_tree(self, rows, limit):
+        """Pick next as a tree by repo. The # is the row's place in rows, which
+        `go N` and the orchestrator both count by, so rows are not re-sorted."""
+        nw = len(str(len(rows)))
+        rw = max((len(pick_ref(e["key"])) for e in rows), default=0)
+        kw = max((len(e["pick_kind"]) for e in rows), default=0)
+        width = self.console.width
+        lines = []   # (Text, entry), entry None on a repo's header line
+        for slug, grp in itertools.groupby(
+                enumerate(rows), key=lambda p: split_key(p[1]["key"])[0]):
+            grp = list(grp)
+            lines.append((Text.assemble((slug.rsplit("/", 1)[-1], "bold"),
+                                        (f"  {len(grp)}", "dim")), None))
+            for pos, (i, e) in enumerate(grp):
+                lines.append((self.pick_line(i + 1, e, pos == len(grp) - 1,
+                                             nw, rw, kw, width), e))
+        # Scroll only once the selection falls below the window.
+        sel = next((p for p, (_, e) in enumerate(lines)
+                    if e and e["key"] == self.sel_key), None)
+        start = sel - limit + 1 if sel is not None and sel >= limit else 0
+        if start and lines[start][1] is not None:
+            # Never open mid-repo: the repo's header takes the top row.
+            head = max(p for p in range(start) if lines[p][1] is None)
+            shown = [lines[head]] + lines[start + 1:start + limit]
         else:
-            shown = rows[:limit]
-        for e in rows:
-            self.selectable.append(e["key"])
-        for e in shown:
-            n = rows.index(e) + 1
-            sel = e["key"] == self.sel_key
-            tb.add_row("▶" if sel else "", str(n), short(e["key"]),
-                       e["title"] or "", e["pick_kind"],
-                       style="reverse" if sel else None)
-        if len(rows) > len(shown):
-            tb.add_row("", "", Text(f"+{len(rows) - len(shown)} more (↑/↓ to "
-                                    "scroll)", style="dim"), "", "")
-        return tb
+            shown = lines[start:start + limit]
+        if len(shown) > 1 and shown[-1][1] is None:
+            shown.pop()   # a header with none of its rows under it
+        out = [t for t, _ in shown]
+        hidden = len(rows) - sum(1 for _, e in shown if e)
+        if hidden:
+            out.append(Text(f"+{hidden} more (↑/↓ to scroll)", style="dim"))
+        return Group(Text(f"⚪ Pick next ({len(rows)})", style="bold"), *out)
+
+    def pick_line(self, n, e, last, nw, rw, kw, width):
+        sel = e["key"] == self.sel_key
+        # Marker, connector, number, ref and kind keep fixed columns; the
+        # title takes the middle, cut by cell width so wide glyphs fit.
+        fixed = 2 + 3 + nw + 2 + rw + 2
+        room = max(1, width - 1 - fixed - 2 - kw)
+        title = Text(e["title"] or "")
+        title.truncate(room, overflow="ellipsis", pad=True)
+        line = Text()
+        line.append("▶ " if sel else "  ")
+        line.append("└─ " if last else "├─ ", style="dim")
+        line.append(f"{n:>{nw}}  ", style="dim")
+        line.append(f"{pick_ref(e['key']):<{rw}}  ", style="bold")
+        line.append(title)
+        line.append("  ")
+        line.append(e["pick_kind"].ljust(kw), style="dim")
+        if sel:
+            line.stylize("reverse")
+        return line
 
     def notes(self, rows):
         t = Text(" notes: ", style="dim")
@@ -791,6 +886,19 @@ class Dashboard:
         self.sel_key = self.selectable[max(0, min(len(self.selectable) - 1,
                                                   i + d))]
 
+    def jump(self, d):
+        """h/l: the first card of the previous or next non-empty column, or of
+        the pick list past the last column."""
+        cur = next((i for i, g in enumerate(self.groups) if self.sel_key in g),
+                   None)
+        if cur is None:
+            return
+        i = cur + d
+        while 0 <= i < len(self.groups) and not self.groups[i]:
+            i += d
+        if 0 <= i < len(self.groups):
+            self.sel_key = self.groups[i][0]
+
     def ask(self, action, key, prompt):
         """Second press of the same key within CONFIRM_SECS confirms."""
         now = time.time()
@@ -844,6 +952,10 @@ class Dashboard:
             self.move(1)
         elif key in ("k", "\x1b[A"):
             self.move(-1)
+        elif key in ("h", "\x1b[D"):
+            self.jump(-1)
+        elif key in ("l", "\x1b[C"):
+            self.jump(1)
         elif key in ("\x1b[5~",):
             self.move(-10)
         elif key in ("\x1b[6~",):
