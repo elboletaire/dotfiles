@@ -89,10 +89,14 @@ if [[ "$OSTYPE" == darwin* ]]; then
 else
   export PNPM_HOME="$HOME/.local/share/pnpm"
 fi
-case ":$PATH:" in
-  *":$PNPM_HOME/bin:"*) ;;
-  *) export PATH="$PNPM_HOME/bin:$PATH" ;;
-esac
+# pnpm 10 puts global bins in $PNPM_HOME itself, newer versions in $PNPM_HOME/bin
+for dir in "$PNPM_HOME" "$PNPM_HOME/bin"; do
+  case ":$PATH:" in
+    *":$dir:"*) ;;
+    *) export PATH="$dir:$PATH" ;;
+  esac
+done
+unset dir
 # pnpm end
 
 # opencode
