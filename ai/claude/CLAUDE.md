@@ -6,6 +6,8 @@ Keep PR descriptions under ~15 lines of markdown (code blocks included): what ch
 
 Review comments follow the same rule: each finding in about three sentences. Say what's wrong, what it breaks, and the fix. Don't walk through every step of the reasoning or restate what the diff shows. Mark nits with "Nit:" and keep them shorter still. The review's summary body gets the same treatment.
 
+Keep issues under ~15 lines of markdown too, code blocks included. Open with the problem in a sentence or two. For a bug, add what happens, what should happen and the shortest way to reproduce it. For a feature, add why it's needed and what "done" looks like. Then add pointers to the relevant code, PRs or issues, and a proposed approach if there's one. Quote only the log lines that matter, label guesses as guesses, and skip anything the title already says.
+
 When I ask you to post a comment on a PR we've just reviewed, post it as a review by default, not as a regular comment. Also, make sure to mark it as either "Request changes" or "Approve", depending on the outcome of the review.
 
 When you create a worktree or a new work branch, `git fetch` first and branch off the remote base, never a possibly stale local branch: `git worktree add --no-track -b <branch> <repo>/.worktrees/<branch with / as -> origin/<base>`. Only when `<base>` is not on the remote, or there is no remote, use the local branch instead. To work on a branch that already exists on the remote (a PR, say), track it: `git worktree add --track -b <branch> <wt> origin/<branch>`. Never pull, check out or otherwise touch the main checkout: I edit it by hand.
