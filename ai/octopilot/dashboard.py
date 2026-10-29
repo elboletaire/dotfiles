@@ -85,12 +85,15 @@ ORCH_ROWS = {"MERGED": "cleanup + rebase fan-out", "REVIEW": "reboot for review"
              "FEEDBACK": "send address-feedback", "BOOTING": "send review prompt"}
 RUN_ROWS = {"WORKING"}
 DONE_ROWS = {"DONE", "GONE"}
+# Rows that keep a parked card out of Done, whatever the snapshot's age: each
+# needs the orchestrator or the user now.
+PARK_EXEMPT = {"MERGED", "CLOSED", "GONE", "FEEDBACK"}
 PICK_ROWS = {"PROPOSE"}
 NOTE_ROWS = {"UNCLONED", "STALE", "UNKNOWN"}
 REPORT_NEEDS = {"blocked", "failed", "stalled", "capped"}
 # Events after which the GitHub view is worth refreshing early.
 KICK_EVENTS = {"report", "spawn", "sent", "cleanup", "tick", "track", "detach",
-               "untrack", "decline", "merged"}
+               "park", "unpark", "untrack", "decline", "merged"}
 
 AGENT_GLYPH = {"running": ("◐", "yellow"), "waiting": ("⏸", "bold red"),
                "idle": ("○", "dim"), "stopped": ("■", "dim"),
@@ -405,6 +408,7 @@ class Model:
         out = {s: [] for s in ("needs", "orch", "running", "pick", "done",
                                "notes")}
         seen = set()
+        snap_at = snap.get("generated_at") or 0
 
         for row in snap.get("rows", []):
             kind, key = row.get("kind"), row.get("key")
@@ -417,7 +421,8 @@ class Model:
             # an issue re-keyed to its PR is only in its item's prev_keys.
             if kind in PICK_ROWS and (it is not None or key in declined):
                 continue
-            e = self.entry(row, cur_key, it, live, sessions, now, me)
+            parked = self.parked_done(row, it, snap_at)
+            e = self.entry(row, cur_key, it, live, sessions, now, me, parked)
             seen.add(cur_key)
             if kind in NOTE_ROWS:
                 out["notes"].append(e)
@@ -433,6 +438,8 @@ class Model:
                 if kind not in RUN_ROWS:
                     e["note"] = f"working again · was {kind.lower()}"
                 out["running"].append(e)
+            elif parked:
+                out["done"].append(e)
             elif kind in DONE_ROWS:
                 out["done"].append(e)
             elif e["needs"]:
@@ -449,8 +456,12 @@ class Model:
             if k in seen:
                 continue
             row = {"kind": "NEW", "key": k, "title": it.get("question")}
-            e = self.entry(row, k, it, live, sessions, now, me)
-            (out["needs"] if e["needs"] else out["running"]).append(e)
+            parked = self.parked_done(row, it, snap_at)
+            e = self.entry(row, k, it, live, sessions, now, me, parked)
+            if parked and e["agent"] != "running":
+                out["done"].append(e)
+            else:
+                (out["needs"] if e["needs"] else out["running"]).append(e)
 
         # Oldest wait first: the longer something has waited on you, the
         # more it is costing.
@@ -463,7 +474,19 @@ class Model:
                "orch": self.orch_target(state, sessions)}
         return out, hdr
 
-    def entry(self, row, key, it, live, sessions, now, me):
+    def parked_done(self, row, it, snap_at):
+        """Whether a parked card (`d`) sits in Done. An older row predates the
+        park; a newer one counts only while its snapshot item is still parked
+        (a revival clears it). PARK_EXEMPT kinds never do.
+        """
+        at = ((it or {}).get("parked") or {}).get("at")
+        if not at or row.get("kind") in PARK_EXEMPT:
+            return False
+        if snap_at < at:
+            return True
+        return bool((row.get("item") or {}).get("parked"))
+
+    def entry(self, row, key, it, live, sessions, now, me, parked=False):
         it = it or {}
         kind = row.get("kind")
         sess = it.get("session")
@@ -488,6 +511,8 @@ class Model:
         needs = (kind in NEEDS_ROWS or stalled
                  or (rep_live and rep.get("state") in rep_needs)
                  or (agent_state == "waiting" and kind not in DONE_ROWS))
+        if parked:
+            needs = False
         # Why it needs the user, for the desktop notification: one per reason.
         why = (kind if kind in NEEDS_ROWS else "stalled" if stalled
                else rep.get("state") if rep_live
@@ -497,6 +522,8 @@ class Model:
             note = f"{rep.get('state')}: {rep.get('msg') or ''}"
         elif stalled:
             note = "agent not reporting"
+        elif parked:
+            note = "parked"
         elif kind in ORCH_ROWS:
             note = f"next tick: {ORCH_ROWS[kind]}"
         elif kind == "NEW":
@@ -585,7 +612,7 @@ class Dashboard:
             head.append(Text(" ⏸  PAUSED — the orchestrator acts on nothing "
                              "until resumed (P)", style="bold black on yellow"))
         # Done rows that still hold a workspace or session stay on the board,
-        # so they can be opened or detached (z) without toggling d first.
+        # so they can be opened or detached (z) without toggling D first.
         still_open = [e for e in data["done"] if e["open"]]
         self.hidden_done = 0 if self.show_done else \
             len(data["done"]) - len(still_open)
@@ -906,7 +933,9 @@ class Dashboard:
         sel = next((e for rows in data.values() for e in rows
                     if e["key"] == self.sel_key), None)
         kind = sel["kind"] if sel else None
-        tracked = sel and sel["key"] in ((self.m.state or {}).get("items") or {})
+        items = (self.m.state or {}).get("items") or {}
+        tracked = sel and sel["key"] in items
+        parked = tracked and items[sel["key"]].get("parked")
         repo = self.sel_repo()
         keys = []
         if repo:
@@ -920,12 +949,14 @@ class Dashboard:
             keys += [("e", "re-review"), ("x", "ack")]
         if tracked:
             keys.append(("z", "detach"))
+            keys.append(("d", "undone" if parked else "done"))
         if not repo:
             keys += [("v", "agent"), ("t", "shell"), ("o", "browser")]
         keys += [("i", "investigate"), ("a", "prompter"),
                  ("r", "refresh"),
-                 ("d", f"done (+{self.hidden_done} hidden)" if self.hidden_done
-                  else "done"),
+                 ("D", "hide done" if self.show_done else
+                  f"show done (+{self.hidden_done} hidden)" if self.hidden_done
+                  else "show done"),
                  ("C", "open all" if self.any_collapsed() else "fold all"),
                  ("P", "pause"), ("q", "quit")]
         for k, what in keys:
@@ -1073,7 +1104,7 @@ class Dashboard:
         elif key == "r":
             self.m.kick.set()
             self.say("refreshing from GitHub…")
-        elif key == "d":
+        elif key == "D":
             self.show_done = not self.show_done
         elif key == "C":
             self.toggle_all()
@@ -1099,7 +1130,8 @@ class Dashboard:
             self.sel_key = self.repo_of[self.sel_key]
         elif not e:
             # A repo header has no row, so the row keys have nothing to act on.
-            if repo and key in ("v", "t", "o", "g", "n", "R", "e", "x", "z"):
+            if repo and key in ("v", "t", "o", "g", "n", "R", "e", "x", "z",
+                                "d"):
                 self.say("select a row, not a repo header")
             return True
         elif key in ("\r", "\n"):
@@ -1152,6 +1184,22 @@ class Dashboard:
             elif self.ask("z", e["key"], f"press z again to detach {e['key']} "
                           "(worktree kept, untracked)"):
                 self.run_scan("detach", e["key"])
+        elif key == "d":
+            it = ((self.m.state or {}).get("items") or {}).get(e["key"])
+            if it is None:
+                self.say("d only applies to tracked items")
+            elif e["kind"] in ("MERGED", "CLOSED", "GONE", "BOOTING"):
+                self.say(f"{e['kind']} rows can't be parked now")
+            elif e["kind"] == "FEEDBACK":
+                # Its pending feedback would revive the card on the next tick.
+                self.say("FEEDBACK rows can't be parked: the feedback is pending")
+            elif it.get("parked"):
+                if self.ask("d", e["key"], f"press d again to move {e['key']} "
+                            "out of Done"):
+                    self.run_scan("unpark", e["key"])
+            elif self.ask("d", e["key"], f"press d again to move {e['key']} to "
+                          "Done (session kept, slot freed)"):
+                self.run_scan("park", e["key"])
         return True
 
     def run_scan(self, *args):

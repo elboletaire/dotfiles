@@ -495,6 +495,12 @@ def last_own_review(detail, me):
     return (last.get("commit") or {}).get("oid") or None
 
 
+def review_requested(detail, me):
+    """Whether `me` has a review request pending on the PR in `detail`."""
+    return me in [(r.get("login") or r.get("name"))
+                  for r in (detail or {}).get("reviewRequests") or []]
+
+
 def pr_review_comments(detail):
     """REST review comments for the PR in `detail` (gh pr view has none)."""
     url = (detail or {}).get("url") or ""
@@ -644,9 +650,13 @@ def scan(state, refresh=False, info=None):
         details = {k: f.result() for k, f in tracked.items()}
 
     meta = {}
+    # Revivals are reported, not logged, here: snapshot() runs this on a
+    # copy and must not write the event log. dispatch() logs them on save.
+    revived = []
     if info is not None:
         info["details"] = details
         info["meta"] = meta
+        info["revived"] = revived
 
     rows = []
     active = 0
@@ -769,6 +779,25 @@ def scan(state, refresh=False, info=None):
         if not d:
             rows.append(("UNKNOWN", k, f"{smeta} -> gh pr view failed"))
             continue
+        # A card parked with `d` holds no slot. It is still tracked, so its
+        # merge is still seen, and new activity brings it back.
+        if it.get("parked"):
+            revive = None
+            if it["mode"] == "fix":
+                if new_feedback(d, it.get("feedback_seen")):
+                    revive = "new feedback"
+            elif review_requested(d, me) and (
+                    not it["parked"].get("requested")
+                    or head != it["parked"].get("head")):
+                revive = ("review requested" if not it["parked"].get("requested")
+                          else "new commits, review still requested")
+            if revive:
+                it.pop("parked")
+                revived.append((k, revive))
+            else:
+                rows.append(("DONE", k, f"mode={it['mode']} {smeta} parked by you "
+                                        "-> waiting on merge or new activity"))
+                continue
         active += 1
         rv = it.get("reviewed_sha") or ""
 
@@ -863,8 +892,7 @@ def scan(state, refresh=False, info=None):
         # quiet for RE_REVIEW_QUIET_HOURS, so the PR cannot sit in limbo.
         if it["mode"] == "comment" and rv:
             running = live.get(sess, {}).get("state") == "running"
-            requested = me in [(r.get("login") or r.get("name"))
-                               for r in (d.get("reviewRequests") or [])]
+            requested = review_requested(d, me)
             if running:
                 rows.append(("WORKING", k, f"mode=comment {smeta} "
                                            "reviewing, not posted yet"))
@@ -1431,7 +1459,7 @@ ROW_FIELD = re.compile(r"(\w+)=(\S+)")
 SNAPSHOT_ITEM_FIELDS = ("mode", "branch", "session", "pr", "driver", "phase",
                         "review_rounds", "last_seen", "last_note",
                         "last_report", "added", "question", "reviewed_sha",
-                        "read_only")
+                        "read_only", "parked")
 
 
 def parse_extra(extra):
@@ -1678,7 +1706,11 @@ def main():
 
 def dispatch(cmd, args, state):
     if cmd in ("scan", "refresh"):
-        rows, active, n, untracked = scan(state, refresh=(cmd == "refresh"))
+        info = {}
+        rows, active, n, untracked = scan(state, refresh=(cmd == "refresh"),
+                                          info=info)
+        for k, reason in info["revived"]:
+            log_event("unpark", k, reason=reason)
         state["last_tick"] = int(time.time())
         # The orchestrator is whoever runs the tick; remembering it here lets
         # `report` and the dashboard reach it without being told.
@@ -1837,6 +1869,44 @@ def dispatch(cmd, args, state):
             return 0
         print(f"unknown item {k}", file=sys.stderr)
         return 1
+    if cmd == "park":
+        # park <key>: the dashboard's `d` moves a card to Done. Unlike detach
+        # the workspace stays open and the item stays tracked; it just holds
+        # no slot until new activity revives it (see scan()).
+        k = args[1]
+        it = state["items"].get(k)
+        if it is None:
+            print(f"unknown item {k}", file=sys.stderr)
+            return 1
+        if not it.get("pr"):
+            print(f"{k} has no PR yet, nothing to park", file=sys.stderr)
+            return 1
+        d = pr_detail(k.split("#")[0], it["pr"])
+        if d is None:
+            print(f"gh pr view failed for {k}", file=sys.stderr)
+            return 1
+        # The head and the pending request are what a later re-request is
+        # measured against; the stamp is what new feedback is measured from.
+        it["parked"] = {"at": int(time.time()), "head": d.get("headRefOid") or None,
+                        "requested": review_requested(d, whoami(state))}
+        it.setdefault("feedback_seen", time.strftime("%Y-%m-%dT%H:%M:%SZ",
+                                                     time.gmtime()))
+        save(state)
+        log_event("park", k)
+        print(f"parked {k} session={sid(it.get('session'))} "
+              "-> workspace kept, holds no slot")
+        return 0
+    if cmd == "unpark":
+        k = args[1]
+        it = state["items"].get(k)
+        if it is None:
+            print(f"unknown item {k}", file=sys.stderr)
+            return 1
+        it.pop("parked", None)
+        save(state)
+        log_event("unpark", k)
+        print(f"unparked {k} -> holds a slot again")
+        return 0
     if cmd == "detach":
         # detach <key>: park an item without losing its work. Closes its herdr
         # workspace (agent stopped, worktree and branch kept) and drops the
@@ -1970,7 +2040,7 @@ def dispatch(cmd, args, state):
 
     print(f"unknown command: {cmd}", file=sys.stderr)
     print("usage: scan.sh [scan|refresh|status|pause|resume|decline|undecline|"
-          "track|untrack|detach|set-phase|mark-reviewed|claim-round|heartbeat|"
+          "track|untrack|detach|park|unpark|set-phase|mark-reviewed|claim-round|heartbeat|"
           "reset-rounds|review-base|"
           "mark-merged|"
           "render|spawn|"

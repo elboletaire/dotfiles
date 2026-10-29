@@ -82,7 +82,7 @@ It needs `uv` (which provides `rich`); there is nothing else to install.
 | 🔴 Needs you | `CAPPED`, `READY`, `PUSHED`, `STALLED`, `CLOSED`, agents waiting on a question, and agents whose last report was `blocked`/`failed`/`stalled`/`capped` |
 | ⏭ Next tick | `MERGED`, `REVIEW`, `FEEDBACK`, `BOOTING` -- what the orchestrator will do on its next tick |
 | 🟡 Running | `WORKING`, and anything spawned since the last GitHub refresh |
-| ✔ Done | `DONE`, `GONE` (hidden; `d` toggles) |
+| ✔ Done | `DONE`, `GONE`, and cards you parked with `d` (they keep their workspace and hold no slot; new feedback or a re-requested review brings them back). Done rows without a workspace are hidden; `D` shows them |
 | ⚪ Pick next | `PROPOSE` |
 
 Agent state comes from herdr every 3s, heartbeats, rounds and reports the moment
@@ -107,5 +107,6 @@ dashboards share one refresh.
 | `P` | pause / resume octopilot (press twice) |
 | `z` | detach a tracked item: closes its workspace, keeps the worktree, stops tracking it (press twice) |
 | `r` | refresh from GitHub now |
-| `d` | show / hide done rows (DONE, GONE) |
+| `d` | on a tracked card: move it to Done / back (press twice). It keeps its workspace and holds no slot; the orchestrator still merges and cleans up |
+| `D` | show / hide done rows (DONE, GONE) |
 | `q` | quit |
