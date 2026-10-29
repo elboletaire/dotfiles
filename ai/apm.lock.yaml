@@ -1,5 +1,6 @@
 lockfile_version: '1'
-apm_version: 0.31.0
+generated_at: '2026-10-29T13:54:08.308295+00:00'
+apm_version: 0.28.0
 dependencies:
 - repo_url: anthropics/skills
   name: skill-creator
@@ -477,6 +478,28 @@ dependencies:
     .agents/skills/find-skills/SKILL.md: sha256:c00eeea0e13e74fe4a9d84ba0a8542205a1b736d65f13134fe1a6647eb14976f
     .claude/skills/find-skills/SKILL.md: sha256:c00eeea0e13e74fe4a9d84ba0a8542205a1b736d65f13134fe1a6647eb14976f
   content_hash: sha256:913b9d37d0d54047dd65222bb8c67b2bf04e3cb87dcad1729068d7a8b2c8c396
+- repo_url: vocdoni/skills
+  name: comments
+  host: github.com
+  resolved_commit: 15ffa2dc78d1a46c08f20ebe7ddabd0fd8ad9ffc
+  resolved_ref: 15ffa2dc78d1a46c08f20ebe7ddabd0fd8ad9ffc
+  version: unknown
+  virtual_path: plugins/vocdoni-comments/skills/comments
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/comments
+  - .agents/skills/comments/SKILL.md
+  - .agents/skills/comments/trim.md
+  - .claude/skills/comments
+  - .claude/skills/comments/SKILL.md
+  - .claude/skills/comments/trim.md
+  deployed_file_hashes:
+    .agents/skills/comments/SKILL.md: sha256:c241f20fc237cdb997364b2f356ca8d43ef416ef16fd5dae0adc2e005de25ce4
+    .agents/skills/comments/trim.md: sha256:52608169fbdfff0b51975bf76839e81bb4b29f27b21697393fde2175f502aa5c
+    .claude/skills/comments/SKILL.md: sha256:c241f20fc237cdb997364b2f356ca8d43ef416ef16fd5dae0adc2e005de25ce4
+    .claude/skills/comments/trim.md: sha256:52608169fbdfff0b51975bf76839e81bb4b29f27b21697393fde2175f502aa5c
+  content_hash: sha256:e8a4e34d81e7dacd200a7c42310c74510819f0cc651b645c12e961b13853693b
 deployments:
 - kind: project-relative
   target: agent-skills
@@ -559,6 +582,33 @@ deployments:
   - obra/superpowers/skills/brainstorming
   active_owner: obra/superpowers/skills/brainstorming
   content_hash: sha256:6ffcb038b53254bd31debaa15e12dcd4ff24bd63d690e0b644ac6396701cf2e2
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/comments
+  runtime: null
+  scope: project
+  owners:
+  - vocdoni/skills/plugins/vocdoni-comments/skills/comments
+  active_owner: vocdoni/skills/plugins/vocdoni-comments/skills/comments
+  content_hash: null
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/comments/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - vocdoni/skills/plugins/vocdoni-comments/skills/comments
+  active_owner: vocdoni/skills/plugins/vocdoni-comments/skills/comments
+  content_hash: sha256:c241f20fc237cdb997364b2f356ca8d43ef416ef16fd5dae0adc2e005de25ce4
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/comments/trim.md
+  runtime: null
+  scope: project
+  owners:
+  - vocdoni/skills/plugins/vocdoni-comments/skills/comments
+  active_owner: vocdoni/skills/plugins/vocdoni-comments/skills/comments
+  content_hash: sha256:52608169fbdfff0b51975bf76839e81bb4b29f27b21697393fde2175f502aa5c
 - kind: project-relative
   target: agent-skills
   value: .agents/skills/context7
@@ -1342,6 +1392,33 @@ deployments:
   - obra/superpowers/skills/brainstorming
   active_owner: obra/superpowers/skills/brainstorming
   content_hash: sha256:6ffcb038b53254bd31debaa15e12dcd4ff24bd63d690e0b644ac6396701cf2e2
+- kind: project-relative
+  target: claude
+  value: .claude/skills/comments
+  runtime: null
+  scope: project
+  owners:
+  - vocdoni/skills/plugins/vocdoni-comments/skills/comments
+  active_owner: vocdoni/skills/plugins/vocdoni-comments/skills/comments
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/comments/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - vocdoni/skills/plugins/vocdoni-comments/skills/comments
+  active_owner: vocdoni/skills/plugins/vocdoni-comments/skills/comments
+  content_hash: sha256:c241f20fc237cdb997364b2f356ca8d43ef416ef16fd5dae0adc2e005de25ce4
+- kind: project-relative
+  target: claude
+  value: .claude/skills/comments/trim.md
+  runtime: null
+  scope: project
+  owners:
+  - vocdoni/skills/plugins/vocdoni-comments/skills/comments
+  active_owner: vocdoni/skills/plugins/vocdoni-comments/skills/comments
+  content_hash: sha256:52608169fbdfff0b51975bf76839e81bb4b29f27b21697393fde2175f502aa5c
 - kind: project-relative
   target: claude
   value: .claude/skills/context7

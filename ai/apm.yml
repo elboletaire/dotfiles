@@ -57,3 +57,7 @@ dependencies:
       path: skills/herdr
       alias: herdr
       ref: 7b116c05bfda646af39d2524c54e70c751f57ee8
+    - git: https://github.com/vocdoni/skills.git
+      path: plugins/vocdoni-comments/skills/comments
+      alias: comments
+      ref: 15ffa2dc78d1a46c08f20ebe7ddabd0fd8ad9ffc
