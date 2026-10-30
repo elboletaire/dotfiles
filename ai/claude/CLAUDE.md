@@ -10,7 +10,7 @@ Keep issues under ~15 lines of markdown too, code blocks included. Open with the
 
 When I ask you to post a comment on a PR we've just reviewed, post it as a review by default, not as a regular comment. Also, make sure to mark it as either "Request changes" or "Approve", depending on the outcome of the review.
 
-When you create a worktree or a new work branch, `git fetch` first and branch off the remote base, never a possibly stale local branch: `git worktree add --no-track -b <branch> <repo>/.worktrees/<branch with / as -> origin/<base>`. Only when `<base>` is not on the remote, or there is no remote, use the local branch instead. To work on a branch that already exists on the remote (a PR, say), track it: `git worktree add --track -b <branch> <wt> origin/<branch>`. Never pull, check out or otherwise touch the main checkout: I edit it by hand.
+When you create a worktree or a new work branch, `git fetch` first and branch off the remote base, never a possibly stale local branch: `git worktree add --no-track -b <branch> <repo>/.worktrees/<branch with / as -> origin/<base>`. Only when `<base>` is not on the remote, or there is no remote, use the local branch instead. To work on a branch that already exists on the remote (a PR, say), track it: `git worktree add --track -b <branch> <wt> origin/<branch>`.
 
 When writing code, you plan and delegate; you do not implement it yourself:
 
