@@ -692,6 +692,12 @@ def scan(state, refresh=False, info=None):
 
         if it.get("phase") == "booting":
             active += 1
+            # A reboot whose wait timed out leaves a busy agent: a BOOTING row
+            # would have the orchestrator prompt it mid-task.
+            if live.get(sess, {}).get("state") == "running":
+                rows.append(("WORKING", k, f"mode={it['mode']} {smeta} "
+                                           "booting, agent not idle yet"))
+                continue
             # A comment item that was already reviewed gets a follow-up review
             # scoped to the author's new commits, not a second full review.
             # Items tracked before reviewed_sha was seeded fall back to GitHub.
@@ -1575,11 +1581,17 @@ def reboot(state, k):
     if not ok:
         print(f"{k}: /clear failed: {err}", file=sys.stderr)
         return 4 if err == "agent_blocked" else 1
-    herdr(["agent", "wait", target, "--until", "idle", "--timeout",
-           "60000"], timeout=90)
+    code, _, raw = herdr(["agent", "wait", target, "--until", "idle",
+                          "--timeout", "60000"], timeout=90)
     it["phase"] = "booting"
     save(state)
     log_event("reboot", k)
+    # Still booting either way; a non-zero exit tells the orchestrator not to
+    # send the prompt in this same tick to an agent that is not idle yet.
+    if code != 0:
+        print(f"{k} cleared but not idle yet -> booting: {raw}",
+              file=sys.stderr)
+        return 3
     print(f"{k} rebooted -> booting")
     return 0
 
