@@ -12,8 +12,10 @@ A read-only view over three sources, each refreshed at its own pace:
 - GitHub, through `scan.py snapshot` (a scan that saves nothing), every
   DASHBOARD_REFRESH_SECS and right after any event that changes the table.
 
-It never acts on the table: the orchestrator does. The only things it sends
-are the ones you ask for (go/no to the orchestrator, pause/resume).
+It never acts on the table: the orchestrator does. The things it sends are the
+ones you ask for (go/no to the orchestrator, pause/resume), and a `request
+tick` doorbell when the table has Next tick work the orchestrator has not
+been woken for.
 Run it through dashboard.sh so config.sh is loaded.
 """
 import collections
@@ -52,6 +54,16 @@ SNAPSHOT_LOCK = SNAPSHOT_FILE + ".lock"
 # dashboard so only one of them notifies.
 NOTIFIED_FILE = os.path.join(STATE_DIR, "notified.json")
 NOTIFIED_LOCK = NOTIFIED_FILE + ".lock"
+# The Next tick rows the orchestrator was already woken for, by row key, as
+# [kind, head, *WAKE_FIELDS]: one doorbell per change, shared by dashboards.
+# A re-request on the same head only shows through its reviewed/round fields.
+WAKE_FIELDS = ("since", "reviewed", "round")
+WOKEN_FILE = os.path.join(STATE_DIR, "woken.json")
+WOKEN_LOCK = WOKEN_FILE + ".lock"
+# GitHub notifications watermark, shared so whichever dashboard polls next
+# carries on from it; only the lock holder polls.
+NOTIFY_WATCH_FILE = os.path.join(STATE_DIR, "notifications.json")
+NOTIFY_LOCK = os.path.join(STATE_DIR, "notifications.lock")
 NOTIFY_WHY = {"READY": "ready to merge", "CAPPED": "out of review rounds",
               "PUSHED": "stale: pushed, never re-requested",
               "STALLED": "agent not reporting", "stalled": "agent not reporting",
@@ -59,6 +71,7 @@ NOTIFY_WHY = {"READY": "ready to merge", "CAPPED": "out of review rounds",
               "failed": "agent's CI is failing", "capped": "out of review rounds",
               "asking": "agent is asking something"}
 REFRESH_SECS = int(os.environ.get("DASHBOARD_REFRESH_SECS", "120"))
+NOTIFY_POLL_SECS = int(os.environ.get("NOTIFY_POLL_SECS", "60"))
 MAX_REVIEW_ROUNDS = int(os.environ.get("MAX_REVIEW_ROUNDS", "3"))
 AGENT_STALL_MIN = int(os.environ.get("AGENT_STALL_MIN", "35"))
 PLUGIN_ID = "elboletaire.octopilot"
@@ -125,6 +138,16 @@ def read_json(path, default=None):
         return default
 
 
+def snapshot_rows():
+    """The well-formed rows of snapshot.json, or none."""
+    snap = read_json(SNAPSHOT_FILE)
+    rows = snap.get("rows") if isinstance(snap, dict) else None
+    if not isinstance(rows, list):
+        return []
+    return [r for r in rows
+            if isinstance(r, dict) and isinstance(r.get("key"), str)]
+
+
 def ago(secs):
     if secs is None:
         return "–"
@@ -150,6 +173,59 @@ def desktop(title, body):
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except OSError:
         pass
+
+
+def poll_notifications(watch):
+    """One conditional read of the user's notifications, updating `watch`
+    (Last-Modified, newest updated_at). True when something is newer than the
+    newest seen; the first read only records it. gh exits 1 on a 304, so the
+    status line decides, not the exit code."""
+    args = ["gh", "api", "-i"]
+    if watch.get("modified"):
+        args += ["-H", f"If-Modified-Since: {watch['modified']}"]
+    _, out, _ = sh(args + ["notifications"])
+    head, _, body = out.replace("\r\n", "\n").partition("\n\n")
+    lines = head.splitlines()
+    # No status line: gh failed (no auth, no network).
+    if not lines or not lines[0].startswith("HTTP/"):
+        return False
+    for line in lines[1:]:
+        name, _, value = line.partition(":")
+        if name.lower() == "last-modified":
+            watch["modified"] = value.strip()
+    if lines[0].split()[1:2] != ["200"]:
+        return False
+    try:
+        items = json.loads(body)
+    except ValueError:
+        return False
+    newest = max([watch.get("newest", "")]
+                 + [n.get("updated_at") or "" for n in items])
+    fresh = "newest" in watch and newest > watch["newest"]
+    watch["newest"] = newest
+    return fresh
+
+
+def check_notifications():
+    """poll_notifications under a lock, so one dashboard polls for all of
+    them. The watermark is persisted; a busy lock means another one polls."""
+    os.makedirs(STATE_DIR, exist_ok=True)
+    with open(NOTIFY_LOCK, "w") as lk:
+        try:
+            fcntl.flock(lk.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            return False
+        watch = read_json(NOTIFY_WATCH_FILE)
+        if not isinstance(watch, dict):
+            watch = {}
+        before = dict(watch)
+        fresh = poll_notifications(watch)
+        if watch != before or not os.path.exists(NOTIFY_WATCH_FILE):
+            tmp = f"{NOTIFY_WATCH_FILE}.tmp.{os.getpid()}"
+            with open(tmp, "w") as fh:
+                json.dump(watch, fh)
+            os.replace(tmp, NOTIFY_WATCH_FILE)
+        return fresh
 
 
 def split_key(key):
@@ -306,7 +382,7 @@ class Model:
     def github_loop(self):
         force = False
         while True:
-            self.refresh_snapshot(force)
+            self.github_pass(force)
             force = False
             deadline = time.time() + REFRESH_SECS
             while time.time() < deadline:
@@ -317,6 +393,74 @@ class Model:
                         time.sleep(wait)
                     force = True
                     break
+
+    def github_pass(self, force):
+        """One snapshot and doorbell pass; an error must not end the loop."""
+        try:
+            self.refresh_snapshot(force)
+            self.wake_orchestrator()
+        except Exception:
+            # Silent like notify_loop: the next pass retries.
+            pass
+
+    def wake_orchestrator(self):
+        """Ring the orchestrator's doorbell with one `request tick` for Next
+        tick rows it was not woken for. Nothing rings while paused."""
+        state = read_json(STATE_FILE)
+        if isinstance(state, dict) and state.get("paused"):
+            return
+        rows = snapshot_rows()
+        present = {r["key"] for r in rows}
+        os.makedirs(STATE_DIR, exist_ok=True)
+        with open(WOKEN_LOCK, "w") as lk:
+            fcntl.flock(lk.fileno(), fcntl.LOCK_EX)
+            first = not os.path.exists(WOKEN_FILE)
+            woken = read_json(WOKEN_FILE)
+            if not isinstance(woken, dict):
+                woken = {}
+            rung = []
+            for r in rows:
+                if r.get("kind") not in ORCH_ROWS:
+                    continue
+                old = woken.get(r["key"])
+                if not (isinstance(old, list)
+                        and len(old) == 2 + len(WAKE_FIELDS)):
+                    old = [None, ""] + [None] * len(WAKE_FIELDS)
+                fields = r.get("fields")
+                if not isinstance(fields, dict):
+                    fields = {}
+                # An empty head is unknown (a failed details fetch): keep the
+                # one already rung for, so a flip to "" does not ring again.
+                cur = [r.get("kind"), r.get("head") or old[1]]
+                cur += [fields.get(f) for f in WAKE_FIELDS]
+                if cur != old:
+                    rung.append((r["key"], cur))
+            # A failed request is not recorded, so the next refresh retries it.
+            if rung and sh([sys.executable, os.path.join(DIR, "scan.py"),
+                            "request", "tick"])[0] != 0:
+                rung = []
+            # Entries stay while their key is in the snapshot at all, so a row
+            # bouncing through UNKNOWN or STALE does not ring again on return.
+            out = {k: woken[k] for k in woken if k in present}
+            out.update(rung)
+            if out != woken or first:
+                tmp = f"{WOKEN_FILE}.tmp.{os.getpid()}"
+                with open(tmp, "w") as fh:
+                    json.dump(out, fh)
+                os.replace(tmp, WOKEN_FILE)
+
+    def notify_loop(self):
+        """Kick the GitHub loop when the user's notifications bring something
+        new, so a review request or a comment reaches the orchestrator within
+        about a minute, not at the next scheduled refresh."""
+        while True:
+            try:
+                if check_notifications():
+                    self.kick.set()
+            except Exception:
+                # Silent by design: the snapshot still catches up on its own.
+                pass
+            time.sleep(NOTIFY_POLL_SECS)
 
     def agents_loop(self):
         last_sessions = 0
@@ -380,7 +524,8 @@ class Model:
                 os.replace(tmp, NOTIFIED_FILE)
 
     def start(self):
-        for fn in (self.github_loop, self.agents_loop, self.publish_loop):
+        for fn in (self.github_loop, self.agents_loop, self.publish_loop,
+                   self.notify_loop):
             threading.Thread(target=fn, daemon=True).start()
 
     # -- view

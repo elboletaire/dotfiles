@@ -88,7 +88,9 @@ It needs `uv` (which provides `rich`); there is nothing else to install.
 Agent state comes from herdr every 3s, heartbeats, rounds and reports the moment
 they are written, and GitHub (PR state, CI) every `DASHBOARD_REFRESH_SECS`
 (config.sh, 120s) or right after an event that changes the table. Several open
-dashboards share one refresh.
+dashboards share one refresh. GitHub notifications are polled every 60s
+(`NOTIFY_POLL_SECS`) and trigger an early refresh; a new Next tick row rings the
+orchestrator's doorbell once (`request tick`).
 
 ## Keys
 

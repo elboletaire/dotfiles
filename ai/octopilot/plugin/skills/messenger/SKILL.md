@@ -305,6 +305,11 @@ Two kinds of message queue in the inbox: agent reports, as a line starting
   prints every pending message, oldest first, and clears them. A doorbell
   with an empty inbox is normal (a repeat after the log is trimmed); do
   nothing.
+- `REQUEST tick` means the dashboard saw new work in its Next tick column (a
+  merge, a re-requested review, feedback, a booting agent). Run a full tick
+  now, exactly as a scheduled one: scan, act on the rows, and end with the
+  usual `ScheduleWakeup` per Pacing. Several in one read are one tick; while
+  paused it acts on nothing, like any tick.
 - Handle `OCTOPILOT` lines with the table below. Handle a `REQUEST` exactly as
   if the user had typed that command to you (`go`, `no`, `re-review`,
   `/investigate`, ...), with the same rules, wind-down included. A trailing
