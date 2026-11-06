@@ -17,20 +17,20 @@ act on them when the user asks.
 
 ## Tools
 
-`T=~/.dotfiles/ai/taller/taller.py`, run with `python3`. Every command
+`T=~/.dotfiles/ai/taller/taller.py`, run with `uv run --quiet --script`. Every command
 reads the projects fresh (about 2 seconds).
 
 | Command | |
 |---|---|
-| `python3 $T` | one line per project: branch, dirty, ahead, worktrees, last touch, remote, agents, flags |
-| `python3 $T --json` | the same, in full |
-| `python3 $T sessions` | every open herdr session: agent, state, where (`<project>` or `<project> ⑂ <branch>`), tool |
-| `python3 $T show <project> [--worktree <branch>]` | one folder: agents, last exchange, last commits, changed files, worktrees |
-| `python3 $T resume <project> [--worktree <branch>] [--agent-args <args>]` | its last conversation again, as a named herdr agent |
-| `python3 $T new <project> [--worktree <branch>] [--prompt <text>] [--agent-args <args>]` | a fresh claude there |
-| `python3 $T worktree <project> <branch> [--prompt <text>] [--agent-args <args>]` | fetch, a new untracked branch off `origin/<current branch>` (the local one when origin lacks it) in `<repo>/.worktrees/`, its own workspace and claude |
-| `python3 $T remove <project> --worktree <branch> [--force]` | close the worktree's herdr session and workspace, `git worktree remove` it and delete its local branch; never a whole project. Refuses, saying what would be lost, when it has uncommitted files or commits on no remote, unless `--force` |
-| `python3 $T prompt <agent> <text>` | type a message into a session and send it |
+| `uv run --quiet --script $T` | one line per project: branch, dirty, ahead, worktrees, last touch, remote, agents, flags |
+| `uv run --quiet --script $T --json` | the same, in full |
+| `uv run --quiet --script $T sessions` | every open herdr session: agent, state, where (`<project>` or `<project> ⑂ <branch>`), tool |
+| `uv run --quiet --script $T show <project> [--worktree <branch>]` | one folder: agents, last exchange, last commits, changed files, worktrees |
+| `uv run --quiet --script $T resume <project> [--worktree <branch>] [--agent-args <args>]` | its last conversation again, as a named herdr agent |
+| `uv run --quiet --script $T new <project> [--worktree <branch>] [--prompt <text>] [--agent-args <args>]` | a fresh claude there |
+| `uv run --quiet --script $T worktree <project> <branch> [--prompt <text>] [--agent-args <args>]` | fetch, a new untracked branch off `origin/<current branch>` (the local one when origin lacks it) in `<repo>/.worktrees/`, its own workspace and claude |
+| `uv run --quiet --script $T remove <project> --worktree <branch> [--force]` | close the worktree's herdr session and workspace, `git worktree remove` it and delete its local branch; never a whole project. Refuses, saying what would be lost, when it has uncommitted files or commits on no remote, unless `--force` |
+| `uv run --quiet --script $T prompt <agent> <text>` | type a message into a session and send it |
 | `herdr agent read <agent>` | what a session's screen shows now (read-only) |
 
 `--agent-args` passes extra claude arguments to that session, after

@@ -14,6 +14,8 @@
 set -euo pipefail
 H="${HERDR_BIN_PATH:-herdr}"
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# macOS /bin/bash is 3.2 and the system python3 is 3.9: Python runs through uv.
+py() { uv run --no-project --quiet --python '>=3.11' python "$@"; }
 LABEL="${TALLER_LABEL:-Taller}"
 TAB="TALLER"           # the workspace's tab
 ORCH_TITLE="minion king"   # the orchestrator's pane (its agent keeps its name)
@@ -37,7 +39,7 @@ fi
 # Orchestrator name, its folder (the first root: where the projects are)
 # and extra claude args (flags like --model claude-haiku-5-5[1m]: no spaces inside one),
 # one per line.
-mapfile -t conf < <(python3 -c 'import sys, tomllib, os
+while IFS= read -r line; do conf+=("$line"); done < <(py -c 'import sys, tomllib, os
 try:
     cfg = tomllib.load(open(sys.argv[1], "rb")).get("taller", {})
 except Exception:
@@ -59,7 +61,7 @@ board_env=(--env TALLER_LAYOUT=column)
 if [ -n "${TALLER_CONFIG:-}" ]; then board_env+=(--env "TALLER_CONFIG=$TALLER_CONFIG"); fi
 
 # The newest claude conversation in its folder, if any, goes on.
-held=$(python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import taller
+held=$(py -c 'import sys; sys.path.insert(0, sys.argv[1]); import taller
 print("1" if any(t[2] == "claude" for t in taller.transcripts([sys.argv[2]])) else "")' \
   "$DIR" "$cwd")
 [ -n "$held" ] && args+=(--continue)
@@ -68,7 +70,7 @@ start=("$H" agent start "$orch" --kind claude --pane "<pane>" --timeout 60000)
 # The workspace's first pane is the orchestrator's; the board opens beside it
 # as a plugin pane, and the split (50/50 when made) moves right until the
 # board has BOARD_SHARE of the width.
-shift_by=$(awk -v s="$BOARD_SHARE" 'BEGIN { print 0.5 - s }')
+shift_by=$(LC_ALL=C awk -v s="$BOARD_SHARE" 'BEGIN { print 0.5 - s }')
 if [ "${TALLER_DRY_RUN:-}" = 1 ]; then
   run "$H" workspace create --label "$LABEL" --cwd "$cwd" --focus
   run "$H" tab rename "<tab>" "$TAB"
@@ -100,7 +102,7 @@ if ! out=$("${start[@]}" 2>&1); then
   # Claude's "trust this folder?" for its folder is the only dialog answered
   # here; anything else stays on screen for the user.
   if grep -q agent_not_ready <<<"$out"; then
-    python3 "$DIR/taller.py" --accept-trust "$orch" "$cwd" "$cwd" || true
+    py "$DIR/taller.py" --accept-trust "$orch" "$cwd" "$cwd" || true
   fi
 fi
 # A new conversation in a brand-new pane: nobody is typing in it yet.

@@ -39,7 +39,7 @@ right column.
 ~/.dotfiles/ai/arxiu/arxiu.sh
 ```
 
-It needs `uv` (which provides `rich`) and `python3` >= 3.11; nothing else to
+It needs `uv` (which provides Python 3.11+ and `rich`); nothing else to
 install. Settings are in `config.toml` next to it (or `$ARXIU_CONFIG`).
 
 - `arxiu.sh --once` prints one frame and exits (`COLUMNS`/`LINES` set the
@@ -49,7 +49,7 @@ install. Settings are in `config.toml` next to it (or `$ARXIU_CONFIG`).
   instead of running it. Read-only `herdr` calls (listing and getting agents
   and workspaces) still run, and nothing goes into the queue.
 - `python3 arbre_data.py ~/src/arbre --summary` shows what the list reads;
-  `python3 agents.py` lists the tree's herdr agents.
+  `uv run --quiet --script agents.py` lists the tree's herdr agents.
 
 ## Inside herdr
 
@@ -221,4 +221,4 @@ projects column that used to sit on the right, is parked in `ai/taller/`.
 uv run --with rich python -m unittest discover -s ~/.dotfiles/ai/arxiu/tests
 ```
 
-Under bare `python3` the board and panel tests are skipped.
+Under `uv run --python ">=3.11" python` (no rich) the board and panel tests are skipped.

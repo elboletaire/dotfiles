@@ -1,4 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --quiet --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = []
+# ///
 """The tree's agents in herdr: config, lookups, starting them, prompting
 them, and typing a prompt into one without sending it.
 

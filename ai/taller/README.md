@@ -37,7 +37,7 @@ as an overlay (`peek`), the board puts the detail beside the list, as below.
 ~/.dotfiles/ai/taller/taller.sh
 ```
 
-It needs `uv` (which provides `rich`) and `python3` >= 3.11. Settings are in
+It needs `uv` (which provides Python 3.11+ and `rich`). Settings are in
 `config.toml` next to it (or `$TALLER_CONFIG`): the roots, extra folders,
 hidden ones, `dormant_days`, `agent_args` (extra claude arguments for the
 agents it starts, e.g. `["--model", "claude-haiku-5-5[1m]"]`) and the refresh periods.
@@ -47,7 +47,7 @@ agents it starts, e.g. `["--model", "claude-haiku-5-5[1m]"]`) and the refresh pe
 - `TALLER_DRY_RUN=1` makes every action (focusing, starting agents, the
   worktree, popups, the browser; `herdr/open.sh` too) say what it would run
   instead. Read-only calls (git status/log, `herdr agent list`) still run.
-- `python3 taller.py [--json]` shows what the board collects.
+- `uv run --quiet --script taller.py [--json]` shows what the board collects.
 
 ## The board
 
@@ -142,12 +142,12 @@ machine, what a session is on), and acts through `taller.py`'s subcommands,
 the board's own actions, which never take your focus:
 
 ```sh
-python3 taller.py sessions                       # every open herdr session
-python3 taller.py show <project> [--worktree <branch>]
-python3 taller.py resume <project> [--worktree <branch>] [--agent-args <args>]
-python3 taller.py new <project> [--worktree <branch>] [--prompt <text>] [--agent-args <args>]
-python3 taller.py worktree <project> <branch> [--prompt <text>] [--agent-args <args>]
-python3 taller.py prompt <agent> <text>
+uv run --quiet --script taller.py sessions                       # every open herdr session
+uv run --quiet --script taller.py show <project> [--worktree <branch>]
+uv run --quiet --script taller.py resume <project> [--worktree <branch>] [--agent-args <args>]
+uv run --quiet --script taller.py new <project> [--worktree <branch>] [--prompt <text>] [--agent-args <args>]
+uv run --quiet --script taller.py worktree <project> <branch> [--prompt <text>] [--agent-args <args>]
+uv run --quiet --script taller.py prompt <agent> <text>
 ```
 
 `--agent-args` adds claude arguments for that one session, after
@@ -189,7 +189,7 @@ command = "elboletaire.taller.peek"
 ## Tests
 
 ```sh
-python3 -m unittest discover -s ai/taller/tests                  # stdlib only
+uv run --python ">=3.11" python -m unittest discover -s ai/taller/tests  # stdlib only
 uv run --with rich python -m unittest discover -s ai/taller/tests  # + the board
 ```
 

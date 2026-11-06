@@ -11,6 +11,8 @@
 set -euo pipefail
 H="${HERDR_BIN_PATH:-herdr}"
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# macOS /bin/bash is 3.2 and the system python3 is 3.9: Python runs through uv.
+py() { uv run --no-project --quiet --python '>=3.11' python "$@"; }
 LABEL="Arxiu"   # agents.py's ARXIU_LABEL
 BOARD_SHARE=0.5 # of the height, for the board; Tecla needs ~12 rows below
 
@@ -31,7 +33,7 @@ fi
 
 # tree, orchestrator name and extra claude args, one per line (args NUL-free
 # and space-free: they are flags like --model claude-haiku-5-5[1m]).
-mapfile -t conf < <(python3 -c 'import sys, tomllib, os
+while IFS= read -r line; do conf+=("$line"); done < <(py -c 'import sys, tomllib, os
 try:
     cfg = tomllib.load(open(sys.argv[1], "rb")).get("arbre", {})
 except Exception:
@@ -72,7 +74,7 @@ if [ -n "$orch" ]; then
     # Claude's "trust this folder?" for the tree is the only dialog answered
     # here; anything else stays on screen for the user.
     if grep -q agent_not_ready <<<"$out"; then
-      python3 "$DIR/agents.py" --accept-trust "$orch" "$tree" "$tree" || true
+      py "$DIR/agents.py" --accept-trust "$orch" "$tree" "$tree" || true
     fi
   fi
 else
@@ -87,16 +89,17 @@ done
 if [ "${ARXIU_DRY_RUN:-}" = 1 ]; then
   run "$H" plugin pane open --plugin elboletaire.arxiu --entrypoint board \
     --placement split --target-pane "$root" --direction down --focus \
-    "${board_env[@]}"
+    ${board_env[@]+"${board_env[@]}"}
 else
   opened=$("$H" plugin pane open --plugin elboletaire.arxiu \
     --entrypoint board --placement split --target-pane "$root" \
-    --direction down --focus "${board_env[@]}")
+    --direction down --focus ${board_env[@]+"${board_env[@]}"})
   board=$(jq -r '.result.plugin_pane.pane.pane_id' <<<"$opened")
 fi
 run "$H" pane swap --source-pane "$root" --target-pane "$board" >/dev/null
 # The split starts at 50/50: move the border to BOARD_SHARE if it differs.
-amount=$(python3 -c "print(round($BOARD_SHARE - 0.5, 2))")
+# LC_ALL=C: a comma decimal locale would print "0,1", which herdr cannot take.
+amount=$(LC_ALL=C awk -v s="$BOARD_SHARE" 'BEGIN { printf "%g", s - 0.5 }')
 case "$amount" in
   0|0.0|-0.0) ;;
   -*) run "$H" pane resize --pane "$board" --direction up --amount "${amount#-}" >/dev/null ;;
