@@ -56,6 +56,10 @@ symlink_config() {
   # Create backup directory for config if needed
   local config_backup=$oldfiles/config
 
+  # Items managed elsewhere: herdr's dir also holds its live state, so
+  # link_herdr_config links only its config.toml.
+  local -r managed_elsewhere=(herdr)
+
   # Loop through each item in the config directory
   for item in $config_dir/*; do
     if [ ! -e $item ]; then
@@ -63,6 +67,7 @@ symlink_config() {
     fi
 
     local item_name=$(basename $item)
+    in_array $item_name "${managed_elsewhere[@]}" || continue
     local destination=~/.config/$item_name
 
     # Skip if it's already the intended symlink (keeps re-runs cruft-free)
@@ -212,6 +217,38 @@ _link_herdr_plugin() {
     echo "Linked herdr plugin $id -> $root"
   else
     echo "WARNING: could not link the herdr plugin (is a herdr server running?)" >&2
+  fi
+}
+
+link_herdr_config() {
+  # Tracked herdr config. An upgrade can replace the link with a plain file,
+  # so rerun this after one.
+  local src=$dotfiles/config/herdr/config.toml dest=~/.config/herdr/config.toml
+  local backup
+  mkdir -p "$(dirname "$dest")"
+  if [ -L "$dest" ] && [ "$(readlink "$dest")" = "$src" ]; then
+    return 0
+  fi
+  # Old symlink_config linked the whole dir: dest is then the tracked file itself.
+  if [ "$dest" -ef "$src" ] && [ ! -L "$dest" ]; then
+    echo "WARNING: $(dirname "$dest") is linked into the dotfiles; remove that link and rerun to use $dest" >&2
+    return 0
+  fi
+  if [ -e "$dest" ] || [ -L "$dest" ]; then
+    if cmp -s "$dest" "$src"; then
+      rm "$dest"
+    else
+      backup=$oldfiles/config/herdr-config.toml.$(date +%Y%m%d%H%M%S)
+      mkdir -p "$(dirname "$backup")"
+      mv -v "$dest" "$backup"
+      echo "WARNING: $dest was not the tracked link (a herdr upgrade does that); the old file is in $backup, merge anything new into $src" >&2
+    fi
+  fi
+  ln -s "$src" "$dest" || return 1
+  echo "Linked $dest -> $src"
+  # A running server keeps the previous config until it is reloaded.
+  if command -v herdr &>/dev/null && ! herdr status server 2>/dev/null | grep -q "not running"; then
+    herdr server reload-config >/dev/null || echo "WARNING: could not reload the herdr config" >&2
   fi
 }
 
@@ -834,6 +871,7 @@ do_install() {
   symlink_ai || return 1    # config symlinks + APM skills global install
   merge_claude_settings
   migrate_octopilot_state
+  link_herdr_config
   link_herdr_plugin
   set_login_shell
   vim -c 'PluginInstall' -c 'qa!'
@@ -855,6 +893,7 @@ do_update() {
   symlink_ai || return 1
   merge_claude_settings
   migrate_octopilot_state
+  link_herdr_config
   link_herdr_plugin
   echo "dotfiles update complete"
 }
@@ -871,6 +910,7 @@ do_update_ai() {
   symlink_ai || return 1
   merge_claude_settings
   migrate_octopilot_state
+  link_herdr_config
   link_herdr_plugin
   echo "AI stack update complete"
 }
@@ -887,6 +927,14 @@ do_install_ai_config() {
   echo "AI config install complete"
 }
 
+do_herdr() {
+  # Repairs herdr's setup without upgrading herdr: config and plugin links.
+  install_herdr
+  link_herdr_config
+  link_herdr_plugin
+  echo "herdr setup complete"
+}
+
 # Library guard: when sourced (e.g. from tests), stop here.
 # The case block only runs when executed directly.
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
@@ -898,5 +946,6 @@ case "${1:-install}" in
   update)  do_update || exit 1 ;;
   ai)      do_update_ai || exit 1 ;;
   ai-config) do_install_ai_config || exit 1 ;;
-  *) echo "usage: $(basename "$0") [install|update|ai|ai-config]" && exit 1 ;;
+  herdr)   do_herdr || exit 1 ;;
+  *) echo "usage: $(basename "$0") [install|update|ai|ai-config|herdr]" && exit 1 ;;
 esac

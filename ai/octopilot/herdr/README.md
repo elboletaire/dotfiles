@@ -17,7 +17,8 @@ orchestrator is the agent named `octopilot`.
 herdr plugin link ~/.dotfiles/ai/octopilot/herdr
 ```
 
-Bind its actions in `~/.config/herdr/config.toml`:
+Its actions are bound in `config/herdr/config.toml` (tracked; `scripts/install.sh herdr`
+links it to `~/.config/herdr/config.toml`):
 
 ```toml
 [[keys.command]]

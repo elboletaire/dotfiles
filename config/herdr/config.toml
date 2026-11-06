@@ -1,0 +1,45 @@
+# Linked to ~/.config/herdr/config.toml by `scripts/install.sh herdr`.
+# herdr upgrades can replace that link with a plain file: rerun the mode.
+
+onboarding = false
+
+# Shell popup: a login shell over whatever you are doing.
+[[keys.command]]
+key = "prefix+t"
+type = "popup"
+command = "exec \"${SHELL:-zsh}\" -l"
+width = "92%"
+height = "88%"
+
+# Octopilot (~/.dotfiles/ai/octopilot/herdr)
+[[keys.command]]
+key = "prefix+shift+a"          # build or focus the Octopilot workspace
+type = "plugin_action"
+command = "elboletaire.octopilot.open"
+
+[[keys.command]]
+key = "prefix+a"                # the dashboard over whatever you are doing
+type = "plugin_action"
+command = "elboletaire.octopilot.peek"
+
+# Arxiu (~/.dotfiles/ai/arxiu/herdr)
+[[keys.command]]
+key = "prefix+shift+f"          # build or focus the Arxiu workspace
+type = "plugin_action"
+command = "elboletaire.arxiu.open"
+
+[[keys.command]]
+key = "prefix+f"                # the board over whatever you are doing
+type = "plugin_action"
+command = "elboletaire.arxiu.peek"
+
+# Taller (~/.dotfiles/ai/taller/herdr)
+[[keys.command]]
+key = "prefix+shift+o"          # build or focus the Taller workspace
+type = "plugin_action"
+command = "elboletaire.taller.open"
+
+[[keys.command]]
+key = "prefix+i"                # the board over whatever you are doing
+type = "plugin_action"
+command = "elboletaire.taller.peek"

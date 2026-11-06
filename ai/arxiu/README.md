@@ -61,7 +61,8 @@ links it (`link_herdr_plugin`); by hand:
 herdr plugin link ~/.dotfiles/ai/arxiu/herdr
 ```
 
-and bind its actions in `~/.config/herdr/config.toml`. `prefix+a`,
+and bind its actions in `config/herdr/config.toml`, which `scripts/install.sh herdr`
+links to `~/.config/herdr/config.toml`. `prefix+a`,
 `prefix+shift+a` (octopilot) and `prefix+t` (shell popup) are taken, so:
 
 ```toml

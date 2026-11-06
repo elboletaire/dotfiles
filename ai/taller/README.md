@@ -166,7 +166,8 @@ session (`prompt`, `--prompt`).
 herdr plugin link ~/.dotfiles/ai/taller/herdr
 ```
 
-and bind its actions in `~/.config/herdr/config.toml`. `prefix+o` is herdr's
+and bind its actions in `config/herdr/config.toml`, which `scripts/install.sh herdr`
+links to `~/.config/herdr/config.toml`. `prefix+o` is herdr's
 `open_notification_target` and `prefix+t` / `prefix+shift+t` are taken (the
 shell popup, `rename_tab`), so:
 

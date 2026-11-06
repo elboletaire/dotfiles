@@ -732,6 +732,7 @@ install_ai_agents() { return 0; }
 install_rtk() { return 0; }
 symlink() { return 0; }
 symlink_config() { return 0; }
+link_herdr_config() { return 0; }
 git() { return 0; }
 chsh() { return 0; }
 vim() { return 0; }
@@ -928,10 +929,10 @@ REAL_LOCKFILE="$(cd "$(dirname "$0")/.." && pwd)/ai/apm.lock.yaml"
 if [ -f "$REAL_LOCKFILE" ]; then
   names=$(_tracked_skill_names "$REAL_LOCKFILE")
   count=$(echo "$names" | wc -l)
-  if [ "$count" -eq 13 ]; then
-    pass "Real lockfile: exactly 13 skill names extracted"
+  if [ "$count" -eq 14 ]; then
+    pass "Real lockfile: exactly 14 skill names extracted"
   else
-    fail "Real lockfile: expected exactly 13 skill names, got $count"
+    fail "Real lockfile: expected exactly 14 skill names, got $count"
   fi
 else
   pass "Real lockfile not available at $REAL_LOCKFILE; synthetic test already passed"
@@ -950,7 +951,7 @@ expected_names=$(printf '%s\n' \
   brainstorming context7 \
   executing-plans find-skills git-commit github-issues herdr \
   obscura-browser skill-creator systematic-debugging \
-  test-driven-development using-superpowers writing-plans | sort)
+  test-driven-development using-superpowers writing-plans comments | sort)
 real_names=$(_tracked_skill_names "$REAL_LOCKFILE")
 if [ "$real_names" = "$expected_names" ]; then
   pass "Real lockfile contains exactly the 14 pinned skill names"
@@ -958,10 +959,10 @@ else
   fail "Real lockfile skill set differs from the expected migration set"
 fi
 REAL_MANIFEST="$(dirname "$REAL_LOCKFILE")/apm.yml"
-if [ "$(grep -c '^[[:space:]]*ref: [0-9a-f]\{40\}$' "$REAL_MANIFEST")" -eq 13 ]; then
-  pass "Manifest pins all 13 dependencies to full commit SHAs"
+if [ "$(grep -c '^[[:space:]]*ref: [0-9a-f]\{40\}$' "$REAL_MANIFEST")" -eq 14 ]; then
+  pass "Manifest pins all 14 dependencies to full commit SHAs"
 else
-  fail "Manifest must contain 13 full-SHA ref pins"
+  fail "Manifest must contain 14 full-SHA ref pins"
 fi
 
 echo ""
@@ -1228,6 +1229,138 @@ merge_claude_settings >/dev/null 2>&1
 [ "$(cat "$SETTINGS")" = "{ not json" ] && pass "leaves an invalid settings file untouched" \
   || fail "overwrote an invalid settings file"
 rm -rf "$HOME/.claude" "$DOTFILES/ai/claude/settings.json"
+
+echo ""
+echo "=== Test 28: link_herdr_config links the tracked herdr config ==="
+# Shadow the real herdr: a function wins over the PATH lookup, so nothing
+# below ever reaches the installed binary.
+# Test 15 stubs link_herdr_config out; take the real one from install.sh.
+eval "$(sed -n '/^link_herdr_config() {/,/^}/p' "$TESTDIR/install_patched.sh")"
+HERDR_CALLS="$TESTDIR/herdr-config.log"
+HERDR_RUNNING=1
+herdr() {
+  echo "herdr $*" >> "$HERDR_CALLS"
+  if [ "$1 $2" = "status server" ]; then
+    if [ "$HERDR_RUNNING" = 1 ]; then echo "Status: running"; else echo "Status: not running"; fi
+  fi
+  return 0
+}
+HERDR_SRC="$DOTFILES/config/herdr/config.toml"
+HERDR_DEST="$FAKE_HOME/.config/herdr/config.toml"
+mkdir -p "$DOTFILES/config/herdr"
+echo 'onboarding = false' > "$HERDR_SRC"
+rm -rf "$FAKE_HOME/.config" "$FAKE_HOME/old_dotfiles"
+: > "$HERDR_CALLS"
+
+link_herdr_config >/dev/null
+if [ -L "$HERDR_DEST" ] && [ "$(readlink "$HERDR_DEST")" = "$HERDR_SRC" ]; then
+  pass "links the tracked config into a fresh ~/.config/herdr"
+else
+  fail "fresh link not created"
+fi
+grep -q "^herdr server reload-config$" "$HERDR_CALLS" \
+  && pass "reloads a running herdr server after linking" \
+  || fail "did not reload the running herdr server"
+
+echo ""
+echo "=== Test 29: link_herdr_config re-run is a no-op ==="
+: > "$HERDR_CALLS"
+out=$(link_herdr_config)
+if [ -z "$out" ] && [ ! -s "$HERDR_CALLS" ] && [ "$(readlink "$HERDR_DEST")" = "$HERDR_SRC" ]; then
+  pass "leaves the existing link alone and does not reload"
+else
+  fail "re-run printed or changed something: '$out'"
+fi
+
+echo ""
+echo "=== Test 30: link_herdr_config backs up a regular file with other content ==="
+rm -f "$HERDR_DEST"
+echo 'onboarding = false  # replaced by an upgrade' > "$HERDR_DEST"
+rm -rf "$FAKE_HOME/old_dotfiles"
+out=$(link_herdr_config 2>&1)
+backup=$(ls "$FAKE_HOME"/old_dotfiles/config/herdr-config.toml.* 2>/dev/null | head -n 1 || true)
+if [ -L "$HERDR_DEST" ] && [ -n "$backup" ] && grep -q "replaced by an upgrade" "$backup"; then
+  pass "moves the old file to old_dotfiles/config and links the tracked one"
+else
+  fail "old file not backed up under old_dotfiles/config"
+fi
+case "$out" in
+  *WARNING*"$backup"*) pass "warns where the backup went" ;;
+  *) fail "no warning naming the backup: $out" ;;
+esac
+
+echo ""
+echo "=== Test 31: link_herdr_config replaces an identical regular file without a backup ==="
+rm -f "$HERDR_DEST"
+cp "$HERDR_SRC" "$HERDR_DEST"
+rm -rf "$FAKE_HOME/old_dotfiles"
+link_herdr_config >/dev/null
+if [ -L "$HERDR_DEST" ] && [ ! -e "$FAKE_HOME/old_dotfiles" ]; then
+  pass "replaces an identical file silently"
+else
+  fail "identical file was backed up or not replaced"
+fi
+
+echo ""
+echo "=== Test 32: link_herdr_config does not reload when no herdr server is running ==="
+rm -f "$HERDR_DEST"
+cp "$HERDR_SRC" "$HERDR_DEST"
+HERDR_RUNNING=0
+: > "$HERDR_CALLS"
+link_herdr_config >/dev/null
+if [ -L "$HERDR_DEST" ] && ! grep -q "reload-config" "$HERDR_CALLS"; then
+  pass "links but skips the reload when the server is down"
+else
+  fail "reloaded or failed to link with the server down"
+fi
+
+echo ""
+echo "=== Test 33: link_herdr_config is skipped without herdr on PATH ==="
+rm -f "$HERDR_DEST"
+# A bin dir with only the tools link_herdr_config calls: herdr may sit in /usr/bin.
+NOHERDR_BIN="$TESTDIR/noherdr-bin"
+mkdir -p "$NOHERDR_BIN"
+for tool in mkdir dirname readlink cmp rm mv date ln; do
+  ln -sf "$(command -v $tool)" "$NOHERDR_BIN/$tool"
+done
+if ( unset -f herdr; PATH="$NOHERDR_BIN"; ! command -v herdr >/dev/null && link_herdr_config >/dev/null 2>&1 ) \
+   && [ -L "$HERDR_DEST" ]; then
+  pass "links the config and never fails without herdr"
+else
+  fail "link_herdr_config failed without herdr on PATH"
+fi
+unset -f herdr
+
+echo ""
+echo "=== Test 34: link_herdr_config leaves a whole-dir link into the dotfiles alone ==="
+mkdir -p "$DOTFILES/config/herdr"
+echo 'onboarding = false' > "$HERDR_SRC"
+rm -rf "$FAKE_HOME/.config"
+mkdir -p "$FAKE_HOME/.config"
+ln -s "$DOTFILES/config/herdr" "$FAKE_HOME/.config/herdr"
+out=$(link_herdr_config 2>&1)
+if [ -f "$HERDR_SRC" ] && [ ! -L "$HERDR_SRC" ] && [ "$(cat "$HERDR_SRC")" = "onboarding = false" ] \
+   && [ ! -L "$HERDR_SRC" ] && case "$out" in *"linked into the dotfiles"*) true ;; *) false ;; esac; then
+  pass "keeps the tracked config and warns about the dir link"
+else
+  fail "touched the tracked config behind a whole-dir link: $out"
+fi
+rm -rf "$FAKE_HOME/.config"
+
+echo ""
+echo "=== Test 35: symlink_config links config/ items but not herdr ==="
+# An earlier test stubs symlink_config out; take the real one from install.sh.
+eval "$(sed -n '/^symlink_config() {/,/^}/p' "$TESTDIR/install_patched.sh")"
+mkdir -p "$DOTFILES/config/kitty"
+rm -rf "$FAKE_HOME/.config"
+symlink_config
+if [ -L "$FAKE_HOME/.config/kitty" ] && [ ! -e "$FAKE_HOME/.config/herdr" ] && [ ! -L "$FAKE_HOME/.config/herdr" ]; then
+  pass "links kitty and leaves ~/.config/herdr to link_herdr_config"
+else
+  fail "symlink_config touched ~/.config/herdr or skipped kitty"
+fi
+rm -rf "$DOTFILES/config/kitty" "$DOTFILES/config/herdr"
+rm -rf "$FAKE_HOME/.config" "$FAKE_HOME/old_dotfiles"
 
 echo ""
 echo "=== ALL TESTS COMPLETE ==="
