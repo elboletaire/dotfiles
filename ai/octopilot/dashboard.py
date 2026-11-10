@@ -1094,6 +1094,8 @@ class Dashboard:
             keys += [("e", "re-review"), ("x", "ack")]
         if tracked:
             keys.append(("z", "detach"))
+            if kind != "MERGED":
+                keys.append(("del", "remove"))
             keys.append(("d", "undone" if parked else "done"))
         if not repo:
             keys += [("v", "agent"), ("t", "shell"), ("o", "browser")]
@@ -1276,7 +1278,7 @@ class Dashboard:
         elif not e:
             # A repo header has no row, so the row keys have nothing to act on.
             if repo and key in ("v", "t", "o", "g", "n", "R", "e", "x", "z",
-                                "d"):
+                                "d", "\x1b[3~"):
                 self.say("select a row, not a repo header")
             return True
         elif key in ("\r", "\n"):
@@ -1345,14 +1347,36 @@ class Dashboard:
             elif self.ask("d", e["key"], f"press d again to move {e['key']} to "
                           "Done (session kept, slot freed)"):
                 self.run_scan("park", e["key"])
+        elif key == "\x1b[3~":
+            if e["key"] not in ((self.m.state or {}).get("items") or {}):
+                self.say("remove only applies to tracked items")
+            elif e["kind"] == "MERGED":
+                # cleanup only prints SIBLINGS for the orchestrator to act on.
+                self.say("MERGED rows are cleaned up by the orchestrator")
+            else:
+                busy = ("⚠ its agent is working -- " if e["kind"] in
+                        ("WORKING", "BOOTING", "REVIEW", "FEEDBACK") else "")
+                # An item without a workspace is only untracked by cleanup.
+                gone = ("workspace and worktree deleted" if
+                        (self.m.state or {}).get("items", {}).get(e["key"], {})
+                        .get("session") else "worktree kept")
+                if self.ask("\x1b[3~", e["key"], f"{busy}press del again to "
+                            f"remove {e['key']} ({gone}, untracked)"):
+                    self.run_scan("cleanup", e["key"], timeout=400)
         return True
 
-    def run_scan(self, *args):
+    def run_scan(self, *args, timeout=30):
         """A scan.py command that needs no judgement, run right here."""
         code, out, err = sh([sys.executable, os.path.join(DIR, "scan.py"),
-                             *args])
-        self.say((out or err).splitlines()[-1] if (out or err) else
-                 f"{args[0]} exit {code}")
+                             *args], timeout=timeout)
+        lines = (out or err).splitlines()
+        # cleanup ends with its SIBLINGS output; show a failed removal first,
+        # else its "cleaned up" line.
+        failed = next((l for l in lines if not l.endswith(": ok")
+                       and l.startswith("herdr worktree remove ")), None)
+        done = next((l for l in lines if l.startswith("cleaned up")), None)
+        self.say(failed or done or (lines[-1] if lines else
+                                    f"{args[0]} exit {code}"))
 
     def investigate(self, live, term):
         """/investigate [--read-only] <repo> <question>, typed here and

@@ -108,6 +108,7 @@ orchestrator's doorbell once (`request tick`).
 | `i` | start an investigation: type the repo, the question, and whether it is read-only |
 | `P` | pause / resume octopilot (press twice) |
 | `z` | detach a tracked item: closes its workspace, keeps the worktree, stops tracking it (press twice) |
+| `del` | remove a tracked item: deletes its workspace and worktree, stops tracking it (press twice). Not on MERGED rows: the orchestrator cleans those up |
 | `r` | refresh from GitHub now |
 | `d` | on a tracked card: move it to Done / back (press twice). It keeps its workspace and holds no slot; the orchestrator still merges and cleans up |
 | `D` | show / hide done rows (DONE, GONE) |
