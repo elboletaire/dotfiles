@@ -5,7 +5,7 @@ When running subagents, do it async without asking for confirmation. If a defaul
 
 NEVER commit plans or specs documents, unless I ask for it.
 
-When creating issues or pull requests, start by saying something in the line of "This is {model} speaking on behalf of elbolataire." or "{model} here, controlled by elboletaire."
+Before writing a pull request, issue, review, review comment or commit message, read the contributing skill and follow it.
 </VERY_IMPORTANT>
 
 <STARTING_NEW_PROJECTS>
