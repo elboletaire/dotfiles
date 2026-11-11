@@ -60,8 +60,8 @@ dependencies:
     - git: https://github.com/vocdoni/skills.git
       path: plugins/vocdoni-comments/skills/comments
       alias: comments
-      ref: 15ffa2dc78d1a46c08f20ebe7ddabd0fd8ad9ffc
+      ref: 175a70ad7e9a6c6cd85f547d3914c7c38b059a1e
     - git: https://github.com/vocdoni/skills.git
       path: plugins/vocdoni-contributing/skills/contributing
       alias: contributing
-      ref: 051388cf812511822f0672dcc8ccfd73c2db55f4
+      ref: 175a70ad7e9a6c6cd85f547d3914c7c38b059a1e

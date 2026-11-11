@@ -494,8 +494,8 @@ dependencies:
   alias: comments
   name: comments
   host: github.com
-  resolved_commit: 15ffa2dc78d1a46c08f20ebe7ddabd0fd8ad9ffc
-  resolved_ref: 15ffa2dc78d1a46c08f20ebe7ddabd0fd8ad9ffc
+  resolved_commit: 175a70ad7e9a6c6cd85f547d3914c7c38b059a1e
+  resolved_ref: 175a70ad7e9a6c6cd85f547d3914c7c38b059a1e
   version: unknown
   virtual_path: plugins/vocdoni-comments/skills/comments
   is_virtual: true
@@ -517,8 +517,8 @@ dependencies:
   alias: contributing
   name: contributing
   host: github.com
-  resolved_commit: 051388cf812511822f0672dcc8ccfd73c2db55f4
-  resolved_ref: 051388cf812511822f0672dcc8ccfd73c2db55f4
+  resolved_commit: 175a70ad7e9a6c6cd85f547d3914c7c38b059a1e
+  resolved_ref: 175a70ad7e9a6c6cd85f547d3914c7c38b059a1e
   version: unknown
   virtual_path: plugins/vocdoni-contributing/skills/contributing
   is_virtual: true
@@ -529,9 +529,9 @@ dependencies:
   - .claude/skills/contributing
   - .claude/skills/contributing/SKILL.md
   deployed_file_hashes:
-    .agents/skills/contributing/SKILL.md: sha256:518cc49328ceff58cb11d1a791daad5d8d775854418fef1057ff491b54b95a82
-    .claude/skills/contributing/SKILL.md: sha256:518cc49328ceff58cb11d1a791daad5d8d775854418fef1057ff491b54b95a82
-  content_hash: sha256:7a5b33784c7c2f6c5609f8bea7f808797a74d419893e408c51068599a9db90fa
+    .agents/skills/contributing/SKILL.md: sha256:1fcf63770e74c8c6c1473bfd161cb3b644c914342bad7863e1b6bc7b9732369a
+    .claude/skills/contributing/SKILL.md: sha256:1fcf63770e74c8c6c1473bfd161cb3b644c914342bad7863e1b6bc7b9732369a
+  content_hash: sha256:1b23969a8d2b14330bb18015ac7c0061e25e505120c21cb937ea40cacef4649d
 deployments:
 - kind: project-relative
   target: agent-skills
@@ -676,7 +676,7 @@ deployments:
   owners:
   - vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
   active_owner: vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
-  content_hash: sha256:518cc49328ceff58cb11d1a791daad5d8d775854418fef1057ff491b54b95a82
+  content_hash: sha256:1fcf63770e74c8c6c1473bfd161cb3b644c914342bad7863e1b6bc7b9732369a
 - kind: project-relative
   target: agent-skills
   value: .agents/skills/executing-plans
@@ -1504,7 +1504,7 @@ deployments:
   owners:
   - vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
   active_owner: vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
-  content_hash: sha256:518cc49328ceff58cb11d1a791daad5d8d775854418fef1057ff491b54b95a82
+  content_hash: sha256:1fcf63770e74c8c6c1473bfd161cb3b644c914342bad7863e1b6bc7b9732369a
 - kind: project-relative
   target: claude
   value: .claude/skills/executing-plans
