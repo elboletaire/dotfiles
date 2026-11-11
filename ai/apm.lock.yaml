@@ -1,8 +1,8 @@
 lockfile_version: '1'
-generated_at: '2026-10-29T13:54:08.308295+00:00'
-apm_version: 0.28.0
+apm_version: 0.33.0
 dependencies:
 - repo_url: anthropics/skills
+  alias: skill-creator
   name: skill-creator
   host: github.com
   resolved_commit: 34040c9c568585f6929bedeaad110ad08f079624
@@ -89,6 +89,7 @@ dependencies:
     .claude/skills/skill-creator/scripts/utils.py: sha256:3af8ae62c40c73ab712207436a0d9a981e845f25c5a7040229eb189cc8e45bb1
   content_hash: sha256:b2bfe91d69ca99994c0566baede889e7d2b9bb8791c6b6106c5d387392f717f6
 - repo_url: github/awesome-copilot
+  alias: git-commit
   name: git-commit
   host: github.com
   resolved_commit: 1f5644080a525d26a2e24f61a7609fb9b261c21a
@@ -107,6 +108,7 @@ dependencies:
     .claude/skills/git-commit/SKILL.md: sha256:554d1a3c6d95f15bc1170160659ecdc9a9958b64f377f3988941b672c249b13f
   content_hash: sha256:2607fc60629b82b257136dd2a7a373f0a4466c0b49df7746d845d59313c99b21
 - repo_url: github/awesome-copilot
+  alias: github-issues
   name: github-issues
   host: github.com
   resolved_commit: 1f5644080a525d26a2e24f61a7609fb9b261c21a
@@ -165,6 +167,7 @@ dependencies:
     .claude/skills/github-issues/references/templates.md: sha256:8202c0277a34033acd44ed960a236f31a5b7a74d98769dffac497f2267279fed
   content_hash: sha256:2e88a5d1a7acf845e450c42a07fad522c42a39ebda98c57fa08bb904d53710cc
 - repo_url: herdrdev/herdr
+  alias: herdr
   name: herdr
   host: github.com
   resolved_commit: 7b116c05bfda646af39d2524c54e70c751f57ee8
@@ -183,6 +186,7 @@ dependencies:
     .claude/skills/herdr/SKILL.md: sha256:b16ba0d9a22adbaf259d2022cd323801f8e51d530c94cb0cd23a69069292506b
   content_hash: sha256:66715d76e5947497431ec0db32f2693b9c916ad799c3f32b99e6174b4b9c607f
 - repo_url: intellectronica/agent-skills
+  alias: context7
   name: context7
   host: github.com
   resolved_commit: 9b0e00ad1b941165e2506545bbfddafa34cf2cb8
@@ -201,6 +205,7 @@ dependencies:
     .claude/skills/context7/SKILL.md: sha256:e1c404ae31f71cb1ef108abfbd153f5761f1ed715a9d9e4c2067e61ff673f42f
   content_hash: sha256:fccbea654f8e35824a8bdce3e059e206efeb6c1fab9f6c096c3867e761081983
 - repo_url: mangmax/obscura-browser-skill
+  alias: obscura-browser
   name: obscura-browser
   host: github.com
   resolved_commit: f285dfdac5c3188fc4c3574eee487ae793ae9b50
@@ -241,6 +246,7 @@ dependencies:
     .claude/skills/obscura-browser/scripts/detect_obscura.py: sha256:ac3dca9b1a76edd1d09d9e410dfa403f6e3ecd3c96656313fd8ccf72c85955af
   content_hash: sha256:996f4d424adee7c3b23269a31e7cdcababa66a66ff1483af0eb0803056366187
 - repo_url: obra/superpowers
+  alias: brainstorming
   name: brainstorming
   host: github.com
   resolved_commit: 5bf4e78011075bcfc0dc295f0724994cd123ee71
@@ -287,6 +293,7 @@ dependencies:
     .claude/skills/brainstorming/visual-companion.md: sha256:6ffcb038b53254bd31debaa15e12dcd4ff24bd63d690e0b644ac6396701cf2e2
   content_hash: sha256:4b096de6a21888e52a92e99f90e4498c591ab67006b9de221106672e8ec1ae1a
 - repo_url: obra/superpowers
+  alias: executing-plans
   name: executing-plans
   host: github.com
   resolved_commit: 5bf4e78011075bcfc0dc295f0724994cd123ee71
@@ -313,6 +320,7 @@ dependencies:
     .claude/skills/executing-plans/scripts/task-start: sha256:f833693c8fce3700fc9f841562d80f8015cd40f652c168a3405ac3e46947a1fe
   content_hash: sha256:07191cb789983eb04536b1b257643816a33df2d7f43eb925951f035a6fb052f4
 - repo_url: obra/superpowers
+  alias: systematic-debugging
   name: systematic-debugging
   host: github.com
   resolved_commit: 5bf4e78011075bcfc0dc295f0724994cd123ee71
@@ -371,6 +379,7 @@ dependencies:
     .claude/skills/systematic-debugging/test-pressure-3.md: sha256:96b50a52e2c7989c9cf20fb752c47c1e9a3a70dc362f8f7989f8f5b64dac7708
   content_hash: sha256:bde607cb461f42df025a4125da475f12554ab7a50cd4e33283488c9d0a23e8a3
 - repo_url: obra/superpowers
+  alias: test-driven-development
   name: test-driven-development
   host: github.com
   resolved_commit: 5bf4e78011075bcfc0dc295f0724994cd123ee71
@@ -393,6 +402,7 @@ dependencies:
     .claude/skills/test-driven-development/writing-good-tests.md: sha256:51471c853306ff92ca8bb41dcaea05f31c0e46b03651f8f3c99754b7172f4ae1
   content_hash: sha256:3cfe4ebb6fa7288f668d87880d279c8e48f7a92b63415e296857060f5ce22e05
 - repo_url: obra/superpowers
+  alias: using-superpowers
   name: using-superpowers
   host: github.com
   resolved_commit: 5bf4e78011075bcfc0dc295f0724994cd123ee71
@@ -439,6 +449,7 @@ dependencies:
     .claude/skills/using-superpowers/references/pi-tools.md: sha256:703dbc83d23ecab9c6f388460c38abc482e9dee2fe6772a8c7a255152ad3a4d5
   content_hash: sha256:0b78e28dc7e74e990e1236fee094db82f507bbbde99bef379d4766958732974f
 - repo_url: obra/superpowers
+  alias: writing-plans
   name: writing-plans
   host: github.com
   resolved_commit: 5bf4e78011075bcfc0dc295f0724994cd123ee71
@@ -461,6 +472,7 @@ dependencies:
     .claude/skills/writing-plans/plan-document-reviewer-prompt.md: sha256:aa728b96aad603c8be28875a4305637f6c984aa81ffcadcb13e743202fa2a0c7
   content_hash: sha256:8705f1d1dc0b44b0d0211f6937b70cf1b77cc59d912fef533c9d84411255a662
 - repo_url: vercel-labs/skills
+  alias: find-skills
   name: find-skills
   host: github.com
   resolved_commit: 7407f3893ad4dceab546ac002c3ef806e4000c73
@@ -479,6 +491,7 @@ dependencies:
     .claude/skills/find-skills/SKILL.md: sha256:c00eeea0e13e74fe4a9d84ba0a8542205a1b736d65f13134fe1a6647eb14976f
   content_hash: sha256:913b9d37d0d54047dd65222bb8c67b2bf04e3cb87dcad1729068d7a8b2c8c396
 - repo_url: vocdoni/skills
+  alias: comments
   name: comments
   host: github.com
   resolved_commit: 15ffa2dc78d1a46c08f20ebe7ddabd0fd8ad9ffc
@@ -500,6 +513,25 @@ dependencies:
     .claude/skills/comments/SKILL.md: sha256:c241f20fc237cdb997364b2f356ca8d43ef416ef16fd5dae0adc2e005de25ce4
     .claude/skills/comments/trim.md: sha256:52608169fbdfff0b51975bf76839e81bb4b29f27b21697393fde2175f502aa5c
   content_hash: sha256:e8a4e34d81e7dacd200a7c42310c74510819f0cc651b645c12e961b13853693b
+- repo_url: vocdoni/skills
+  alias: contributing
+  name: contributing
+  host: github.com
+  resolved_commit: 051388cf812511822f0672dcc8ccfd73c2db55f4
+  resolved_ref: 051388cf812511822f0672dcc8ccfd73c2db55f4
+  version: unknown
+  virtual_path: plugins/vocdoni-contributing/skills/contributing
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/contributing
+  - .agents/skills/contributing/SKILL.md
+  - .claude/skills/contributing
+  - .claude/skills/contributing/SKILL.md
+  deployed_file_hashes:
+    .agents/skills/contributing/SKILL.md: sha256:518cc49328ceff58cb11d1a791daad5d8d775854418fef1057ff491b54b95a82
+    .claude/skills/contributing/SKILL.md: sha256:518cc49328ceff58cb11d1a791daad5d8d775854418fef1057ff491b54b95a82
+  content_hash: sha256:7a5b33784c7c2f6c5609f8bea7f808797a74d419893e408c51068599a9db90fa
 deployments:
 - kind: project-relative
   target: agent-skills
@@ -627,6 +659,24 @@ deployments:
   - intellectronica/agent-skills/skills/context7
   active_owner: intellectronica/agent-skills/skills/context7
   content_hash: sha256:e1c404ae31f71cb1ef108abfbd153f5761f1ed715a9d9e4c2067e61ff673f42f
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/contributing
+  runtime: null
+  scope: project
+  owners:
+  - vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  active_owner: vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  content_hash: null
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/contributing/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  active_owner: vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  content_hash: sha256:518cc49328ceff58cb11d1a791daad5d8d775854418fef1057ff491b54b95a82
 - kind: project-relative
   target: agent-skills
   value: .agents/skills/executing-plans
@@ -1437,6 +1487,24 @@ deployments:
   - intellectronica/agent-skills/skills/context7
   active_owner: intellectronica/agent-skills/skills/context7
   content_hash: sha256:e1c404ae31f71cb1ef108abfbd153f5761f1ed715a9d9e4c2067e61ff673f42f
+- kind: project-relative
+  target: claude
+  value: .claude/skills/contributing
+  runtime: null
+  scope: project
+  owners:
+  - vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  active_owner: vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/contributing/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  active_owner: vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  content_hash: sha256:518cc49328ceff58cb11d1a791daad5d8d775854418fef1057ff491b54b95a82
 - kind: project-relative
   target: claude
   value: .claude/skills/executing-plans

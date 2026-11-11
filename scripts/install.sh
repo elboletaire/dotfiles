@@ -268,7 +268,8 @@ migrate_octopilot_state() {
 
 merge_claude_settings() {
   # The tracked ai/claude/settings.json holds only the keys these dotfiles own
-  # (today the mods in CLAUDE_CODE_PLUGIN_DIRS). It is merged into
+  # (the mods in CLAUDE_CODE_PLUGIN_DIRS and the vocdoni-contributing plugin
+  # with its marketplace). It is merged into
   # ~/.claude/settings.json instead of linked over it: rtk, herdr, codegraph
   # and Claude Code itself write their own hooks, permissions and plugins
   # there, which must stay out of a public repo and differ per machine.
