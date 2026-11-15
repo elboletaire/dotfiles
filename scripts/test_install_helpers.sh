@@ -712,6 +712,48 @@ else
 fi
 
 echo ""
+echo "=== Test 14b: _tracked_skill_names prefers the alias (the deployed dir name) ==="
+cat > "$DOTFILES/ai/apm.lock.yaml" <<'LOCK14B'
+lockfile_version: '1'
+dependencies:
+- repo_url: vocdoni/skills
+  alias: contributing
+  name: vocdoni-contributing
+  resolved_commit: dddddd
+- repo_url: owner/repo-d
+  name: skill-delta
+  resolved_commit: eeeeee
+LOCK14B
+if [ "$(_tracked_skill_names "$DOTFILES/ai/apm.lock.yaml" | tr '\n' ' ')" = "contributing skill-delta " ]; then
+  pass "Tracked names use the alias when set, else the package name"
+else
+  fail "Tracked names ignored the alias: $(_tracked_skill_names "$DOTFILES/ai/apm.lock.yaml" | tr '\n' ' ')"
+fi
+
+echo ""
+echo "=== Test 14c: retired-name check reads the alias in the global lock too ==="
+cat > "$TESTDIR/global14c.lock" <<GLOBAL14C
+lockfile_version: '1'
+dependencies:
+- repo_url: _local/ai
+  name: dotfiles-skills
+  local_path: $DOTFILES/ai
+- repo_url: vocdoni/skills
+  name: vocdoni-contributing
+  alias: contributing
+  resolved_by: _local/ai
+- repo_url: owner/retired-repo
+  name: retired-skill
+  resolved_by: _local/ai
+GLOBAL14C
+got=$(_dotfiles_retired_skill_names "$TESTDIR/global14c.lock" "$DOTFILES/ai/apm.lock.yaml")
+if [ "$got" = "retired-skill" ]; then
+  pass "keeps the aliased contributing skill and still retires the dropped one"
+else
+  fail "retired names wrong: $got"
+fi
+
+echo ""
 echo "=== Test 15: do_install propagates APM failure, no success message ==="
 # Mock APM that fails on install
 cat > "$MOCK_APM" <<'MOCK15'
@@ -929,10 +971,10 @@ REAL_LOCKFILE="$(cd "$(dirname "$0")/.." && pwd)/ai/apm.lock.yaml"
 if [ -f "$REAL_LOCKFILE" ]; then
   names=$(_tracked_skill_names "$REAL_LOCKFILE")
   count=$(echo "$names" | wc -l)
-  if [ "$count" -eq 14 ]; then
-    pass "Real lockfile: exactly 14 skill names extracted"
+  if [ "$count" -eq 15 ]; then
+    pass "Real lockfile: exactly 15 skill names extracted"
   else
-    fail "Real lockfile: expected exactly 14 skill names, got $count"
+    fail "Real lockfile: expected exactly 15 skill names, got $count"
   fi
 else
   pass "Real lockfile not available at $REAL_LOCKFILE; synthetic test already passed"
@@ -951,18 +993,18 @@ expected_names=$(printf '%s\n' \
   brainstorming context7 \
   executing-plans find-skills git-commit github-issues herdr \
   obscura-browser skill-creator systematic-debugging \
-  test-driven-development using-superpowers writing-plans comments | sort)
+  test-driven-development using-superpowers writing-plans comments contributing | sort)
 real_names=$(_tracked_skill_names "$REAL_LOCKFILE")
 if [ "$real_names" = "$expected_names" ]; then
-  pass "Real lockfile contains exactly the 14 pinned skill names"
+  pass "Real lockfile contains exactly the 15 pinned skill names"
 else
   fail "Real lockfile skill set differs from the expected migration set"
 fi
 REAL_MANIFEST="$(dirname "$REAL_LOCKFILE")/apm.yml"
-if [ "$(grep -c '^[[:space:]]*ref: [0-9a-f]\{40\}$' "$REAL_MANIFEST")" -eq 14 ]; then
-  pass "Manifest pins all 14 dependencies to full commit SHAs"
+if [ "$(grep -c '^[[:space:]]*ref: [0-9a-f]\{40\}$' "$REAL_MANIFEST")" -eq 15 ]; then
+  pass "Manifest pins all 15 dependencies to full commit SHAs"
 else
-  fail "Manifest must contain 14 full-SHA ref pins"
+  fail "Manifest must contain 15 full-SHA ref pins"
 fi
 
 echo ""
@@ -1231,6 +1273,36 @@ merge_claude_settings >/dev/null 2>&1
 rm -rf "$HOME/.claude" "$DOTFILES/ai/claude/settings.json"
 
 echo ""
+echo "=== Test 27b: merge_claude_settings removes the retired vocdoni marketplace and plugin ==="
+mkdir -p "$DOTFILES/ai/claude" "$HOME/.claude"
+cat > "$DOTFILES/ai/claude/settings.json" <<'JSON'
+{"env": {"CLAUDE_CODE_PLUGIN_DIRS": "~/mods/a"}}
+JSON
+cat > "$SETTINGS" <<'JSON'
+{"enabledPlugins": {"vocdoni-contributing@vocdoni": true, "other@market": true}, "extraKnownMarketplaces": {"vocdoni": {"source": {"source": "github", "repo": "vocdoni/skills"}}}}
+JSON
+merge_claude_settings >/dev/null
+if python3 - "$SETTINGS" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert d["enabledPlugins"] == {"other@market": True}, d["enabledPlugins"]
+assert "extraKnownMarketplaces" not in d, d
+assert d["env"]["CLAUDE_CODE_PLUGIN_DIRS"] == "~/mods/a"
+PY
+then
+  pass "removes the retired vocdoni keys and keeps other plugins"
+else
+  fail "retired vocdoni keys were not removed cleanly"
+fi
+
+printf '%s\n' '{"enabledPlugins": {"vocdoni-contributing@vocdoni": true}}' > "$SETTINGS"
+merge_claude_settings >/dev/null
+python3 -c 'import json,sys; assert "enabledPlugins" not in json.load(open(sys.argv[1]))' "$SETTINGS" \
+  && pass "drops a parent object left empty by the retirement" \
+  || fail "left an empty enabledPlugins object behind"
+rm -rf "$HOME/.claude" "$DOTFILES/ai/claude/settings.json"
+
+echo ""
 echo "=== Test 28: link_herdr_config links the tracked herdr config ==="
 # Shadow the real herdr: a function wins over the PATH lookup, so nothing
 # below ever reaches the installed binary.
@@ -1361,6 +1433,29 @@ else
 fi
 rm -rf "$DOTFILES/config/kitty" "$DOTFILES/config/herdr"
 rm -rf "$FAKE_HOME/.config" "$FAKE_HOME/old_dotfiles"
+
+echo ""
+echo "=== Test 36: _link_apm_hook_skills links apm hook dirs to the skills dir ==="
+eval "$(sed -n '/^_link_apm_hook_skills() {/,/^}/p' "$TESTDIR/install_patched.sh")"
+HOOKS="$FAKE_HOME/.claude/hooks"
+rm -rf "$FAKE_HOME/.claude"
+mkdir -p "$FAKE_HOME/.claude/skills" "$HOOKS/vocdoni-contributing/hooks" \
+  "$HOOKS/stale-link/hooks" "$HOOKS/real-skills/hooks" "$HOOKS/real-skills/skills" \
+  "$HOOKS/no-hooks-subdir" "$HOOKS/foreign-link/hooks" "$FAKE_HOME/elsewhere"
+ln -s /nonexistent/elsewhere "$HOOKS/stale-link/skills"
+ln -s "$FAKE_HOME/elsewhere" "$HOOKS/foreign-link/skills"
+_link_apm_hook_skills
+_link_apm_hook_skills
+if [ "$HOOKS/vocdoni-contributing/skills" -ef "$FAKE_HOME/.claude/skills" ] &&
+   [ "$(readlink "$HOOKS/stale-link/skills")" = "../../skills" ] &&
+   [ "$(readlink "$HOOKS/foreign-link/skills")" = "$FAKE_HOME/elsewhere" ] &&
+   [ -d "$HOOKS/real-skills/skills" ] && [ ! -L "$HOOKS/real-skills/skills" ] &&
+   [ ! -e "$HOOKS/no-hooks-subdir/skills" ] && [ ! -L "$HOOKS/no-hooks-subdir/skills" ]; then
+  pass "links hook dirs, refreshes dangling links, keeps foreign links and real dirs, is idempotent"
+else
+  fail "hook skills link helper touched the wrong paths"
+fi
+rm -rf "$FAKE_HOME/.claude"
 
 echo ""
 echo "=== ALL TESTS COMPLETE ==="

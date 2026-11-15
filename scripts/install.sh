@@ -267,14 +267,9 @@ migrate_octopilot_state() {
 }
 
 merge_claude_settings() {
-  # The tracked ai/claude/settings.json holds only the keys these dotfiles own
-  # (the mods in CLAUDE_CODE_PLUGIN_DIRS and the vocdoni-contributing plugin
-  # with its marketplace). It is merged into
-  # ~/.claude/settings.json instead of linked over it: rtk, herdr, codegraph
-  # and Claude Code itself write their own hooks, permissions and plugins
-  # there, which must stay out of a public repo and differ per machine.
-  # Nested objects merge, our values win, nothing else is touched; the file
-  # is only rewritten when something changes, with a backup beside it.
+  # Merges the dotfiles-owned keys into ~/.claude/settings.json (other tools write
+  # there too): our values win, the retired keys below are dropped, and the file
+  # is rewritten only on change, with a backup.
   local src="$dotfiles/ai/claude/settings.json" dest="$HOME/.claude/settings.json"
   [ -f "$src" ] || return 0
   mkdir -p "$HOME/.claude"
@@ -301,7 +296,27 @@ def merge(a, b):
     return out
 
 
-new = merge(cur, base)
+# Keys these dotfiles used to write: the vocdoni marketplace and its plugin
+# were replaced by APM. A parent left empty is removed.
+RETIRED = [
+    ("enabledPlugins", "vocdoni-contributing@vocdoni"),
+    ("extraKnownMarketplaces", "vocdoni"),
+]
+
+
+def drop_retired(d):
+    d = dict(d)
+    for parent, key in RETIRED:
+        if isinstance(d.get(parent), dict) and key in d[parent]:
+            rest = {k: v for k, v in d[parent].items() if k != key}
+            if rest:
+                d[parent] = rest
+            else:
+                del d[parent]
+    return d
+
+
+new = drop_retired(merge(cur, base))
 if new == cur:
     sys.exit(0)
 if os.path.exists(dest):
@@ -370,10 +385,16 @@ link_ai() {
 # Outputs one skill name per line.
 _tracked_skill_names() {
   local lockfile=$1
-  # Extract "name:" fields from lockfile dependencies section.
+  # One deployed skill dir name per dependency: its alias, else its package name.
   sed -n '/^dependencies:/,/^[a-z]/p' "$lockfile" \
-    | grep '^[[:space:]]*name:' \
-    | sed 's/.*name:[[:space:]]*//; s/[[:space:]]*$//' \
+    | awk '
+      function trim(s) { sub(/^[[:space:]]+/, "", s); sub(/[[:space:]]+$/, "", s); return s }
+      function emit() { if (name != "") print (alias != "" ? alias : name) }
+      /^- / { emit(); name = ""; alias = "" }
+      /^[[:space:]]+name:/ { name = trim(substr($0, index($0, ":") + 1)) }
+      /^[[:space:]]+alias:/ { alias = trim(substr($0, index($0, ":") + 1)) }
+      END { emit() }
+    ' \
     | sort -u
 }
 
@@ -483,17 +504,23 @@ _dotfiles_retired_skill_names() {
   current_names=$(_tracked_skill_names "$current_lock")
   awk -v owner="$resolver" '
     function emit() {
-      if (name != "" && resolved_by == owner) print name
+      if (name != "" && resolved_by == owner) print (alias != "" ? alias : name)
     }
     /^-[[:space:]]repo_url:/ {
       emit()
       name = ""
+      alias = ""
       resolved_by = ""
       next
     }
     /^[[:space:]]+name:/ {
       name = $0
       sub(/^[[:space:]]+name:[[:space:]]*/, "", name)
+      next
+    }
+    /^[[:space:]]+alias:/ {
+      alias = $0
+      sub(/^[[:space:]]+alias:[[:space:]]*/, "", alias)
       next
     }
     /^[[:space:]]+resolved_by:/ {
@@ -529,6 +556,23 @@ _remove_retired_skill_dirs() {
       fi
     done
   done < "$retired_file"
+}
+
+# apm copies plugin hooks to ~/.claude/hooks/<name>/, but their scripts find
+# the plugin's skills relative to the plugin root, which apm does not reproduce.
+_link_apm_hook_skills() {
+  local hook_dir link
+  for hook_dir in "$HOME"/.claude/hooks/*/; do
+    [ -d "$hook_dir/hooks" ] || continue
+    link="${hook_dir%/}/skills"
+    # Create the link, or refresh one that is dangling or already ours. Foreign
+    # links and real directories are left alone.
+    if [ ! -e "$link" ] && [ ! -L "$link" ]; then
+      ln -s ../../skills "$link"
+    elif [ -L "$link" ] && { [ ! -e "$link" ] || [ "$(readlink "$link")" = "../../skills" ]; }; then
+      ln -sfn ../../skills "$link"
+    fi
+  done
 }
 
 _restore_legacy_skill_symlinks() {
@@ -651,6 +695,7 @@ symlink_ai() {
     fi
 
     _remove_retired_skill_dirs "$retired_file"
+    _link_apm_hook_skills
     if [ "$replace_existing" -eq 1 ]; then
       if ! (cd "$HOME/.apm" && apm prune); then
         echo "Warning: APM could not prune orphaned package cache entries" >&2

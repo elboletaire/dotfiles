@@ -62,6 +62,6 @@ dependencies:
       alias: comments
       ref: 175a70ad7e9a6c6cd85f547d3914c7c38b059a1e
     - git: https://github.com/vocdoni/skills.git
-      path: plugins/vocdoni-contributing/skills/contributing
+      path: plugins/vocdoni-contributing
       alias: contributing
       ref: 175a70ad7e9a6c6cd85f547d3914c7c38b059a1e

@@ -1,5 +1,5 @@
 lockfile_version: '1'
-apm_version: 0.33.0
+apm_version: 0.32.0
 dependencies:
 - repo_url: anthropics/skills
   alias: skill-creator
@@ -491,23 +491,26 @@ dependencies:
   content_hash: sha256:e8a4e34d81e7dacd200a7c42310c74510819f0cc651b645c12e961b13853693b
 - repo_url: vocdoni/skills
   alias: contributing
-  name: contributing
+  name: vocdoni-contributing
   host: github.com
   resolved_commit: 175a70ad7e9a6c6cd85f547d3914c7c38b059a1e
   resolved_ref: 175a70ad7e9a6c6cd85f547d3914c7c38b059a1e
-  version: unknown
-  virtual_path: plugins/vocdoni-contributing/skills/contributing
+  version: 0.3.0
+  virtual_path: plugins/vocdoni-contributing
   is_virtual: true
-  package_type: claude_skill
+  package_type: skill_bundle
   deployed_files:
   - .agents/skills/contributing
   - .agents/skills/contributing/SKILL.md
+  - .claude/hooks/contributing/hooks/session-start.sh
   - .claude/skills/contributing
   - .claude/skills/contributing/SKILL.md
   deployed_file_hashes:
     .agents/skills/contributing/SKILL.md: sha256:1fcf63770e74c8c6c1473bfd161cb3b644c914342bad7863e1b6bc7b9732369a
+    .claude/hooks/contributing/hooks/session-start.sh: sha256:df0e337223b60d4d4bf3fdb4fa6990eb819c913e2ec3f905db110121142dc3dd
     .claude/skills/contributing/SKILL.md: sha256:1fcf63770e74c8c6c1473bfd161cb3b644c914342bad7863e1b6bc7b9732369a
-  content_hash: sha256:1b23969a8d2b14330bb18015ac7c0061e25e505120c21cb937ea40cacef4649d
+  content_hash: sha256:9544512874dc59152e59c91afb747354d204d3aa39ad18958eb71120424b41ef
+  declared_license: AGPL-3.0-or-later
 deployments:
 - kind: project-relative
   target: agent-skills
@@ -641,8 +644,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
-  active_owner: vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  - vocdoni/skills/plugins/vocdoni-contributing
+  active_owner: vocdoni/skills/plugins/vocdoni-contributing
   content_hash: null
 - kind: project-relative
   target: agent-skills
@@ -650,8 +653,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
-  active_owner: vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  - vocdoni/skills/plugins/vocdoni-contributing
+  active_owner: vocdoni/skills/plugins/vocdoni-contributing
   content_hash: sha256:1fcf63770e74c8c6c1473bfd161cb3b644c914342bad7863e1b6bc7b9732369a
 - kind: project-relative
   target: agent-skills
@@ -1285,6 +1288,15 @@ deployments:
   content_hash: sha256:a6c67c1900064347c2a329990dd3c555657c51c3ec53b259a08aa01a2c26139a
 - kind: project-relative
   target: claude
+  value: .claude/hooks/contributing/hooks/session-start.sh
+  runtime: null
+  scope: project
+  owners:
+  - vocdoni/skills/plugins/vocdoni-contributing
+  active_owner: vocdoni/skills/plugins/vocdoni-contributing
+  content_hash: sha256:df0e337223b60d4d4bf3fdb4fa6990eb819c913e2ec3f905db110121142dc3dd
+- kind: project-relative
+  target: claude
   value: .claude/skills/brainstorming
   runtime: null
   scope: project
@@ -1415,8 +1427,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
-  active_owner: vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  - vocdoni/skills/plugins/vocdoni-contributing
+  active_owner: vocdoni/skills/plugins/vocdoni-contributing
   content_hash: null
 - kind: project-relative
   target: claude
@@ -1424,8 +1436,8 @@ deployments:
   runtime: null
   scope: project
   owners:
-  - vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
-  active_owner: vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  - vocdoni/skills/plugins/vocdoni-contributing
+  active_owner: vocdoni/skills/plugins/vocdoni-contributing
   content_hash: sha256:1fcf63770e74c8c6c1473bfd161cb3b644c914342bad7863e1b6bc7b9732369a
 - kind: project-relative
   target: claude
