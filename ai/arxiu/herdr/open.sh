@@ -9,6 +9,8 @@
 # focused, never started twice. The board ends up focused; prefix+j / prefix+k
 # move between the two. ARXIU_DRY_RUN=1 prints what it would run instead.
 set -euo pipefail
+# A herdr server started by a remote client has a bare PATH; uv lives here.
+PATH="$HOME/.local/bin:$PATH"
 H="${HERDR_BIN_PATH:-herdr}"
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # macOS /bin/bash is 3.2 and the system python3 is 3.9: Python runs through uv.

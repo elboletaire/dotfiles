@@ -12,6 +12,8 @@
 # instead; TALLER_LABEL / TALLER_ORCH build a second one under another label
 # and agent name (to try changes without touching yours).
 set -euo pipefail
+# A herdr server started by a remote client has a bare PATH; uv lives here.
+PATH="$HOME/.local/bin:$PATH"
 H="${HERDR_BIN_PATH:-herdr}"
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # macOS /bin/bash is 3.2 and the system python3 is 3.9: Python runs through uv.
