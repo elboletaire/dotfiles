@@ -25,3 +25,7 @@ If you consider that some of these tools aren't suitable enough and want to prop
 Previews (designs, logos, mockups, reports) are local files: write a self-contained `.html` and give me its path (or `! open <path>`). Don't publish or deploy them anywhere, Artifacts included, unless I ask for that explicitly.
 
 @RTK.md
+
+This file is shared by all my workstations through dotfiles. Facts about the current machine only (hardware, OS, local paths, installed tools) go in `~/.claude/machine.md`, which stays on that machine and is imported below; create it if missing.
+
+@~/.claude/machine.md

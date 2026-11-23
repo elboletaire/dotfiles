@@ -20,3 +20,7 @@ When starting new coding projects, the preferred languages and tools are the fol
 
 If you consider that some of these tools aren't suitable enough and want to propose a different language or toolset, ask directly the user after explaining your issues with the requested toolset.
 </STARTING_NEW_PROJECTS>
+
+This file is shared by all my workstations through dotfiles. Facts about the current machine only (hardware, OS, local paths, installed tools) go in `~/.claude/machine.md`, which stays on that machine; `~/.pi/agent/APPEND_SYSTEM.md` is a symlink to it, so it is already loaded. Create both if missing.
+
+@~/.claude/machine.md
