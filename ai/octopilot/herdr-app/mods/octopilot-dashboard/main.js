@@ -436,6 +436,8 @@ export default class OctopilotDashboard extends View {
   }
 
   perform(id, key, args, cx) {
+    // A fixture with no state dir of its own must never act on the live octopilot.
+    if (this.fixture && !this.stateExplicit) return this.say("Fixture mode: nothing was sent.", false, cx);
     cx.spawn(async (cx) => {
       const res = await runAction(this.dir, this.stateExplicit, id, key, args);
       if (res.kitchen) this.openDialog("kitchen", { action: id, key, args, message: res.message });
