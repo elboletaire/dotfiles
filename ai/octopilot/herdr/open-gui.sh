@@ -40,16 +40,32 @@ TERMINALS=0
 CLOSE_LAUNCHER=0
 HIDE_ENGINE=0
 LOG=""
+TEE_PID=""
+# The terminal's stdout and stderr, kept on fds 3 and 4 while the log tee runs.
+exec 3>&1 4>&2
+# Puts stdout and stderr back on the terminal, then ends the log tee once it has drained the
+# pipe. A bash fd still holding the pipe keeps the tee alive, so it is ended after 5 s.
+flush_log() {
+  exec 1>&3 2>&4
+  if [ -n "$TEE_PID" ]; then
+    for _ in $(seq 50); do kill -0 "$TEE_PID" 2>/dev/null || break; sleep 0.1; done
+    kill "$TEE_PID" 2>/dev/null || true
+    wait "$TEE_PID" 2>/dev/null || true
+    TEE_PID=""
+  fi
+}
 # Runs at every exit, set -e failures included. A failed run from the launcher keeps its
-# pane, so the error and the log stay readable until Enter closes it.
+# pane, so the error, the log and Enter stay readable until Enter closes it.
 on_exit() {
   local status=$?
   trap - EXIT
   if [ "$status" -ne 0 ] && [ "$CLOSE_LAUNCHER" = 1 ]; then
     if [ -n "$LOG" ]; then echo "open-gui.sh: failed (status $status); the log is $LOG" >&2; fi
-    printf 'Press Enter to close this pane. ' >&2
-    read -r _ || true
+    flush_log
+    printf 'Press Enter to close this pane. ' >&4
+    if [ -t 0 ]; then read -r _ || true; fi
   fi
+  flush_log
   exit "$status"
 }
 trap on_exit EXIT
@@ -88,7 +104,9 @@ set +a
 LOG="$STATE_DIR/open-gui.log"
 mkdir -p "$STATE_DIR"
 if [ -e "$LOG" ]; then mv -f "$LOG" "$LOG.1"; fi
-exec > >(tee "$LOG") 2>&1
+# The tee ignores HUP: a pane closed while the script runs still writes the whole log.
+exec > >(trap '' HUP; exec tee "$LOG") 2>&1
+TEE_PID=$!
 
 # Every session and pane started here gets the hc backend, this octopilot's
 # directory (the skills' scan.sh, see OCTOPILOT_DIR in plugin/skills), and the
@@ -238,7 +256,7 @@ start_engine_term() {
     created=$(app do tab.new --space "$space" --argv "$argv" --focus false)
   fi
   term=$(jq -r '.terminal' <<<"$created")
-  p=$(locate "$term" | cut -f3)
+  p=$(await_shown "$term" | cut -f3) || true
   if [ -n "$p" ]; then app do pane.rename --pane "$p" --name "$name" >/dev/null; fi
   echo "$term"
 }
@@ -393,6 +411,7 @@ start_code_tab() {
     echo "open-gui.sh: the $CODE_TAB tab has no terminal for the $CODE_AGENT agent" >&2
     exit 1
   fi
+  await_shown "$term" >/dev/null || true
   name_agent "$term" "$CODE_AGENT" "$session"
   echo "$term"
 }
@@ -402,14 +421,15 @@ tab_terminals() {
   "$APP" ls | jq -r --arg t "$1" '.spaces[].tabs[] | select(.id == $t) | .terminals[].terminal'
 }
 
-# Waits (up to 10 s) until a terminal shows in a tab, and prints its "space tab pane".
-# herdr applies keep and park in the background, so the callers wait for them.
+# Waits (up to 15 s) until a terminal shows in a tab, and prints its "space tab pane".
+# herdr applies new terminals, keep and park in the background, and a remote herdr-app
+# lists them a moment later, so the callers wait for them.
 await_shown() {
   local i located
-  for i in $(seq 40); do
+  for i in $(seq 30); do
     located=$(locate "$1")
     if [ -n "$located" ]; then echo "$located"; return 0; fi
-    sleep 0.25
+    sleep 0.5
   done
   echo "open-gui.sh: $1 did not show in a tab" >&2
   return 1
@@ -539,32 +559,42 @@ parked_engine() {
   done
 }
 
-# Shows the parked engine terminals of this checkout again, each with its process: the
-# first one takes a tab of its own (named engine), the others go beside the engine tab.
-# Best effort: a refused one is warned about and stays parked.
+# Shows the parked engine terminals of this checkout again, each labelled with its space
+# first (as show_code_tab does). The first takes a tab named engine, the others go beside
+# it after the orchestrator is focused. One that does not show in this space's engine tab
+# is parked again, and a refused one stays parked (both warned about).
 unpark_engine() {
-  local space=$1 label t located out
+  local space=$1 label t tab located out lspace ltab
   local keep
   for label in "$ORCH_AGENT" "$PROMPTER_AGENT" "$HEADLESS_AGENT"; do
     t=$(find_agent "$label")
     if [ -z "$t" ] || [ -n "$(locate "$t")" ]; then continue; fi
+    "$HC" label "$t" "herdr.space=$space" "octopilot.space=$space" >/dev/null
+    tab=$(tab_named "$space" "$ENGINE_TAB")
     keep=(--terminal "$t")
-    if [ -n "$(tab_named "$space" "$ENGINE_TAB")" ]; then keep+=(--place right); fi
+    if [ -n "$tab" ]; then
+      keep+=(--place right)
+      "$APP" do agent.focus --terminal "$(find_orch)" >/dev/null 2>&1 || true
+    fi
     if ! out=$("$APP" do terminal.keep "${keep[@]}" 2>&1); then
       echo "open-gui.sh: could not show the $label terminal ($t): $out" >&2
       continue
     fi
     if ! located=$(await_shown "$t"); then continue; fi
-    if [ -z "$(tab_named "$space" "$ENGINE_TAB")" ]; then
-      app do tab.rename --id "$(cut -f2 <<<"$located")" --name "$ENGINE_TAB" >/dev/null
+    IFS=$'\t' read -r lspace ltab _ <<<"$located"
+    if [ "$lspace" != "$space" ] || { [ -n "$tab" ] && [ "$ltab" != "$tab" ]; }; then
+      echo "open-gui.sh: the $label terminal ($t) did not show in the $ENGINE_TAB tab of" \
+        "this space; parked again" >&2
+      "$APP" do terminal.park --terminal "$t" >/dev/null 2>&1 || true
+      continue
     fi
+    if [ -z "$tab" ]; then app do tab.rename --id "$ltab" --name "$ENGINE_TAB" >/dev/null; fi
   done
 }
 
-# Parks the engine's terminals (--hide-engine): their panes go, their processes keep
-# running, and the engine tab empties and goes away. The orchestrator also keeps its
-# space in a label, for space_of. The code agent is not an engine terminal: it has
-# its own tab.
+# Parks the engine's terminals (--hide-engine): their panes go, the processes keep running,
+# and the engine tab goes away. The orchestrator's space stays in a label (octopilot.space)
+# for space_of. The code agent is not an engine terminal.
 park_engine() {
   local space=$1 label t
   if [ "$HIDE_ENGINE" = 0 ]; then return 0; fi
@@ -610,15 +640,20 @@ existing_space() {
 finish() {
   local space=$1
   if [ "$TERMINALS" = 0 ]; then park_engine "$space"; fi
+  trap - EXIT
+  flush_log
   if [ "$CLOSE_LAUNCHER" = 1 ]; then close_launcher; fi
 }
 
-# Names the space LABEL. space.new's name is not always kept, and an unnamed space is
-# called after its first terminal's folder (herdr-app ls has no named flag to tell).
+# Names the space LABEL, best effort: space.new's name is not always kept, and an unnamed
+# space is called after its first terminal's folder. A refusal is warned about, never fatal.
 name_space() {
-  local name
-  name=$("$APP" ls | jq -r --arg s "$1" '.spaces[] | select(.id == $s) | .name')
-  if [ "$name" != "$LABEL" ]; then app do space.rename --id "$1" --name "$LABEL" >/dev/null; fi
+  local name out
+  name=$("$APP" ls | jq -r --arg s "$1" '.spaces[] | select(.id == $s) | .name') || true
+  if [ "$name" = "$LABEL" ]; then return 0; fi
+  if ! out=$("$APP" do space.rename --id "$1" --name "$LABEL" 2>&1); then
+    echo "open-gui.sh: could not name space $1 $LABEL: $out" >&2
+  fi
 }
 
 # Puts the engine tab third in the space, after OCTOPILOT and the code tab. Nothing when
@@ -701,7 +736,7 @@ if [ -n "$orch" ]; then
     if [ -n "$pane" ]; then app do tab.rename --id "$tab" --name "$ENGINE_TAB" >/dev/null; fi
     if [ "$HIDE_ENGINE" = 0 ]; then
       unpark_engine "$space"
-      pane=$(locate "$orch" | cut -f3)
+      pane=$(await_shown "$orch" | cut -f3) || true
     fi
     add_engine_agents "$space" "$pane"
     add_main_tab "$space"
@@ -733,15 +768,15 @@ else
     --tab "$tab_name" --argv "$(session_argv "$session" "/octopilot:messenger")" --focus false)
   space=$(jq -r '.space' <<<"$created")
 fi
-name_space "$space"
 orch=$(jq -r '.terminal' <<<"$created")
 "$HC" label "$orch" "octopilot.agent=$ORCH_AGENT" "octopilot.dir=$DIR" \
   "octopilot.session=$session" >/dev/null
-root=$(locate "$orch" | cut -f3)
-if [ -z "$root" ]; then
+name_space "$space"
+if ! located=$(await_shown "$orch"); then
   echo "open-gui.sh: the new $ORCH_AGENT terminal ($orch) is not in a Herdr space" >&2
   exit 1
 fi
+root=$(cut -f3 <<<"$located")
 
 if [ "$TERMINALS" = 1 ]; then
   app do pane.rename --pane "$root" --name messenger >/dev/null

@@ -90,7 +90,9 @@ terminals run in herdr-core) as one space with three tabs, in this order:
 | **engine** | the orchestrator (`octopilot`, `/octopilot:messenger`), the prompter (`octopilot-prompter`) and `dashboard.sh --headless` (`octopilot-headless`), each an hc terminal. Shown by default; `--hide-engine` parks them (see below) |
 
 The space is named `Octopilot` (`LABEL`): `space.new` does not keep the name it
-is given here, so the run calls `space.rename` when the space is not named so.
+is given here, so the run calls `space.rename` when the space is not named so (best
+effort: a refusal is warned about). A remote herdr-app lists a new terminal a moment
+after it is made, so the run waits up to 15 s for each one it locates.
 
 The engine is shown by default. `--hide-engine` parks its three terminals after
 building (`herdr-app do terminal.park`): the pane goes, the process keeps
@@ -109,7 +111,8 @@ Every run writes its output to `$OCTOPILOT_STATE_DIR/open-gui.log` (the default
 state dir without the variable): the last run, and the one before as `open-gui.log.1`.
 A run from the launcher (`--close-launcher`) that fails keeps its pane open: it
 prints the error and the log path and waits for Enter. Success closes the pane
-as before. This covers `set -e` failures too (an ERR trap names the line).
+as before. This covers `set -e` failures too (the ERR trap names the line when it can).
+The log's tee ignores HUP, so a pane closed mid-run still writes the whole log.
 
 Viewed from another computer (the Octopilot space is on a remote machine, see
 `CONTRACT.md`), the mods run their commands and read `view.json` on that machine,
