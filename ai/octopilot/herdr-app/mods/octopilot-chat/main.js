@@ -4,6 +4,7 @@
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, ScrollHandle, TextareaState, Textarea, TextView } from "gpui-base";
 import { exec, readTextFile, run, props, shared, home, window, theme, nextCommand, checking, panes, spaces, focused } from "herdr";
+import { machineCache, addressOn } from "./machine.js";
 
 const SPIN = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 const WORDS = { working: "working", blocked: "needs you", idle: "idle", done: "finished", offline: "offline" };
@@ -26,17 +27,15 @@ const MAX_MESSAGES = 200;
 // How close to the end still counts as "at the bottom", in px.
 const BOTTOM_SLACK = 1;
 
-// scan.sh under the hc backend, with the dashboard's folder and state dir, set by env(1)
+// scan.sh under the hc backend, with the octopilot's folder and state dir (`where`), set by env(1)
 // (exec() has no env option). The agent prop goes right after the verb, where scan.sh reads it.
 // -> [command, argv]
-function scanCall(args) {
-  const dir = props()?.dir || shared("octopilot.dir") || `${home()}/.dotfiles/ai/octopilot`;
-  const stateDir = props()?.state_dir || shared("octopilot.state_dir");
+function scanCall(where, args) {
   const agent = props()?.agent;
-  const env = ["OCTOPILOT_BACKEND=hc", `OCTOPILOT_DIR=${dir}`];
-  if (stateDir) env.push(`OCTOPILOT_STATE_DIR=${stateDir}`);
+  const env = ["OCTOPILOT_BACKEND=hc", `OCTOPILOT_DIR=${where.dir}`];
+  if (where.stateExplicit) env.push(`OCTOPILOT_STATE_DIR=${where.stateExplicit}`);
   const argv = agent ? [args[0], "--agent", agent, ...args.slice(1)] : args;
-  return ["env", [...env, `${dir}/scan.sh`, ...argv]];
+  return ["env", [...env, `${where.dir}/scan.sh`, ...argv]];
 }
 
 // The character a keypress types, or null: chords with ctrl, alt or cmd type nothing here.
@@ -77,6 +76,7 @@ function clock(at) {
 
 export default class Chat extends View {
   init(_props, cx) {
+    this.machineOf = machineCache();
     this.title = props()?.title || "Prompter";
     this.subject = props()?.subject || "the prompter";
     this.chips = (props()?.chips ?? CHIPS).map((c) => (typeof c === "string" ? { label: c, text: c } : c));
@@ -201,6 +201,32 @@ export default class Chat extends View {
     cx.spawn(async (cx) => this.sync(cx, false));
   }
 
+  // The machine of this copy's space: null here, a name when remote, undefined while not known.
+  // Fixtures are always local.
+  machine() {
+    if (props()?.fixture) return null;
+    return this.machineOf(panes(), spaces(), { mod: "octopilot-chat", name: props()?.pane_name ?? props()?.agent ?? "octopilot-prompter" });
+  }
+
+  // The octopilot's folders on this copy's machine (`on`, null here): the code dir, and the state
+  // dir when one is set. A remote space has only its props; home() and shared paths are this
+  // computer's. `missing` says what the props lack, else null.
+  where() {
+    const p = props() ?? {};
+    const on = this.machine() ?? null;
+    if (on) {
+      const dir = p.dir || null;
+      const missing = dir ? null : `no octopilot dir for ${on}`;
+      return { on, dir, stateExplicit: p.state_dir || null, missing };
+    }
+    return {
+      on: null,
+      dir: p.dir || shared("octopilot.dir") || `${home()}/.dotfiles/ai/octopilot`,
+      stateExplicit: p.state_dir || shared("octopilot.state_dir") || null,
+      missing: null,
+    };
+  }
+
   // The chat --json shape: from the fixture when a test gives one, else from scan.sh.
   async chat(args) {
     const fixture = props()?.fixture;
@@ -208,8 +234,10 @@ export default class Chat extends View {
       const text = await readTextFile(fixture);
       return JSON.parse(text ?? "null");
     }
-    const [cmd, argv] = scanCall(["chat", "--json", ...args]);
-    const r = await exec(cmd, argv, { timeout: 20000 });
+    const w = this.where();
+    if (w.missing) throw new Error(w.missing);
+    const [cmd, argv] = scanCall(w, ["chat", "--json", ...args]);
+    const r = await exec(cmd, argv, { timeout: 20000, on: w.on });
     if (r.code !== 0) throw new Error(r.stderr.trim() || `scan.sh chat exited ${r.code}`);
     return JSON.parse(r.stdout);
   }
@@ -301,8 +329,10 @@ export default class Chat extends View {
   async say(args) {
     if (props()?.fixture) return { code: -1, error: "Fixture mode: nothing was sent." };
     try {
-      const [cmd, argv] = scanCall(args);
-      const r = await exec(cmd, argv, { timeout: 20000 });
+      const w = this.where();
+      if (w.missing) return { code: -1, error: w.missing };
+      const [cmd, argv] = scanCall(w, args);
+      const r = await exec(cmd, argv, { timeout: 20000, on: w.on });
       let error = r.stderr.trim();
       if (!error) try { error = JSON.parse(r.stdout)?.error ?? ""; } catch {}
       return { code: r.code, error };
@@ -442,6 +472,7 @@ export default class Chat extends View {
   header(t) {
     const st = this.status ?? "offline";
     const color = t[st] ?? t.dim;
+    const on = this.machine();
     return h_flex()
       .h(48)
       .flex_none()
@@ -461,9 +492,10 @@ export default class Chat extends View {
           .text_size(11.5)
           .text_color(color)
           .when(st === "working", (el) => el.child(div().w(10).frames(SPIN, 90).child(SPIN[0])))
-          .child(WORDS[st] ?? st)))
+          .child(WORDS[st] ?? st)
+          .when(Boolean(on), (el) => el.child(div().text_color(t.dim).child(`· on ${on}`)))))
       .child(div().flex_1())
-      .when(this.online() && this.terminal, (el) => el.child(this.ghost(t, "chat-peek", "Terminal", () => run("terminal.peek", { terminal: this.terminal }))))
+      .when(this.online() && this.terminal, (el) => el.child(this.ghost(t, "chat-peek", "Terminal", () => run("terminal.peek", { terminal: addressOn(on, this.terminal) }))))
       .when(this.online(), (el) => el.child(this.ghost(t, "chat-clear", "Clear", (_e, cx) => {
         this.confirming = true;
         cx.notify();
@@ -497,7 +529,7 @@ export default class Chat extends View {
           (_e, cx) => cx.spawn(async (cx) => this.answer(cx, keys)), primary, this.answering)))))
       .when(Boolean(this.terminal), (el) => el.child(h_flex()
         .child(div().flex_1())
-        .child(this.ghost(t, "chat-open", "Open terminal", () => run("terminal.peek", { terminal: this.terminal })))));
+        .child(this.ghost(t, "chat-open", "Open terminal", () => run("terminal.peek", { terminal: addressOn(this.machine(), this.terminal) })))));
   }
 
   // Tool calls of one message: the first one, "+n" for the rest, all of them when expanded.

@@ -3,7 +3,8 @@
 // an open /resume picker. Props: dir, state_dir, agent, title (see herdr/README.md).
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { exec, hc, run, props, shared, home, theme, terminals, nextCommand, window, checking } from "herdr";
+import { exec, hc, run, props, shared, home, theme, terminals, nextCommand, window, checking, panes, spaces } from "herdr";
+import { machineCache, machineOfAddress, bareAddress } from "./machine.js";
 
 const MODELS = ["opus", "sonnet", "haiku"];
 const WORDS = { working: "working", blocked: "needs you", idle: "idle", done: "finished", offline: "offline" };
@@ -14,16 +15,14 @@ const LOCK_MS = 1500;
 // A notice goes after this long, or sooner when the agent's status changes.
 const NOTICE_MS = 8000;
 
-// scan.sh under the hc backend, with the dashboard's folder and state dir, set by env(1).
+// scan.sh under the hc backend, with the octopilot's folder and state dir (`where`), set by env(1).
 // The agent prop goes right after the verb, where scan.sh reads it. -> [command, argv]
-function scanCall(args) {
-  const dir = props()?.dir || shared("octopilot.dir") || `${home()}/.dotfiles/ai/octopilot`;
-  const stateDir = props()?.state_dir || shared("octopilot.state_dir");
+function scanCall(where, args) {
   const agent = props()?.agent;
-  const env = ["OCTOPILOT_BACKEND=hc", `OCTOPILOT_DIR=${dir}`];
-  if (stateDir) env.push(`OCTOPILOT_STATE_DIR=${stateDir}`);
+  const env = ["OCTOPILOT_BACKEND=hc", `OCTOPILOT_DIR=${where.dir}`];
+  if (where.stateExplicit) env.push(`OCTOPILOT_STATE_DIR=${where.stateExplicit}`);
   const argv = agent ? [args[0], "--agent", agent, ...args.slice(1)] : args;
-  return ["env", [...env, `${dir}/scan.sh`, ...argv]];
+  return ["env", [...env, `${where.dir}/scan.sh`, ...argv]];
 }
 
 // The agent's terminal: labelled with its name and this checkout's dir, if any.
@@ -34,6 +33,7 @@ function agentTerminal(agent, dir) {
 
 export default class Side extends View {
   init(_props, cx) {
+    this.machineOf = machineCache();
     this.title = props()?.title || "Code changes";
     this.handle = cx.focus_handle();
     this.agent = null;      // the agent's terminal, null when offline
@@ -64,6 +64,27 @@ export default class Side extends View {
 
   online() {
     return this.agent !== null;
+  }
+
+  // The machine of the code agent's space: the tab of the agent's own terminal (this panel sits
+  // beside it), else the panel's pane. Null here, undefined while not known.
+  machine() {
+    const tab = this.agent ? panes().find((p) => p.terminal === this.agent.address)?.tab ?? null : null;
+    return this.machineOf(panes(), spaces(), { mod: "octopilot-side", name: props()?.pane_name ?? null, tab });
+  }
+
+  // The octopilot's folders on this copy's machine (`on`, null here), as the dashboard has them:
+  // a remote space has only its props. `missing` says what they lack, else null.
+  where() {
+    const p = props() ?? {};
+    const on = this.machine() ?? null;
+    if (on) return { on, dir: p.dir || null, stateExplicit: p.state_dir || null, missing: p.dir ? null : `no octopilot dir for ${on}` };
+    return {
+      on: null,
+      dir: p.dir || shared("octopilot.dir") || `${home()}/.dotfiles/ai/octopilot`,
+      stateExplicit: p.state_dir || shared("octopilot.state_dir") || null,
+      missing: null,
+    };
   }
 
   blocked() {
@@ -116,12 +137,15 @@ export default class Side extends View {
     ]);
   }
 
-  // Claude's own sub-agents of the agent's claude: the records of its hc get.
+  // Claude's own sub-agents of the agent's claude: the records of its hc get, run on the agent's
+  // machine (its address says which: `bolt/t7`; a bare one is this computer's, and so is hc).
   async readRecords(cx, address) {
     this.reading = true;
     this.recordsAt = Date.now();
     try {
-      const r = await hc(["get", address, "--json"]);
+      const on = machineOfAddress(address);
+      const args = ["get", bareAddress(address), "--json"];
+      const r = on ? await exec("hc", args, { on, timeout: 20000 }) : await hc(args);
       const records = r.code === 0 ? JSON.parse(r.stdout)?.records ?? {} : {};
       this.records = Object.entries(records).map(([id, rec]) => ({ id, title: rec?.title || id, state: rec?.state ?? "" }));
     } catch {
@@ -135,8 +159,10 @@ export default class Side extends View {
   // scan.sh's result: { code, error }. Exit 4 is a prompt waiting, 3 an agent not running.
   async say(args) {
     try {
-      const [cmd, argv] = scanCall(args);
-      const r = await exec(cmd, argv, { timeout: 20000 });
+      const w = this.where();
+      if (w.missing) return { code: -1, error: w.missing };
+      const [cmd, argv] = scanCall(w, args);
+      const r = await exec(cmd, argv, { timeout: 20000, on: w.on });
       let error = r.stderr.trim();
       if (!error) try { error = JSON.parse(r.stdout)?.error ?? ""; } catch {}
       return { code: r.code, error };
@@ -212,6 +238,7 @@ export default class Side extends View {
   header(t) {
     const st = this.agent ? (this.agent.status ?? "idle") : "offline";
     const color = t[st] ?? t.dim;
+    const on = this.machine();
     return h_flex()
       .h(44)
       .flex_none()
@@ -226,7 +253,7 @@ export default class Side extends View {
         .flex_1()
         .min_w(0)
         .child(div().font_semibold().text_size(13).truncate().child(this.title))
-        .child(div().text_size(11).text_color(color).child(WORDS[st] ?? st)))
+        .child(div().text_size(11).text_color(color).child(`${WORDS[st] ?? st}${on ? ` · on ${on}` : ""}`)))
       .when(this.online(), (el) => el.child(this.ghost(t, "side-focus", "Terminal", () => this.focusTerminal())));
   }
 

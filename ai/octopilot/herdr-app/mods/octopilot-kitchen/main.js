@@ -4,11 +4,12 @@
 
 import { View, div, image, svg } from "gpui-kit";
 import { v_flex, h_flex, TextView } from "gpui-base";
-import { exec, readTextFile, watchFolder, run, theme, props, shared, home, window, placement, openOverlay, closeOverlay, checking } from "herdr";
+import { exec, readTextFile, watchFolder, run, theme, props, shared, home, window, placement, openOverlay, closeOverlay, checking, panes, spaces } from "herdr";
 import { clip } from "./clip.js";
 import { SCENE, BOX, SPRITE } from "./atlas.js";
 import { derive, holeAt, spriteBox, boatBox, offlineReason, WALK_MS, LOG_LINES } from "./kitchen.js";
 import { paneLayout, bubbleRows, PANE, PANE_DEFAULT } from "./layout.js";
+import { machineCache, addressOn } from "./machine.js";
 
 const MOD = "octopilot-kitchen";
 const BUBBLE_W = 340;
@@ -33,16 +34,12 @@ function setting(prop, sharedKey) {
   return typeof value === "string" && value ? value : null;
 }
 
-const octopilotDir = () => setting("dir", "octopilot.dir") ?? `${home()}/.dotfiles/ai/octopilot`;
-const stateDir = () => setting("state_dir", "octopilot.state_dir") ?? `${home()}/.local/state/octopilot`;
-
 // scan.sh would otherwise take herdr-app's own environment: name the backend and the code,
 // and the state folder only when one was set, so its own default stands otherwise.
-function scanArgs(...args) {
-  const dir = octopilotDir();
-  const state = setting("state_dir", "octopilot.state_dir");
-  return ["OCTOPILOT_BACKEND=hc", `OCTOPILOT_DIR=${dir}`, ...(state ? [`OCTOPILOT_STATE_DIR=${state}`] : []),
-    `${dir}/scan.sh`, ...args];
+function scanArgs(where, ...args) {
+  return ["OCTOPILOT_BACKEND=hc", `OCTOPILOT_DIR=${where.dir}`,
+    ...(where.stateExplicit ? [`OCTOPILOT_STATE_DIR=${where.stateExplicit}`] : []),
+    `${where.dir}/scan.sh`, ...args];
 }
 
 const art = (name) => `mods/${MOD}/art/png/${name}.png`;
@@ -54,14 +51,15 @@ const layer = ([x, y, w, h]) => div().absolute().left(x * K).top(y * K).w(w * K)
 // Floating blocks have a placement; a pane (or an overlay) has none.
 const inPane = () => placement() == null;
 
-async function readJson(path) {
-  const text = await readTextFile(path);
+async function readJson(path, on) {
+  const text = await readTextFile(path, { on });
   if (text == null) throw new Error(`no file at ${path}`);
   return JSON.parse(text);
 }
 
 export default class Kitchen extends View {
   init(_props, cx) {
+    this.machineOf = machineCache();
     this.view = null;
     this.viewError = null;
     this.speech = null;
@@ -83,6 +81,35 @@ export default class Kitchen extends View {
     this.watch(cx);
     this.walks(cx);
     this.blinks(cx);
+  }
+
+  // The machine of this copy's space: null here, a name when remote, undefined while no tab is
+  // found (a floating copy has no pane: the shown tab decides). Fixtures are always local.
+  machine() {
+    if (props()?.fixture) return null;
+    return this.machineOf(panes(), spaces(), { mod: MOD, name: props()?.pane_name ?? null });
+  }
+
+  // Where the octopilot is, on its machine (`on`, null here): the code dir, the state dir (null:
+  // scan.sh's own default). A remote space has only its props; home() and shared paths are this
+  // computer's. `missing` says what the props lack, else null.
+  where() {
+    const p = props() ?? {};
+    const on = this.machine() ?? null;
+    if (on) {
+      const dir = p.dir || null;
+      const stateExplicit = p.state_dir || null;
+      const missing = !dir ? `no octopilot dir for ${on}` : !stateExplicit ? `no octopilot state dir for ${on}` : null;
+      return { on, dir, stateExplicit, stateDir: stateExplicit, missing };
+    }
+    const stateExplicit = setting("state_dir", "octopilot.state_dir");
+    return {
+      on: null,
+      dir: setting("dir", "octopilot.dir") ?? `${home()}/.dotfiles/ai/octopilot`,
+      stateExplicit,
+      stateDir: stateExplicit ?? `${home()}/.local/state/octopilot`,
+      missing: null,
+    };
   }
 
   // A fixture's clock stands still at the moment it was made, so its moods and bursts stay on show.
@@ -119,8 +146,13 @@ export default class Kitchen extends View {
     if (props()?.fixture) return;
     cx.spawn(async (cx) => {
       for (;;) {
+        // A folder on another machine cannot be watched from here: the poll reads it instead.
+        if (this.machine() !== null) {
+          await cx.sleep(FAST_MS);
+          continue;
+        }
         try {
-          await watchFolder(stateDir());
+          await watchFolder(this.where().stateDir);
         } catch (_e) {
           return;
         }
@@ -158,8 +190,10 @@ export default class Kitchen extends View {
 
   async loadView() {
     const p = props() ?? {};
+    const w = this.where();
     try {
-      this.view = await readJson(p.fixture ?? `${stateDir()}/view.json`);
+      if (w.missing) throw new Error(w.missing);
+      this.view = await readJson(p.fixture ?? `${w.stateDir}/view.json`, w.on);
       this.viewError = null;
     } catch (e) {
       // A missing or half-written view.json: no kitchen for now, and the chip says why.
@@ -174,7 +208,9 @@ export default class Kitchen extends View {
       if (p.fixture_speech) this.speech = await readJson(p.fixture_speech);
       else if (p.fixture) this.speech = null;
       else {
-        const r = await exec("env", scanArgs("speech", "--json"), { timeout: 15000 });
+        const w = this.where();
+        if (w.missing) throw new Error(w.missing);
+        const r = await exec("env", scanArgs(w, "speech", "--json"), { timeout: 15000, on: w.on });
         if (r.code !== 0) throw new Error(r.stderr.trim().split("\n")[0] || `exit ${r.code}`);
         this.speech = JSON.parse(r.stdout);
       }
@@ -206,7 +242,7 @@ export default class Kitchen extends View {
 
   peek() {
     const terminal = this.speech?.terminal;
-    if (terminal) run("terminal.peek", { terminal });
+    if (terminal) run("terminal.peek", { terminal: addressOn(this.machine(), terminal) });
   }
 
   openFull() {
@@ -390,11 +426,12 @@ export default class Kitchen extends View {
   // The kitchen's line, then who is talking and how they are doing.
   heading(t, m) {
     const status = this.status();
+    const on = this.machine();
     return [
       div().flex_none().overflow_hidden().truncate().text_size(11).text_color(t.muted).child(m.header),
       h_flex().flex_none().gap(6).items_center().children([
         div().size(7).rounded(4).flex_none().bg(t[DOT[status]] ?? t.muted),
-        div().text_size(11).text_color(t.dim).child(`octopilot · ${WORD[status] ?? status}`),
+        div().text_size(11).text_color(t.dim).child(`octopilot · ${WORD[status] ?? status}${on ? ` · on ${on}` : ""}`),
       ]),
     ];
   }

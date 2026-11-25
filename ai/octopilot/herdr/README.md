@@ -99,6 +99,11 @@ which works on it. `--show-engine` keeps the engine tab visible (no park, for
 debugging). On a rerun, `--terminals` and `--show-engine` refuse and list the
 parked engine terminals, each to show with `herdr-app do terminal.keep`.
 
+Viewed from another computer (the Octopilot space is on a remote machine, see
+`CONTRACT.md`), the mods run their commands and read `view.json` on that machine,
+from their `dir` and `state_dir` props, and poll it every 2 s (no folder watch).
+Their headers say `· on <machine>`.
+
 Rerunning finds what is there. A parked orchestrator whose space is closed means
 octopilot was closed with it: its engine terminals of this checkout are ended,
 and it is built again. After a core restart the parked engine is gone, but the
@@ -263,7 +268,7 @@ orchestrator's doorbell once (`request tick`).
 | `v` | the agent in a popup over the dashboard; `ctrl+b q` closes it and leaves the agent running |
 | `a` | go to the prompter (the orchestrator if there is none) |
 | `t` | shell in the item's worktree |
-| `o` | PR or issue in the browser |
+| `o` | PR or issue in the browser, opened on the computer you are at (the mod runs `xdg-open`, `open` or `start`), not on the octopilot's machine; no URL: `dashboard.sh --action browser` |
 | `g` / `n` | on a Pick next row: queue `go <key>` / `no <key>` for the orchestrator (press twice; past `WIND_DOWN_AT` the second press confirms starting anyway) |
 | `R` | on a CAPPED row: grant another `MAX_REVIEW_ROUNDS` review rounds (press twice) |
 | `e` / `x` | on a PUSHED (stale) row: queue a re-review / ack the new commits (press twice) |

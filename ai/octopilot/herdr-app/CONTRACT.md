@@ -20,6 +20,19 @@ actions. `$DIR` is the octopilot code dir (`props().dir`, else
 | `octopilot-launcher` mod | palette entry "Open Octopilot" (no view) | runs `herdr/open-gui.sh --close-launcher` in a new tab |
 | `herdr-app/install.sh` | installer | symlinks mods into `~/.config/herdr-app/mods/`, adds the `octopilot` program to `programs.json`, removes a `layouts/octopilot.json` of ours (older versions wrote one; no layout is written now); `--key` also binds ctrl-alt-o |
 
+## Remote spaces
+
+The Octopilot space can sit on another machine (herdr-app shows it from this
+computer's core). Each mod finds its space's machine: its pane's tab (the side
+panel: its agent's tab), then the space, `spaces()[i].machine` (null: here). Its
+`exec` and `readTextFile` calls take `{ on: machine }`, so `$DIR`, `$STATE_DIR`,
+`scan.sh`, `dashboard.sh` and `view.json` are that machine's. A remote space uses
+its props only (`dir`, `state_dir`); home() and shared paths are this computer's,
+so a missing prop shows "no octopilot dir for <machine>". `watchFolder` is local
+only: a remote copy polls `view.json` every 2 s. A bare terminal from `scan.sh`
+(`t7`) is `<machine>/t7` for herdr. The `hc` calls on a remote machine run as
+`exec("hc", …, { on })`. The `o` key's link opens on this computer.
+
 ## view.json (written atomically by `dashboard.sh --headless`, on change and at least every 5 s)
 
 Mods treat a view whose `generated_at` is older than 15 s as stale (no headless dashboard running).

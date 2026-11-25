@@ -18,6 +18,7 @@ import {
   globalActions, emptyState,
 } from "./parts.js";
 import { kitchenDialog, investigateDialog } from "./dialogs.js";
+import { machineCache } from "./machine.js";
 
 const MOD = "octopilot-dashboard";
 // The name open-gui.sh gives this pane when props.pane_name is not given (pane.rename).
@@ -37,16 +38,23 @@ function dashboardArgv(dir, stateDir, argv) {
   return ["env", ...env, `${dir}/dashboard.sh`, ...argv];
 }
 
-// One dashboard.sh --action, read from its one-line JSON answer. The TUI gives
-// cleanup 400 s; everything else is quick.
-async function runAction(dir, stateDir, id, key, args = {}) {
+// A link opened on this computer, the way its platform opens one.
+function opener(url, platform) {
+  if (platform === "macos") return ["open", [url]];
+  if (platform === "windows") return ["cmd", ["/c", "start", "", url]];
+  return ["xdg-open", [url]];
+}
+
+// One dashboard.sh --action, read from its one-line JSON answer, on the octopilot's machine (on).
+// The TUI gives cleanup 400 s; everything else is quick.
+async function runAction(on, dir, stateDir, id, key, args = {}) {
   const argv = ["--action", id];
   if (key) argv.push(key);
   for (const [name, value] of Object.entries(args)) argv.push("--arg", `${name}=${value}`);
   const timeout = (id === "remove" ? 400 : 60) * 1000;
   try {
     const [cmd, ...cmdArgs] = dashboardArgv(dir, stateDir, argv);
-    const r = await exec(cmd, cmdArgs, { timeout });
+    const r = await exec(cmd, cmdArgs, { timeout, on });
     if (r.code !== 0 && !r.stdout.trim()) return { ok: false, kitchen: false, message: r.stderr.trim() || `exit ${r.code}` };
     return parseAnswer(r.stdout);
   } catch (e) {
@@ -59,13 +67,9 @@ export default class OctopilotDashboard extends View {
     const p = props() ?? {};
     this.handle = cx.focus_handle();
     if (p.dialog) return this.initDialog(p, cx);
-    this.dir = p.dir ?? shared("octopilot.dir") ?? `${home()}/.dotfiles/ai/octopilot`;
-    // Only an explicit state dir is passed to the actions; unset, their default applies.
-    this.stateExplicit = p.state_dir ?? shared("octopilot.state_dir") ?? null;
-    this.stateDir = this.stateExplicit ?? `${home()}/.local/state/octopilot`;
     // A fixture file stands in for view.json (a test layout): no folder watch.
     this.fixture = p.fixture ?? null;
-    this.viewFile = this.fixture ?? `${this.stateDir}/view.json`;
+    this.machineOf = machineCache();
     this.view = null;
     this.raw = null;
     this.error = null;
@@ -107,13 +111,45 @@ export default class OctopilotDashboard extends View {
     this.watch?.cancel();
   }
 
+  // The machine of this copy's space: null here, a name when remote, undefined while no tab is
+  // found yet. Fixtures are always local.
+  machine() {
+    if (this.fixture) return null;
+    return this.machineOf(panes(), spaces(), { mod: MOD, name: props()?.pane_name ?? PANE_NAME });
+  }
+
+  // Where this copy's octopilot is, on its machine (`on`, null here): the code dir, the state dir
+  // (null: dashboard.sh's own default), view.json. A remote space has only its props: home() and
+  // shared paths are this computer's. `missing` says what the props lack, else null.
+  where() {
+    const p = props() ?? {};
+    const on = this.machine() ?? null;
+    if (on) {
+      const missing = !p.dir ? `no octopilot dir for ${on}` : !p.state_dir ? `no octopilot state dir for ${on}` : null;
+      return {
+        on, dir: p.dir ?? null, stateExplicit: p.state_dir ?? null, stateDir: p.state_dir ?? null,
+        viewFile: p.state_dir ? `${p.state_dir}/view.json` : null, missing,
+      };
+    }
+    const dir = p.dir ?? shared("octopilot.dir") ?? `${home()}/.dotfiles/ai/octopilot`;
+    // Only an explicit state dir is passed to the actions; unset, their default applies.
+    const stateExplicit = p.state_dir ?? shared("octopilot.state_dir") ?? null;
+    const stateDir = stateExplicit ?? `${home()}/.local/state/octopilot`;
+    return { on, dir, stateExplicit, stateDir, viewFile: this.fixture ?? `${stateDir}/view.json`, missing: null };
+  }
+
   watchState(cx) {
     cx.spawn(async (cx) => {
       for (;;) {
         if (this.closed) return;
+        // A folder on another machine cannot be watched from here: the poll reads it instead.
+        if (this.machine() !== null) {
+          await cx.sleep(POLL_MS);
+          continue;
+        }
         let watch;
         try {
-          watch = watchFolder(this.stateDir);
+          watch = watchFolder(this.where().stateDir);
           this.watch = watch;
           await watch;
         } catch {
@@ -125,9 +161,17 @@ export default class OctopilotDashboard extends View {
   }
 
   async reload(cx) {
+    const w = this.where();
+    if (w.missing) {
+      this.raw = null;
+      this.view = null;
+      this.error = w.missing;
+      cx.notify();
+      return;
+    }
     let text;
     try {
-      text = await readTextFile(this.viewFile);
+      text = await readTextFile(w.viewFile, { on: w.on });
     } catch (e) {
       this.error = String(e?.message ?? e);
       cx.notify();
@@ -160,8 +204,6 @@ export default class OctopilotDashboard extends View {
   // ---- dialogs: this mod opened with props.dialog ----
 
   initDialog(p, cx) {
-    this.dir = p.dir;
-    this.stateExplicit = p.state_dir ?? null;
     this.openedAt = Date.now();
     this.busy = false;
     this.readOnly = false;
@@ -184,9 +226,10 @@ export default class OctopilotDashboard extends View {
 
   openDialog(kind, extra) {
     const tall = kind === "investigate";
+    const w = this.where();
     return openOverlay({
       mod: MOD, kind: "dialog", width: tall ? 520 : 440, height: tall ? 340 : 260,
-      props: { dialog: kind, dir: this.dir, state_dir: this.stateExplicit, ...extra },
+      props: { dialog: kind, dir: w.dir, state_dir: w.stateExplicit, on: w.on, ...extra },
     });
   }
 
@@ -207,7 +250,7 @@ export default class OctopilotDashboard extends View {
     if (this.busy) return;
     this.busy = true;
     cx.spawn(async () => {
-      const res = await runAction(p.dir, p.state_dir, p.action, p.key, { ...(p.args ?? {}), confirmed: 1 });
+      const res = await runAction(p.on ?? null, p.dir, p.state_dir, p.action, p.key, { ...(p.args ?? {}), confirmed: 1 });
       notify({
         title: "Octopilot", body: res.message || (res.ok ? "started" : "failed"),
         level: res.ok ? "success" : "error",
@@ -229,7 +272,7 @@ export default class OctopilotDashboard extends View {
     this.busy = true;
     const args = { repo, question, read_only: this.readOnly ? 1 : 0 };
     cx.spawn(async (cx) => {
-      const res = await runAction(p.dir, p.state_dir, p.action, null, args);
+      const res = await runAction(p.on ?? null, p.dir, p.state_dir, p.action, null, args);
       if (res.kitchen) {
         this.openDialog("kitchen", { action: p.action, args, message: res.message });
         closeOverlay(p.overlay);
@@ -426,15 +469,36 @@ export default class OctopilotDashboard extends View {
       cx.notify();
       return;
     }
+    // A row's link opens on this computer, where the person is, not on the octopilot's machine.
+    if (action.id === "browser" && entry?.url) return this.openUrl(entry.url, cx);
     this.perform(action.id, key, {}, cx);
   }
 
+  openUrl(url, cx) {
+    if (this.fixture) return this.say("Fixture mode: nothing was sent.", false, cx);
+    const [cmd, args] = opener(url, window()?.platform);
+    cx.spawn(async (cx) => {
+      let res;
+      try {
+        const r = await exec(cmd, args, { timeout: 15000 });
+        res = r.code === 0 ? { ok: true, message: "opened in the browser" }
+          : { ok: false, message: r.stderr.trim() || `exit ${r.code}` };
+      } catch (e) {
+        res = { ok: false, message: String(e?.message ?? e) };
+      }
+      this.say(res.message, res.ok, cx);
+      cx.notify();
+    });
+  }
+
   perform(id, key, args, cx) {
+    const w = this.where();
     // A fixture with no state dir of its own must never act on the live octopilot.
-    if (this.fixture && !this.stateExplicit) return this.say("Fixture mode: nothing was sent.", false, cx);
+    if (this.fixture && !w.stateExplicit) return this.say("Fixture mode: nothing was sent.", false, cx);
+    if (w.missing) return this.say(w.missing, false, cx);
     if (id === "peek" || id === "prompter") this.watchPeek();
     cx.spawn(async (cx) => {
-      const res = await runAction(this.dir, this.stateExplicit, id, key, args);
+      const res = await runAction(w.on, w.dir, w.stateExplicit, id, key, args);
       if (res.kitchen) this.openDialog("kitchen", { action: id, key, args, message: res.message });
       else this.say(res.message || (res.ok ? "done" : "failed"), res.ok, cx);
       cx.notify();
@@ -501,7 +565,7 @@ export default class OctopilotDashboard extends View {
       .on_key_down((e, cx) => this.key(e, cx)).size_full().min_h(0).overflow_hidden().p(14).gap(10)
       .bg(t.background).text_color(t.foreground).text_size(12.5);
     const { view } = this;
-    if (!view) return root.child(emptyState(t, this.viewFile, this.error));
+    if (!view) return root.child(emptyState(t, this.where().viewFile ?? "", this.error));
     const arr = this.arr();
     this.sel = resolveSel(this.sel, arr);
     const entry = entryOf(view, this.sel);

@@ -79,10 +79,12 @@ export function header(v, t, now) {
   const elapsedSecs = elapsed(view, now);
   const lastTick = liveAge(h.last_tick_s, view, now);
   const stale = isStale(view, now);
+  const on = v.machine() ?? null;
   return v_flex().gap(6)
     .child(h_flex().items_center().gap(12)
       .child(h_flex().h(28).px(12).items_center().rounded(9).bg(t.solid)
         .text_color(t.solid_foreground).font_semibold().child("🐙 Octopilot"))
+      .when(Boolean(on), (el) => el.child(div().text_size(11.5).text_color(t.dim).child(`· on ${on}`)))
       .child(div().text_size(12.5).font_semibold().text_color(h.needs ? t.blocked : t.dim)
         .child(`🔴 ${h.needs} needs you`))
       .child(div().text_size(12.5).text_color(t.working).child(`🟡 ${h.running} running`))
