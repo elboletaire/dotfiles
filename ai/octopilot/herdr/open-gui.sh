@@ -125,13 +125,20 @@ owner_dir() {
 # this checkout that is not running its program (a shell herdr kept after claude
 # exited, a dead headless) is ended here, so its agent starts again.
 agent_term() {
-  local t fg want=claude
+  local t info fg created want=claude
   t=$("$HC" ls --json --label "octopilot.agent=$1" | jq -r '.terminals[0].address // empty')
   if [ -z "$t" ]; then return 0; fi
   if [ "$(owner_dir "$t")" != "$DIR" ]; then echo "$t"; return 0; fi
   if [ "$1" = "$HEADLESS_AGENT" ]; then want=uv; fi
-  fg=$("$HC" get "$t" --json | jq -r '.foreground.name // empty')
+  info=$("$HC" get "$t" --json)
+  fg=$(jq -r '.foreground.name // empty' <<<"$info")
   if [ "$fg" = "$want" ]; then echo "$t"; return 0; fi
+  # Still starting: its shell has not exec'd the program yet (created_ms, epoch ms).
+  created=$(jq -r '.created_ms // 0' <<<"$info")
+  case "$fg" in
+    zsh|bash|sh|fish)
+      if [ $(( $(date +%s%3N) - created )) -lt 30000 ]; then echo "$t"; return 0; fi ;;
+  esac
   "$HC" kill "$t" >/dev/null || true
   "$HC" rm "$t" >/dev/null || true
 }
