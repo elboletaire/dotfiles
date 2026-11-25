@@ -84,7 +84,7 @@ terminals run in herdr-core) as one space with three tabs:
 
 | Tab | Holds |
 |---|---|
-| **OCTOPILOT** | the `octopilot-chat` mod (the prompter as a chat) on the left, over the `octopilot-kitchen` mod, a pane 300 px tall; on the right the `octopilot-dashboard` mod (the table below), full height (`props`: `dir`, `state_dir`; its pane is named by `pane.rename`, the mod reads no name) |
+| **OCTOPILOT** | the `octopilot-kitchen` mod, a pane 300 px tall, on the left, over the `octopilot-chat` mod (the prompter as a chat, its input at the bottom); on the right the `octopilot-dashboard` mod (the table below), full height (`props`: `dir`, `state_dir`; its pane is named by `pane.rename`, the mod reads no name) |
 | **engine** | the orchestrator (`octopilot`, `/octopilot:messenger`), the prompter (`octopilot-prompter`) and `dashboard.sh --headless` (`octopilot-headless`), each an hc terminal. Parked after building: they keep running with no pane, so the tab goes away (see below) |
 | **Octopilot (code changes)** | the code agent's own claude (`octopilot-code`, a claude in the dotfiles root, an hc terminal that is never parked) |
 
@@ -139,7 +139,8 @@ agent's terminal alive and labelled, and the reruns would never restart it.
 
 The headless dashboard runs the loops and writes `view.json`; the mods only
 render it and send actions. The kitchen is the `octopilot-kitchen` mod, a pane
-split down from the chat (`pane.split`), then sized to 300 px with `pane.resize`.
+split down from the chat (`pane.split`), moved above it (`pane.swap`), then sized to 300 px
+with `pane.resize` (both only when it is created; a rerun never moves or resizes it).
 The run records the chat's pane on the orchestrator (`octopilot.chat=<tab>:<pane>`)
 and the kitchen's (`octopilot.kitchen=<tab>:<pane>`). A record counts only when its
 tab is this space's OCTOPILOT tab, and a rerun keeps the kitchen while its pane

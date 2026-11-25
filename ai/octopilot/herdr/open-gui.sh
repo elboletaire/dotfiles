@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The GUI twin of open.sh: the Octopilot space in herdr-app, with three tabs:
-#   OCTOPILOT: the octopilot-chat mod on the left, over the octopilot-kitchen mod
-#     (KITCHEN_PX tall); on the right the octopilot-dashboard mod, full height
+#   OCTOPILOT: the octopilot-kitchen mod on the left, over the octopilot-chat mod (the
+#     kitchen KITCHEN_PX tall); on the right the octopilot-dashboard mod, full height
 #   engine: the orchestrator, the prompter and the headless dashboard, as hc
 #     terminals; parked after building (no pane, still running), so the tab goes away
 #   Octopilot (code changes): the code agent's own claude (a terminal, never parked)
@@ -27,7 +27,7 @@ CODE_AGENT="octopilot-code"            # scan.py's CODE_AGENT
 DASHBOARD_PANE="octopilot-dashboard"
 PROMPTER_PANE="octopilot-prompter"
 KITCHEN_PANE="octopilot-kitchen"
-KITCHEN_PX=300                         # the kitchen's height under the chat
+KITCHEN_PX=300                         # the kitchen's height above the chat
 MAIN_TAB="OCTOPILOT"
 ENGINE_TAB="engine"
 CODE_TAB="Octopilot (code changes)"
@@ -293,26 +293,29 @@ add_main_tab() {
   if [ -n "$chat" ] && [ -n "$tab" ]; then record_label "$(find_orch)" octopilot.chat "$tab:$chat"; fi
 }
 
-# Sizes the kitchen (pane $2, in tab $3) to its minimum plus KITCHEN_PX: herdr resizes
-# only panes on screen, so the tab is shown first; "down" on the kitchen shrinks it.
-# Best effort: a refused move is warned about, and the kitchen keeps the split's size.
+# Sizes the kitchen (pane $1, in tab $2) to its minimum plus KITCHEN_PX: herdr resizes
+# only panes on screen, so the tab is shown first. $3 is 1 when the kitchen is the top
+# pane (above the chat): its "up" shrinks it and "down" grows it; below the chat it is
+# the other way round. Best effort: a refused move is warned about, and the kitchen
+# keeps the split's size.
 size_kitchen() {
-  local out
-  "$APP" do tab.select --id "$3" >/dev/null 2>&1 || true
-  "$APP" do pane.resize --direction down --pane "$2" --px 10000 >/dev/null 2>&1 || true
+  local out shrink=down grow=up
+  if [ "$3" = 1 ]; then shrink=up; grow=down; fi
+  "$APP" do tab.select --id "$2" >/dev/null 2>&1 || true
+  "$APP" do pane.resize --direction "$shrink" --pane "$1" --px 10000 >/dev/null 2>&1 || true
   sleep 0.5
-  if ! out=$("$APP" do pane.resize --direction up --pane "$2" --px "$KITCHEN_PX" 2>&1); then
-    echo "open-gui.sh: could not size pane $2 to $KITCHEN_PX px: $out" >&2
+  if ! out=$("$APP" do pane.resize --direction "$grow" --pane "$1" --px "$KITCHEN_PX" 2>&1); then
+    echo "open-gui.sh: could not size pane $1 to $KITCHEN_PX px: $out" >&2
   fi
 }
 
-# The kitchen under the chat in the OCTOPILOT tab (space $1), once. The orchestrator
+# The kitchen above the chat in the OCTOPILOT tab (space $1), once. The orchestrator
 # records the kitchen and the chat as <tab>:<pane>; a record counts only in this space's
 # OCTOPILOT tab, and a pane is kept while pane.rename finds it. Best effort: what cannot
 # be done is warned about and the run goes on. A tab from an earlier run has no chat
 # record, so its kitchen is not split (the note says so).
 add_kitchen() {
-  local space=$1 orch main kitchen chat created
+  local space=$1 orch main kitchen chat created top out
   orch=$(find_orch)
   main=$(tab_named "$space" "$MAIN_TAB")
   if [ -z "$orch" ] || [ -z "$main" ]; then
@@ -342,7 +345,14 @@ add_kitchen() {
     return 0
   fi
   name_mod_pane "$kitchen" "$(pane_name "$KITCHEN_PANE")"
-  size_kitchen "$chat" "$kitchen" "$main"
+  # Moved above the chat at creation only: a kept kitchen is never moved on a rerun.
+  top=0
+  if out=$("$APP" do pane.swap --pane "$kitchen" --target "$chat" 2>&1); then
+    top=1
+  else
+    echo "open-gui.sh: could not move the $KITCHEN_PANE pane above the chat: $out" >&2
+  fi
+  size_kitchen "$kitchen" "$main" "$top"
   record_label "$orch" octopilot.kitchen "$main:$kitchen"
 }
 
