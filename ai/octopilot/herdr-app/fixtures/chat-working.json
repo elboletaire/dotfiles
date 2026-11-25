@@ -1,0 +1,28 @@
+{
+  "terminal": "t8",
+  "status": "working",
+  "blocked": null,
+  "messages": [
+    {
+      "id": "7f1c2a10-0101",
+      "role": "user",
+      "text": "investigate vocdoni/sdk whether the ballot encoder still handles maxValue for quadratic votes",
+      "at": "2026-11-25T10:14:20Z",
+      "tools": []
+    },
+    {
+      "id": "7f1c2a10-0102",
+      "role": "assistant",
+      "text": "Queued as a read-only investigation. The agent will report back here and in the messenger pane.",
+      "at": "2026-11-25T10:14:26Z",
+      "tools": ["Bash: $A wind-down", "Bash: $A request \"/investigate --read-only vocdoni/sdk ...\""]
+    },
+    {
+      "id": "7f1c2a10-0103",
+      "role": "user",
+      "text": "and how many are waiting for me right now?",
+      "at": "2026-11-25T10:16:03Z",
+      "tools": []
+    }
+  ]
+}
