@@ -644,31 +644,29 @@ dependencies:
     hash: sha256:8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef
 - repo_url: vocdoni/skills
   alias: contributing
-  name: vocdoni-contributing
+  name: contributing
   host: github.com
   resolved_commit: 175a70ad7e9a6c6cd85f547d3914c7c38b059a1e
   resolved_ref: main
-  version: 0.3.0
-  virtual_path: plugins/vocdoni-contributing
+  version: unknown
+  virtual_path: plugins/vocdoni-contributing/skills/contributing
   is_virtual: true
-  package_type: marketplace_plugin
+  package_type: claude_skill
   deployed_files:
   - .agents/skills/contributing
   - .agents/skills/contributing/LICENSE
   - .agents/skills/contributing/SKILL.md
+  - .claude/skills/contributing
+  - .claude/skills/contributing/LICENSE
+  - .claude/skills/contributing/SKILL.md
   deployed_file_hashes:
     .agents/skills/contributing/LICENSE: sha256:8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef
     .agents/skills/contributing/SKILL.md: sha256:1fcf63770e74c8c6c1473bfd161cb3b644c914342bad7863e1b6bc7b9732369a
-  content_hash: sha256:4006efdf65d49ade70e7670293c769bac54ce5fba052e2d9e279a4853d8b5e86
-  declared_license: AGPL-3.0-or-later
+    .claude/skills/contributing/LICENSE: sha256:8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef
+    .claude/skills/contributing/SKILL.md: sha256:1fcf63770e74c8c6c1473bfd161cb3b644c914342bad7863e1b6bc7b9732369a
+  content_hash: sha256:7fdca035f7765b2fb4dcdc6d60362a47db2130bb8f6faa477edf405efeaffe20
   carried_licenses:
-  - path: .apm/skills/contributing/LICENSE
-    source: LICENSE
-    hash: sha256:8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef
   - path: LICENSE
-    source: LICENSE
-    hash: sha256:8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef
-  - path: skills/contributing/LICENSE
     source: LICENSE
     hash: sha256:8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef
 deployments:
@@ -858,8 +856,8 @@ deployments:
   runtime: null
   scope: user
   owners:
-  - vocdoni/skills/plugins/vocdoni-contributing
-  active_owner: vocdoni/skills/plugins/vocdoni-contributing
+  - vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  active_owner: vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
   content_hash: null
 - kind: project-relative
   target: agent-skills
@@ -867,8 +865,8 @@ deployments:
   runtime: null
   scope: user
   owners:
-  - vocdoni/skills/plugins/vocdoni-contributing
-  active_owner: vocdoni/skills/plugins/vocdoni-contributing
+  - vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  active_owner: vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
   content_hash: sha256:8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef
 - kind: project-relative
   target: agent-skills
@@ -876,8 +874,8 @@ deployments:
   runtime: null
   scope: user
   owners:
-  - vocdoni/skills/plugins/vocdoni-contributing
-  active_owner: vocdoni/skills/plugins/vocdoni-contributing
+  - vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  active_owner: vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
   content_hash: sha256:1fcf63770e74c8c6c1473bfd161cb3b644c914342bad7863e1b6bc7b9732369a
 - kind: project-relative
   target: agent-skills
@@ -1797,6 +1795,33 @@ deployments:
   - intellectronica/agent-skills/skills/context7
   active_owner: intellectronica/agent-skills/skills/context7
   content_hash: sha256:e1c404ae31f71cb1ef108abfbd153f5761f1ed715a9d9e4c2067e61ff673f42f
+- kind: project-relative
+  target: claude
+  value: .claude/skills/contributing
+  runtime: null
+  scope: user
+  owners:
+  - vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  active_owner: vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/contributing/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  active_owner: vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  content_hash: sha256:8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef
+- kind: project-relative
+  target: claude
+  value: .claude/skills/contributing/SKILL.md
+  runtime: null
+  scope: user
+  owners:
+  - vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  active_owner: vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  content_hash: sha256:1fcf63770e74c8c6c1473bfd161cb3b644c914342bad7863e1b6bc7b9732369a
 - kind: project-relative
   target: claude
   value: .claude/skills/create-readme

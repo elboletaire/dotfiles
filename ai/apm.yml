@@ -62,7 +62,7 @@ dependencies:
       alias: comments
       ref: main
     - git: https://github.com/vocdoni/skills.git
-      path: plugins/vocdoni-contributing
+      path: plugins/vocdoni-contributing/skills/contributing
       alias: contributing
       ref: main
     - git: https://github.com/vercel-labs/agent-browser.git

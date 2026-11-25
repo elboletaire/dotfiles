@@ -235,83 +235,41 @@ else
 fi
 
 echo ""
-echo "=== Test 4e: the native plugin blocks are stripped and do not count as a change ==="
-# APM records the per-HOME marketplace path in these blocks; the tracked lock must not.
+echo "=== Test 4e: a symlinked global lock is replaced by a regular copy ==="
 PLAIN_LOCK="lockfile_version: '4'
-dependencies:
-- repo_url: vocdoni/skills
-  alias: contributing
-deployments: []"
-NATIVE_LOCK_A="lockfile_version: '4'
-dependencies:
-- repo_url: vocdoni/skills
-  alias: contributing
-  native_plugin:
-    name: vocdoni-contributing
-    marketplace:
-      name: apm-u-aaaa
-      path: /home/a/.agents/plugins
-  native_declared:
-  - claude
-deployments: []"
-NATIVE_LOCK_B="${NATIVE_LOCK_A//apm-u-aaaa/apm-u-bbbb}"
-NATIVE_LOCK_B="${NATIVE_LOCK_B//\/home\/a/\/home\/b}"
-seed_ai "manifest-v1" "lockfile_version: '4'
 dependencies: []"
+seed_ai "manifest-v1" "$PLAIN_LOCK"
 reset_global_apm
-export MOCK_APM_NEW_LOCK="$NATIVE_LOCK_A"
+ln -s "$DOTFILES/ai/apm.lock.yaml" "$HOME/.apm/apm.lock.yaml"
 out=$(install_skills 2>&1) || fail "install_skills failed: $out"
-unset MOCK_APM_NEW_LOCK
-if [ "$(cat "$DOTFILES/ai/apm.lock.yaml")" = "$PLAIN_LOCK" ] && [[ "$out" == *"ai/apm.lock.yaml changed"* ]]; then
-  pass "a lock with native blocks is written back without them"
+if [ ! -L "$HOME/.apm/apm.lock.yaml" ] && [ "$(cat "$DOTFILES/ai/apm.lock.yaml")" = "$PLAIN_LOCK" ]; then
+  pass "~/.apm/apm.lock.yaml is never a symlink after copying"
 else
-  fail "native blocks leaked into ai/apm.lock.yaml: $(cat "$DOTFILES/ai/apm.lock.yaml")"
-fi
-export MOCK_APM_NEW_LOCK="$NATIVE_LOCK_B"
-out=$(install_skills 2>&1) || fail "install_skills failed: $out"
-unset MOCK_APM_NEW_LOCK
-if [ "$(cat "$DOTFILES/ai/apm.lock.yaml")" = "$PLAIN_LOCK" ] && [[ "$out" != *"changed"* ]]; then
-  pass "a lock differing only in the native blocks is not copied back"
-else
-  fail "native-only difference was copied back: $out"
-fi
-export MOCK_APM_NEW_LOCK="$NATIVE_LOCK_A" MOCK_APM_NEW_MANIFEST="manifest-bumped"
-out=$(skills_bump 2>&1) || fail "skills_bump failed: $out"
-unset MOCK_APM_NEW_LOCK MOCK_APM_NEW_MANIFEST
-if [ "$(cat "$DOTFILES/ai/apm.lock.yaml")" = "$PLAIN_LOCK" ] && ! grep -q native "$DOTFILES/ai/apm.lock.yaml"; then
-  pass "skills-bump writes the stripped lock too"
-else
-  fail "skills-bump kept native blocks: $(cat "$DOTFILES/ai/apm.lock.yaml")"
+  fail "global lock is still a symlink"
 fi
 seed_ai "manifest-v1" "$PLAIN_LOCK"
 
 echo ""
-echo "=== Test 4f: a global lock with native blocks survives when the tracked lock says the same ==="
-seed_ai "manifest-v1" "$PLAIN_LOCK"
+echo "=== Test 4f: the native contributing plugin of an intermediate build is moved aside ==="
 reset_global_apm
-printf '%s\n' "$NATIVE_LOCK_A" > "$HOME/.apm/apm.lock.yaml"
-out=$(install_skills 2>&1) || fail "install_skills failed: $out"
-if grep -q native_plugin "$HOME/.apm/apm.lock.yaml" && [[ "$out" != *"changed"* ]]; then
-  pass "the global lock that APM wrote for this HOME is kept"
+mkdir -p "$HOME/.agents/plugins/vocdoni-contributing/hooks" "$HOME/.agents/plugins/other"
+touch "$HOME/.agents/plugins/vocdoni-contributing/hooks/x"
+out=$(_cleanup_legacy_skills 2>&1)
+if [ ! -e "$HOME/.agents/plugins/vocdoni-contributing" ] && [ -d "$HOME/.agents/plugins/other" ] &&
+   find "$oldfiles" -path '*legacy-skills-*/.agents/plugins/vocdoni-contributing/hooks/x' | grep -q .; then
+  pass "the plugin goes to the legacy backup; other plugins stay"
 else
-  fail "install_skills rewrote the global lock: $(cat "$HOME/.apm/apm.lock.yaml")"
+  fail "native plugin not moved aside correctly: $out"
 fi
-echo ""
-echo "=== Test 4g: a newer tracked lock keeps the native blocks of the global lock ==="
-seed_ai "manifest-v1" "$PLAIN_LOCK
-# bumped"
-reset_global_apm
-printf '%s\n' "$NATIVE_LOCK_A" > "$HOME/.apm/apm.lock.yaml"
-out=$(install_skills 2>&1) || fail "install_skills failed: $out"
-if grep -q 'native_plugin' "$HOME/.apm/apm.lock.yaml" && grep -q '# bumped' "$HOME/.apm/apm.lock.yaml" &&
-   grep -q 'path: /home/a/.agents/plugins' "$HOME/.apm/apm.lock.yaml"; then
-  pass "the global lock takes the tracked content with this HOME's native blocks"
+rm -rf "$HOME/.agents/plugins/other"
+touch "$HOME/.agents/plugins/vocdoni-contributing" 2>/dev/null || mkdir -p "$HOME/.agents/plugins/vocdoni-contributing"
+_cleanup_legacy_skills >/dev/null 2>&1
+if [ ! -e "$HOME/.agents/plugins" ]; then
+  pass "an emptied ~/.agents/plugins is removed"
 else
-  fail "native blocks not carried over: $(cat "$HOME/.apm/apm.lock.yaml")"
+  fail "~/.agents/plugins left behind"
 fi
-PLAIN_BUMPED="$PLAIN_LOCK
-# bumped"
-seed_ai "manifest-v1" "$PLAIN_LOCK"
+rm -rf "$oldfiles"
 
 echo ""
 echo "=== Test 4h: install_skills refuses an apm older than 0.39 ==="
@@ -863,6 +821,35 @@ merge_claude_settings >/dev/null
 python3 -c 'import json,sys; assert "enabledPlugins" not in json.load(open(sys.argv[1]))' "$SETTINGS" \
   && pass "drops a parent object left empty by the retirement" \
   || fail "left an empty enabledPlugins object behind"
+rm -rf "$HOME/.claude" "$DOTFILES/ai/claude/settings.json"
+
+echo ""
+echo "=== Test 27c: merge_claude_settings drops the native plugin keys of this HOME only ==="
+mkdir -p "$DOTFILES/ai/claude" "$HOME/.claude"
+cat > "$DOTFILES/ai/claude/settings.json" <<'JSON'
+{"env": {"A": "1"}}
+JSON
+cat > "$SETTINGS" <<JSON
+{"enabledPlugins": {"vocdoni-contributing@apm-u-aaaa": true, "vocdoni-contributing@apm-u-bbbb": true, "other@market": true},
+ "extraKnownMarketplaces": {
+  "apm-u-aaaa": {"source": {"source": "directory", "path": "$HOME/.agents/plugins"}},
+  "apm-u-cccc": {"source": {"source": "directory", "path": "/elsewhere/.agents/plugins"}},
+  "mine": {"source": {"source": "directory", "path": "$HOME/.agents/plugins"}}}}
+JSON
+merge_claude_settings >/dev/null
+if python3 - "$SETTINGS" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert "vocdoni-contributing@apm-u-aaaa" not in d["enabledPlugins"], d
+assert "vocdoni-contributing@apm-u-bbbb" not in d["enabledPlugins"], d
+assert d["enabledPlugins"]["other@market"] is True
+assert sorted(d["extraKnownMarketplaces"]) == ["apm-u-cccc", "mine"], d
+PY
+then
+  pass "removes vocdoni-contributing@apm-u-* and the apm-u-* marketplace of this HOME, keeps the rest"
+else
+  fail "native plugin settings not cleaned precisely: $(cat "$SETTINGS")"
+fi
 rm -rf "$HOME/.claude" "$DOTFILES/ai/claude/settings.json"
 
 echo ""
