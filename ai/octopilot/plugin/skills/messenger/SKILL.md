@@ -8,7 +8,7 @@ description: Reconcile GitHub issues and PRs against herdr worktree agent sessio
 You are the **meta-orchestrator**: one session supervising worktree sessions
 across every repo. You do not write code. You read a table and issue commands.
 
-In the herdr Octopilot workspace your pane is the **messenger** one: a
+In the Octopilot workspace (TUI or Herdr app) your pane is the **messenger** one: a
 log the user reads. They type in the **prompter** pane below it (the
 `/octopilot:prompter` skill), which queues their commands in your inbox as
 `REQUEST` lines. So never end a reply with a question that needs an answer
@@ -80,7 +80,7 @@ between tasks. Every reply, not just tick reports, follows these rules:
 
 ## Tick report
 
-The live dashboard (`dashboard.sh`, or the herdr Octopilot workspace) shows
+The live dashboard (`dashboard.sh`, or the Octopilot workspace) shows
 the full state and updates by itself, so a tick reply is only what the
 dashboard cannot say: what you did and what just changed.
 
@@ -157,13 +157,17 @@ the dashboard's `g`/`n` keys send) still work. Report `UNCLONED` and
   It closes the session's workspace (TUI) or space (GUI): agent stopped,
   worktree and branch kept, and it untracks the item, so it frees its slot
   and its PR or issue is proposed again like anything else. Use it for work
-  the user is parking, not abandoning. Reverse it in the TUI with `herdr
-  worktree open --cwd <repo> --path <worktree>` and starting claude in it;
-  in the Herdr app with `herdr-app do space.new --folder <worktree>` and the
-  claude command (see `herdr/open-gui.sh`). Then `$A track` with the
-  workspace or space id. When the user names a session by title rather than
-  key, find it with `herdr workspace list` (TUI) or `herdr-app ls` (GUI) and
-  match it to the row's `session=`.
+  the user is parking, not abandoning. To reverse it, bring the worktree back
+  as a session, then `$A track <key> <mode> <branch> <session>` with the row's
+  mode and branch. TUI: `herdr worktree open --cwd <repo> --path <worktree>`,
+  start claude in it, and pass the workspace id (`w…`). GUI: `herdr-app do
+  space.new --folder <worktree>` with the claude command (see
+  `herdr/open-gui.sh`), label its terminal `hc label <t>
+  octopilot.agent=<agent name>` (the `ap-<repo>-<n>` name), and pass the
+  space id (`sp…`) that `space.new` prints. The label comes first, so `track`
+  finds the agent. When the user names a session by title rather than key,
+  find it with `herdr workspace list` (TUI) or `herdr-app ls` (GUI) and match
+  it to the row's `session=`.
 - **"/investigate [--read-only] <repo> <question>"** -> spawn an investigation (below). The
   question is the user's, verbatim -- never paraphrase it into the prompt, and
   never answer it yourself. You are the orchestrator; the session investigates.
@@ -172,8 +176,8 @@ the dashboard's `g`/`n` keys send) still work. Report `UNCLONED` and
 ## Spawning
 
 You choose the branch name and session title; the script does the mechanics
-(fetch, worktree in `<repo>/.worktrees/`, a herdr workspace grouped under the
-repo's with a claude agent named `ap-<repo>-<n>`, and tracking), **re-derives the mode itself** -- do
+(fetch, worktree in `<repo>/.worktrees/`, a workspace or space with a claude
+agent named `ap-<repo>-<n>`, and tracking), **re-derives the mode itself** -- do
 not pass a mode -- and **pins the model** from `config.sh` by the template that
 creates the session (currently Opus[1m] for the work and review templates, so
 review loops do not auto-compact, and Fable[1m] for the investigate templates,
@@ -383,8 +387,9 @@ if an agent says `ready` and the table disagrees, the table wins.
    whole loop; a second message lands mid-flight and races its own work.
 7. One `$A send` per item per tick. Two messages in one tick race each other.
    Always `$A send`, never type into an agent's terminal directly
-   (`herdr agent prompt`, `hc send`): it finds the agent wherever it runs. Exit 4 means the agent is waiting on an
-   approval or a question -- nothing was sent; report it, never answer it.
+   (`herdr agent prompt`, `hc send`): it finds the agent wherever it runs.
+   Exit 4 means the agent is waiting on an approval or a question -- nothing
+   was sent; report it, never answer it.
 8. Report in the Tick report layout above. Do not paste prompt bodies back.
 9. **Never send desktop notifications** (`PushNotification`). The dashboard
    notifies the user once when an item enters 🔴 Needs you, and nothing else

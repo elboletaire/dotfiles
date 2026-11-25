@@ -1,12 +1,7 @@
 #!/usr/bin/env bash
-# Build the Octopilot space in the Herdr app, or focus it and add whatever it
-# is missing: the GUI twin of open.sh, with the same tabs and panes. Every
-# claude is an hc terminal labelled octopilot.agent=<name>, and every session
-# runs with OCTOPILOT_BACKEND=hc.
-#
-# Running it from a worktree tests that octopilot next to the live one. Its
-# state must then live elsewhere (OCTOPILOT_STATE_DIR), and its own plugin is
-# loaded (see herdr/README.md, "GUI (herdr-app)").
+# The GUI twin of open.sh: the Octopilot space in herdr-app, each claude an hc
+# terminal labelled octopilot.agent=<name>. From a worktree it needs
+# OCTOPILOT_STATE_DIR (see herdr/README.md, "GUI (herdr-app)").
 set -euo pipefail
 APP="herdr-app"
 HC="hc"
@@ -26,6 +21,13 @@ if [ "$DIR" != "$LIVE_DIR" ] && [ -z "${OCTOPILOT_STATE_DIR:-}" ]; then
   exit 1
 fi
 
+# The scope knobs the caller set, read before config.sh supplies its defaults:
+# only these are forwarded, so the defaults keep applying to the sessions.
+declare -a scope=()
+for v in HOME_REPOS ISSUE_ORGS CLONE_ROOTS; do
+  if [ -n "${!v:-}" ]; then scope+=("$v=${!v}"); fi
+done
+
 set -a
 # shellcheck source=../config.sh
 source "$DIR/config.sh"
@@ -33,11 +35,10 @@ set +a
 
 # Every session and pane started here gets the hc backend, this octopilot's
 # directory (the skills' scan.sh, see OCTOPILOT_DIR in plugin/skills), and the
-# scope knobs and state dir a test sets.
+# state dir and scope knobs a test sets.
 envs=(OCTOPILOT_BACKEND=hc "OCTOPILOT_DIR=$DIR")
-for v in OCTOPILOT_STATE_DIR HOME_REPOS ISSUE_ORGS CLONE_ROOTS; do
-  if [ -n "${!v:-}" ]; then envs+=("$v=${!v}"); fi
-done
+if [ -n "${OCTOPILOT_STATE_DIR:-}" ]; then envs+=("OCTOPILOT_STATE_DIR=$OCTOPILOT_STATE_DIR"); fi
+envs+=("${scope[@]+"${scope[@]}"}")
 
 # A JSON argv array from its arguments, as herdr-app takes it.
 argv_json() {
@@ -75,6 +76,12 @@ name_agent() {
   "$HC" label "$1" "octopilot.agent=$2" >/dev/null
 }
 
+# The octopilot dir an orchestrator runs from. Labels are global, so one from
+# before octopilot.dir existed belongs to the live checkout.
+owner_dir() {
+  "$HC" get "$1" --json | jq -r --arg d "$LIVE_DIR" '.labels["octopilot.dir"] // $d'
+}
+
 # Split the messenger pane down and start the prompter in the new pane.
 add_prompter() {
   local split
@@ -95,6 +102,11 @@ add_code_tab() {
 
 orch=$(agent_term "$ORCH_AGENT")
 if [ -n "$orch" ]; then
+  if [ "$(owner_dir "$orch")" != "$DIR" ]; then
+    echo "open-gui.sh: the $ORCH_AGENT agent ($orch) runs from another octopilot" \
+      "(not $DIR). Close it, or run this from its own checkout." >&2
+    exit 1
+  fi
   located=$(locate "$orch")
   if [ -z "$located" ]; then
     echo "open-gui.sh: the $ORCH_AGENT agent ($orch) is not in a Herdr space" >&2
@@ -113,8 +125,12 @@ created=$("$APP" do space.new --name "$LABEL" --folder "$OCTOPILOT_ORCH_CWD" \
   --tab "$MAIN_TAB" --argv "$(session_argv "/octopilot:messenger")")
 space=$(jq -r '.space' <<<"$created")
 orch=$(jq -r '.terminal' <<<"$created")
-name_agent "$orch" "$ORCH_AGENT"
+"$HC" label "$orch" "octopilot.agent=$ORCH_AGENT" "octopilot.dir=$DIR" >/dev/null
 root=$(locate "$orch" | cut -f3)
+if [ -z "$root" ]; then
+  echo "open-gui.sh: the new $ORCH_AGENT terminal ($orch) is not in a Herdr space" >&2
+  exit 1
+fi
 "$APP" do pane.rename --pane "$root" --name messenger >/dev/null
 
 # The dashboard first, so it takes the full height on the right; the prompter

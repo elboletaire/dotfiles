@@ -37,11 +37,11 @@ orchestrator: follow them only where this file says so.
 
 Read, never write:
 
-- `$STATE_DIR/snapshot.json` (`~/.local/state/octopilot/snapshot.json`):
+- `${OCTOPILOT_STATE_DIR:-$HOME/.local/state/octopilot}/snapshot.json`:
   the last scan's rows, the same ones the dashboard shows. Its `generated_at`
   says how old it is.
 - `$A status`: the raw tracked items, with sessions, rounds and last reports.
-- `$STATE_DIR/events.jsonl`: what happened and when.
+- `${OCTOPILOT_STATE_DIR:-$HOME/.local/state/octopilot}/events.jsonl`: what happened and when.
 - `gh` read-only commands, a worktree's files, `$A read <item>` to see what an
   agent is doing.
 
@@ -75,7 +75,7 @@ does not ask again.
 
 ### Changes to octopilot itself
 
-The "Octopilot (code changes)" tab runs the herdr agent `octopilot-code`,
+The "Octopilot (code changes)" tab runs the agent `octopilot-code`,
 in the dotfiles, for changing octopilot: its scan, dashboard, skills,
 prompts and kitchen. When the user reports an octopilot bug or asks for a
 change or fix to octopilot, that is where it goes. Queue it without asking:

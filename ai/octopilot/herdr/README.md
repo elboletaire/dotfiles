@@ -96,12 +96,28 @@ HOME_REPOS="<owner/repo>" ISSUE_ORGS="<org>" \
   ~/.dotfiles/.worktrees/<branch>/ai/octopilot/herdr/open-gui.sh
 ```
 
-`HOME_REPOS`, `ISSUE_ORGS` and `CLONE_ROOTS` narrow what the test scans. A
-worktree's claudes also get `--plugin-dir <worktree>/plugin`, and every skill
-reads its `scan.sh` from `OCTOPILOT_DIR` (set to the worktree). The installed
-plugin, from `CLAUDE_CODE_PLUGIN_DIRS`, has the same name, `octopilot`; how
-Claude Code resolves the two copies has not been checked. Close the test
-space with `herdr-app do space.close --id <space> --confirmed true`.
+`HOME_REPOS`, `ISSUE_ORGS` and `CLONE_ROOTS` narrow what the test scans; only
+the values you set are passed on, so config.sh's defaults keep applying to
+everything else. The script refuses to run when the orchestrator labelled
+`octopilot.agent=octopilot` runs from another checkout (`octopilot.dir` label,
+since labels are global). Its own sessions, the dashboard and the code tab get
+`OCTOPILOT_BACKEND=hc`, `OCTOPILOT_DIR` and `OCTOPILOT_STATE_DIR` from this
+script. The workers that scan.py spawns get them from scan.py, so the test is
+only isolated as far as that hand-off goes.
+
+Plugins: the settings' `CLAUDE_CODE_PLUGIN_DIRS` loads the live `octopilot`
+plugin into every session. Adding a worktree's `--plugin-dir` loads a second
+plugin of the same name, and the live copy wins. Checked with `claude -p
+"..." --plugin-dir <worktree>/plugin --debug` on 2026-11-25, which printed
+`octopilot: hooks module not loaded: another plugin of that name loads first`.
+So the worktree's takoyaki hook does not run, and its skills are presumably
+the live ones too (same-name collision; not separately confirmed). What still
+points at the worktree is `OCTOPILOT_DIR`, which the skills read for `scan.sh`.
+Setting `CLAUDE_CODE_PLUGIN_DIRS=<worktree>/plugin` in the session env instead
+removes the collision (same check, no warning), but it also drops the other
+plugin dirs from settings.
+
+Close the test space with `herdr-app do space.close --id <space> --confirmed true`.
 
 ## What it shows
 
