@@ -15,7 +15,7 @@ actions. `$DIR` is the octopilot code dir (`props().dir`, else
 | `octopilot-dashboard` mod | pane in the Octopilot tab | renders view.json, keyboard + mouse, sends actions |
 | `octopilot-chat` mod | pane in the Octopilot tab | the prompter as a chat over its hc terminal |
 | `octopilot-side` mod | pane beside the code agent's terminal, in the Octopilot (code changes) tab | the code agent's status, its sub-agents (herdr's `terminals()` with `parent`, plus Claude's `records` from `hc get`, read-only), `/model`, `/compact`, `/clear`, `/resume` and focus, sent through `scan.sh chat-send --agent octopilot-code` (none while blocked, nor after `/resume` until the agent's status or title changes or "Picker done"); takes the width open-gui.sh sizes it to (280 px, at creation). Props: `dir`, `state_dir`, `agent`, `title` |
-| `octopilot-kitchen` mod | pane under the `octopilot-chat` mod, in the Octopilot tab, 300 px tall (split down from the chat by open-gui.sh) | the takoyaki kitchen chef: reads view.json `pan` and `kitchen`, and `scan.sh speech` for the orchestrator's last message. Props: `dir`, `state_dir`. Its pane name (role and checkout hash) is set by open-gui.sh with `pane.rename`; the mod does not read it |
+| `octopilot-kitchen` mod | pane under the `octopilot-chat` mod, in the Octopilot tab, 300 px tall (split down from the chat by open-gui.sh) | the takoyaki kitchen chef: reads view.json `pan` and `kitchen`, and `scan.sh speech` for the orchestrator's last message. Props: `dir`, `state_dir`, `pane_name`. Its pane is named (role and checkout hash) by open-gui.sh with `pane.rename`, and the mod finds its pane by `pane_name` (its machine, see Remote spaces) |
 | `herdr/open-gui.sh` | launcher | builds the space, starts terminals with `--session-id` (through the user's shell, so the gateway env reaches claude), parks the engine terminals (`--show-engine` keeps them shown), gives the code agent its own tab (its claude, never parked) with the `octopilot-side` panel beside it, opens the mods: the OCTOPILOT tab is the chat over the kitchen on the left, the dashboard on the right |
 | `octopilot-launcher` mod | palette entry "Open Octopilot" (no view) | runs `herdr/open-gui.sh --close-launcher` in a new tab |
 | `herdr-app/install.sh` | installer | symlinks mods into `~/.config/herdr-app/mods/`, adds the `octopilot` program to `programs.json`, removes a `layouts/octopilot.json` of ours (older versions wrote one; no layout is written now); `--key` also binds ctrl-alt-o |
@@ -24,14 +24,23 @@ actions. `$DIR` is the octopilot code dir (`props().dir`, else
 
 The Octopilot space can sit on another machine (herdr-app shows it from this
 computer's core). Each mod finds its space's machine: its pane's tab (the side
-panel: its agent's tab), then the space, `spaces()[i].machine` (null: here). Its
-`exec` and `readTextFile` calls take `{ on: machine }`, so `$DIR`, `$STATE_DIR`,
-`scan.sh`, `dashboard.sh` and `view.json` are that machine's. A remote space uses
-its props only (`dir`, `state_dir`); home() and shared paths are this computer's,
-so a missing prop shows "no octopilot dir for <machine>". `watchFolder` is local
-only: a remote copy polls `view.json` every 2 s. A bare terminal from `scan.sh`
-(`t7`) is `<machine>/t7` for herdr. The `hc` calls on a remote machine run as
-`exec("hc", …, { on })`. The `o` key's link opens on this computer.
+panel: its agent's terminal's tab), then the space, `spaces()[i].machine` (null:
+here). Its `exec` and `readTextFile` calls take `{ on: machine }`, so `$DIR`,
+`$STATE_DIR`, `scan.sh`, `dashboard.sh` and `view.json` are that machine's. A
+remote space uses its props only: the dashboard and the kitchen need `dir` and
+`state_dir`, the chat and the side panel need `dir` (a missing one shows "no
+octopilot dir for <machine>"). home() and shared paths are this computer's.
+Until the machine is known (no pane or tab found, or a name not matched), a mod
+reads nothing and refuses its sends with a notice. `watchFolder` is local only:
+a remote copy polls `view.json` every 2 s. A bare terminal from `scan.sh` (`t7`)
+is `<machine>/t7` for herdr. The side panel's `hc` calls run as
+`exec("hc", …, { on })` on the agent's machine. The dashboard's focus, peek,
+shell and prompter rows run in this viewer's herdr-app with the machine's ids
+(`<machine>/<session>` for the space, `<machine>/<pane>` for the terminal,
+`space.select`, `agent.focus`, `terminal.peek`, `tab.new`), not through
+`dashboard.sh --action`, which would drive that machine's window. Rows whose
+backend is the herdr TUI say so. The `o` key opens a row's https link on this
+computer.
 
 ## view.json (written atomically by `dashboard.sh --headless`, on change and at least every 5 s)
 

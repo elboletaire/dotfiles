@@ -210,21 +210,30 @@ export default class Chat extends View {
 
   // The octopilot's folders on this copy's machine (`on`, null here): the code dir, and the state
   // dir when one is set. A remote space has only its props; home() and shared paths are this
-  // computer's. `missing` says what the props lack, else null.
+  // computer's. `missing` says what the props lack, else null. `unknown`: no machine yet.
   where() {
     const p = props() ?? {};
-    const on = this.machine() ?? null;
+    const on = this.machine();
+    if (on === undefined) return { on, unknown: true, dir: null, stateExplicit: null, missing: null };
     if (on) {
       const dir = p.dir || null;
       const missing = dir ? null : `no octopilot dir for ${on}`;
-      return { on, dir, stateExplicit: p.state_dir || null, missing };
+      return { on, unknown: false, dir, stateExplicit: p.state_dir || null, missing };
     }
     return {
       on: null,
+      unknown: false,
       dir: p.dir || shared("octopilot.dir") || `${home()}/.dotfiles/ai/octopilot`,
       stateExplicit: p.state_dir || shared("octopilot.state_dir") || null,
       missing: null,
     };
+  }
+
+  // The terminal over the tab, peeked on its machine; nothing while that is not known.
+  peekTerminal() {
+    const on = this.machine();
+    if (on === undefined || !this.terminal) return;
+    run("terminal.peek", { terminal: addressOn(on, this.terminal) });
   }
 
   // The chat --json shape: from the fixture when a test gives one, else from scan.sh.
@@ -249,7 +258,8 @@ export default class Chat extends View {
 
   // Reads the messages after the newest one we have; a full read takes the newest 100.
   async sync(cx, full) {
-    if (this.reading) return;
+    // The machine is not known yet: the read waits for the next tick.
+    if (this.reading || this.machine() === undefined) return;
     this.reading = true;
     const before = this.fingerprint();
     const wantFull = full || (this.needFull && !this.live());
@@ -330,6 +340,7 @@ export default class Chat extends View {
     if (props()?.fixture) return { code: -1, error: "Fixture mode: nothing was sent." };
     try {
       const w = this.where();
+      if (w.unknown) return { code: -1, error: "The octopilot's machine is not known yet; try again in a moment." };
       if (w.missing) return { code: -1, error: w.missing };
       const [cmd, argv] = scanCall(w, args);
       const r = await exec(cmd, argv, { timeout: 20000, on: w.on });
@@ -495,7 +506,7 @@ export default class Chat extends View {
           .child(WORDS[st] ?? st)
           .when(Boolean(on), (el) => el.child(div().text_color(t.dim).child(`· on ${on}`)))))
       .child(div().flex_1())
-      .when(this.online() && this.terminal, (el) => el.child(this.ghost(t, "chat-peek", "Terminal", () => run("terminal.peek", { terminal: addressOn(on, this.terminal) }))))
+      .when(this.online() && this.terminal, (el) => el.child(this.ghost(t, "chat-peek", "Terminal", () => this.peekTerminal())))
       .when(this.online(), (el) => el.child(this.ghost(t, "chat-clear", "Clear", (_e, cx) => {
         this.confirming = true;
         cx.notify();
@@ -529,7 +540,7 @@ export default class Chat extends View {
           (_e, cx) => cx.spawn(async (cx) => this.answer(cx, keys)), primary, this.answering)))))
       .when(Boolean(this.terminal), (el) => el.child(h_flex()
         .child(div().flex_1())
-        .child(this.ghost(t, "chat-open", "Open terminal", () => run("terminal.peek", { terminal: addressOn(this.machine(), this.terminal) })))));
+        .child(this.ghost(t, "chat-open", "Open terminal", () => this.peekTerminal()))));
   }
 
   // Tool calls of one message: the first one, "+n" for the rest, all of them when expanded.

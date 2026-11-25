@@ -6,7 +6,7 @@ import { View } from "gpui-kit";
 import { v_flex, h_flex, ScrollHandle, InputState } from "gpui-base";
 import {
   exec, readTextFile, watchFolder, nextCommand, checking, home, props, shared,
-  openOverlay, closeOverlay, notify, theme, window, focused, panes, spaces,
+  openOverlay, closeOverlay, notify, theme, window, focused, panes, spaces, run, terminals,
 } from "herdr";
 import {
   CONFIRM_MS, FLASH_MS, KITCHEN_S, GLOBAL_KEYS, ROW_KEYS, arrange, resolveSel,
@@ -18,11 +18,16 @@ import {
   globalActions, emptyState,
 } from "./parts.js";
 import { kitchenDialog, investigateDialog } from "./dialogs.js";
-import { machineCache } from "./machine.js";
+import { machineCache, addressOn, machineOfAddress } from "./machine.js";
 
 const MOD = "octopilot-dashboard";
 // The name open-gui.sh gives this pane when props.pane_name is not given (pane.rename).
 const PANE_NAME = "octopilot-dashboard";
+const PROMPTER_AGENT = "octopilot-prompter";
+const UNKNOWN_MACHINE = "The Octopilot's machine is not known yet; try again in a moment.";
+// Rows whose action, on a remote space, herdr-app does itself (see remoteAction).
+const REMOTE_ROW = new Set(["focus", "peek", "shell"]);
+const WEB_URL = /^https?:\/\//;
 // view.json is also read on a timer, besides the folder watch, in case a watch is lost.
 const POLL_MS = 2000;
 // How long a peek this pane opened is watched for its close before giving up.
@@ -41,7 +46,7 @@ function dashboardArgv(dir, stateDir, argv) {
 // A link opened on this computer, the way its platform opens one.
 function opener(url, platform) {
   if (platform === "macos") return ["open", [url]];
-  if (platform === "windows") return ["cmd", ["/c", "start", "", url]];
+  if (platform === "windows") return ["rundll32", ["url.dll,FileProtocolHandler", url]];
   return ["xdg-open", [url]];
 }
 
@@ -111,8 +116,8 @@ export default class OctopilotDashboard extends View {
     this.watch?.cancel();
   }
 
-  // The machine of this copy's space: null here, a name when remote, undefined while no tab is
-  // found yet. Fixtures are always local.
+  // The machine of this copy's space: null here, a name when remote, undefined while not known
+  // yet. Fixtures are always local. A dialog copy has the same props, so it finds the same pane.
   machine() {
     if (this.fixture) return null;
     return this.machineOf(panes(), spaces(), { mod: MOD, name: props()?.pane_name ?? PANE_NAME });
@@ -120,14 +125,18 @@ export default class OctopilotDashboard extends View {
 
   // Where this copy's octopilot is, on its machine (`on`, null here): the code dir, the state dir
   // (null: dashboard.sh's own default), view.json. A remote space has only its props: home() and
-  // shared paths are this computer's. `missing` says what the props lack, else null.
+  // shared paths are this computer's. `missing` says what the props lack, else null. `unknown`:
+  // the machine is not known yet, so nothing is read or sent.
   where() {
     const p = props() ?? {};
-    const on = this.machine() ?? null;
+    const on = this.machine();
+    if (on === undefined) {
+      return { on, unknown: true, dir: null, stateExplicit: null, stateDir: null, viewFile: null, missing: null };
+    }
     if (on) {
       const missing = !p.dir ? `no octopilot dir for ${on}` : !p.state_dir ? `no octopilot state dir for ${on}` : null;
       return {
-        on, dir: p.dir ?? null, stateExplicit: p.state_dir ?? null, stateDir: p.state_dir ?? null,
+        on, unknown: false, dir: p.dir ?? null, stateExplicit: p.state_dir ?? null, stateDir: p.state_dir ?? null,
         viewFile: p.state_dir ? `${p.state_dir}/view.json` : null, missing,
       };
     }
@@ -135,7 +144,9 @@ export default class OctopilotDashboard extends View {
     // Only an explicit state dir is passed to the actions; unset, their default applies.
     const stateExplicit = p.state_dir ?? shared("octopilot.state_dir") ?? null;
     const stateDir = stateExplicit ?? `${home()}/.local/state/octopilot`;
-    return { on, dir, stateExplicit, stateDir, viewFile: this.fixture ?? `${stateDir}/view.json`, missing: null };
+    return {
+      on, unknown: false, dir, stateExplicit, stateDir, viewFile: this.fixture ?? `${stateDir}/view.json`, missing: null,
+    };
   }
 
   watchState(cx) {
@@ -162,6 +173,8 @@ export default class OctopilotDashboard extends View {
 
   async reload(cx) {
     const w = this.where();
+    // Not known yet: the read waits for the next tick.
+    if (w.unknown) return;
     if (w.missing) {
       this.raw = null;
       this.view = null;
@@ -204,6 +217,7 @@ export default class OctopilotDashboard extends View {
   // ---- dialogs: this mod opened with props.dialog ----
 
   initDialog(p, cx) {
+    this.machineOf = machineCache();
     this.openedAt = Date.now();
     this.busy = false;
     this.readOnly = false;
@@ -229,7 +243,9 @@ export default class OctopilotDashboard extends View {
     const w = this.where();
     return openOverlay({
       mod: MOD, kind: "dialog", width: tall ? 520 : 440, height: tall ? 340 : 260,
-      props: { dialog: kind, dir: w.dir, state_dir: w.stateExplicit, on: w.on, ...extra },
+      props: {
+        dialog: kind, dir: w.dir, state_dir: w.stateExplicit, pane_name: props()?.pane_name ?? PANE_NAME, ...extra,
+      },
     });
   }
 
@@ -248,9 +264,14 @@ export default class OctopilotDashboard extends View {
   kitchenStart(cx) {
     const p = props();
     if (this.busy) return;
+    const on = this.machine();
+    if (on === undefined) {
+      notify({ title: "Octopilot", body: UNKNOWN_MACHINE, level: "error" });
+      return;
+    }
     this.busy = true;
     cx.spawn(async () => {
-      const res = await runAction(p.on ?? null, p.dir, p.state_dir, p.action, p.key, { ...(p.args ?? {}), confirmed: 1 });
+      const res = await runAction(on, p.dir, p.state_dir, p.action, p.key, { ...(p.args ?? {}), confirmed: 1 });
       notify({
         title: "Octopilot", body: res.message || (res.ok ? "started" : "failed"),
         level: res.ok ? "success" : "error",
@@ -269,10 +290,16 @@ export default class OctopilotDashboard extends View {
       return;
     }
     if (this.busy) return;
+    const on = this.machine();
+    if (on === undefined) {
+      this.error = UNKNOWN_MACHINE;
+      cx.notify();
+      return;
+    }
     this.busy = true;
     const args = { repo, question, read_only: this.readOnly ? 1 : 0 };
     cx.spawn(async (cx) => {
-      const res = await runAction(p.on ?? null, p.dir, p.state_dir, p.action, null, args);
+      const res = await runAction(on, p.dir, p.state_dir, p.action, null, args);
       if (res.kitchen) {
         this.openDialog("kitchen", { action: p.action, args, message: res.message });
         closeOverlay(p.overlay);
@@ -456,6 +483,7 @@ export default class OctopilotDashboard extends View {
     if (action.id === "toggle_done") return this.toggleDone(cx);
     if (action.id === "fold_all") return this.toggleAll(cx);
     if (action.id === "investigate" && action.args?.length) {
+      if (this.where().unknown) return this.say(UNKNOWN_MACHINE, false, cx);
       this.openDialog("investigate", { action: action.id });
       return;
     }
@@ -470,8 +498,41 @@ export default class OctopilotDashboard extends View {
       return;
     }
     // A row's link opens on this computer, where the person is, not on the octopilot's machine.
-    if (action.id === "browser" && entry?.url) return this.openUrl(entry.url, cx);
+    if (action.id === "browser" && entry?.url && WEB_URL.test(entry.url) && entry.actions?.some((a) => a.id === "browser")) {
+      return this.openUrl(entry.url, cx);
+    }
+    // On a remote space the viewer's herdr does these: dashboard.sh would drive that machine's window.
+    const on = REMOTE_ROW.has(action.id) || action.id === "prompter" ? this.machine() : null;
+    if (on) return this.remoteAction(action.id, entry, on, cx);
     this.perform(action.id, key, {}, cx);
+  }
+
+  // Focus, peek, shell and the prompter on a remote machine, through this viewer's herdr-app with
+  // the machine's ids. Only hc rows have their agent in herdr-app; a herdr TUI row lives there.
+  remoteAction(id, entry, on, cx) {
+    if (id === "prompter") {
+      const t = terminals().find((x) => x.labels?.["octopilot.agent"] === PROMPTER_AGENT && machineOfAddress(x.address) === on);
+      if (!t) return this.say(`no prompter running on ${on}`, false, cx);
+      this.watchPeek();
+      run("terminal.peek", { terminal: t.address });
+      return this.say("prompter opened", true, cx);
+    }
+    if (entry?.backend !== "hc") return this.say(`this row lives in the herdr TUI on ${on}`, false, cx);
+    if (!entry.session) return this.say("no session for this row", false, cx);
+    if (id === "focus") {
+      run("space.select", { id: `${on}/${entry.session}` });
+      if (entry.pane) run("agent.focus", { terminal: addressOn(on, entry.pane) });
+      return this.say("focused", true, cx);
+    }
+    if (id === "peek") {
+      if (!entry.pane) return this.say("no live agent for this row", false, cx);
+      this.watchPeek();
+      run("terminal.peek", { terminal: addressOn(on, entry.pane) });
+      return this.say("peeked", true, cx);
+    }
+    if (!entry.path) return this.say("no worktree for this row", false, cx);
+    run("tab.new", { space: `${on}/${entry.session}`, folder: entry.path });
+    return this.say("new tab opened", true, cx);
   }
 
   openUrl(url, cx) {
@@ -495,6 +556,7 @@ export default class OctopilotDashboard extends View {
     const w = this.where();
     // A fixture with no state dir of its own must never act on the live octopilot.
     if (this.fixture && !w.stateExplicit) return this.say("Fixture mode: nothing was sent.", false, cx);
+    if (w.unknown) return this.say(UNKNOWN_MACHINE, false, cx);
     if (w.missing) return this.say(w.missing, false, cx);
     if (id === "peek" || id === "prompter") this.watchPeek();
     cx.spawn(async (cx) => {

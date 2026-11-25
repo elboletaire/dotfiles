@@ -4,7 +4,7 @@
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { exec, hc, run, props, shared, home, theme, terminals, nextCommand, window, checking, panes, spaces } from "herdr";
-import { machineCache, machineOfAddress, bareAddress } from "./machine.js";
+import { machineCache, addressOn, machineOfAddress, bareAddress } from "./machine.js";
 
 const MODELS = ["opus", "sonnet", "haiku"];
 const WORDS = { working: "working", blocked: "needs you", idle: "idle", done: "finished", offline: "offline" };
@@ -66,21 +66,36 @@ export default class Side extends View {
     return this.agent !== null;
   }
 
-  // The machine of the code agent's space: the tab of the agent's own terminal (this panel sits
-  // beside it), else the panel's pane. Null here, undefined while not known.
+  // The machine of the code agent's space, from the tab of the agent's own terminal (this panel
+  // sits beside it), else the panel's pane. Only the offline header asks it: a running agent
+  // says its machine in its address. Null here, undefined while not known.
   machine() {
     const tab = this.agent ? panes().find((p) => p.terminal === this.agent.address)?.tab ?? null : null;
     return this.machineOf(panes(), spaces(), { mod: "octopilot-side", name: props()?.pane_name ?? null, tab });
   }
 
-  // The octopilot's folders on this copy's machine (`on`, null here), as the dashboard has them:
-  // a remote space has only its props. `missing` says what they lack, else null.
+  // The agent's machine, from its address (`bolt/t7`; a bare one is this computer's), undefined
+  // while the agent is not running. Sends and peeks go there.
+  agentOn() {
+    return this.agent ? machineOfAddress(this.agent.address) : undefined;
+  }
+
+  // A terminal address for herdr, on the agent's machine (a bare one from this panel's own state).
+  terminalOf(address) {
+    return addressOn(this.agentOn() ?? null, address);
+  }
+
+  // The octopilot's folders on the agent's machine (`on`, null here), as the dashboard has them:
+  // a remote space has only its props. `missing` says what they lack, else null. `unknown`: no
+  // agent, so no machine to send to.
   where() {
     const p = props() ?? {};
-    const on = this.machine() ?? null;
-    if (on) return { on, dir: p.dir || null, stateExplicit: p.state_dir || null, missing: p.dir ? null : `no octopilot dir for ${on}` };
+    const on = this.agentOn();
+    if (on === undefined) return { on, unknown: true, dir: null, stateExplicit: null, missing: null };
+    if (on) return { on, unknown: false, dir: p.dir || null, stateExplicit: p.state_dir || null, missing: p.dir ? null : `no octopilot dir for ${on}` };
     return {
       on: null,
+      unknown: false,
       dir: p.dir || shared("octopilot.dir") || `${home()}/.dotfiles/ai/octopilot`,
       stateExplicit: p.state_dir || shared("octopilot.state_dir") || null,
       missing: null,
@@ -160,6 +175,7 @@ export default class Side extends View {
   async say(args) {
     try {
       const w = this.where();
+      if (w.unknown) return { code: -1, error: "The code changes agent's machine is not known yet." };
       if (w.missing) return { code: -1, error: w.missing };
       const [cmd, argv] = scanCall(w, args);
       const r = await exec(cmd, argv, { timeout: 20000, on: w.on });
@@ -197,7 +213,7 @@ export default class Side extends View {
 
   // Focuses the agent's terminal, where a picker (/resume) is answered.
   focusTerminal() {
-    if (this.agent) run("pane.focus", { terminal: this.agent.address });
+    if (this.agent) run("pane.focus", { terminal: this.terminalOf(this.agent.address) });
   }
 
   button(t, id, label, onClick, { primary = false, disabled = false, flex = false } = {}) {
@@ -238,7 +254,7 @@ export default class Side extends View {
   header(t) {
     const st = this.agent ? (this.agent.status ?? "idle") : "offline";
     const color = t[st] ?? t.dim;
-    const on = this.machine();
+    const on = this.agent ? machineOfAddress(this.agent.address) : (this.machine() ?? null);
     return h_flex()
       .h(44)
       .flex_none()
@@ -297,7 +313,7 @@ export default class Side extends View {
       .rounded(7)
       .cursor_pointer()
       .hover((h) => h.bg(t.hover))
-      .on_click(() => run("terminal.peek", { terminal: s.address }))
+      .on_click(() => run("terminal.peek", { terminal: this.terminalOf(s.address) }))
       .child(div().size(7).flex_none().rounded_full().bg(t[st] ?? t.dim))
       .child(div().flex_1().min_w(0).overflow_hidden().truncate().text_size(12).child(label))
       .child(div().text_size(10.5).text_color(t.muted).child(WORDS[st] ?? st))
@@ -316,7 +332,7 @@ export default class Side extends View {
         .on_mouse_down("left", (_e, cx) => cx.stop_propagation())
         .on_click((_e, cx) => {
           cx.stop_propagation();
-          run("terminal.keep", { terminal: s.address, place: "tab" });
+          run("terminal.keep", { terminal: this.terminalOf(s.address), place: "tab" });
         })
         .child("keep"));
   }

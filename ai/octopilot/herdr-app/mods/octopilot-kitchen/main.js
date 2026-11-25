@@ -83,28 +83,32 @@ export default class Kitchen extends View {
     this.blinks(cx);
   }
 
-  // The machine of this copy's space: null here, a name when remote, undefined while no tab is
-  // found (a floating copy has no pane: the shown tab decides). Fixtures are always local.
+  // The machine of this copy's space: null here, a name when remote, undefined while not known
+  // yet. A floating copy has no pane: it may use the shown tab, when the mod has no pane at all.
+  // Fixtures are always local.
   machine() {
     if (props()?.fixture) return null;
-    return this.machineOf(panes(), spaces(), { mod: MOD, name: props()?.pane_name ?? null });
+    return this.machineOf(panes(), spaces(), { mod: MOD, name: props()?.pane_name ?? null, floating: placement() != null });
   }
 
   // Where the octopilot is, on its machine (`on`, null here): the code dir, the state dir (null:
-  // scan.sh's own default). A remote space has only its props; home() and shared paths are this
-  // computer's. `missing` says what the props lack, else null.
+  // scan.sh's own default). A remote space needs its props (dir and state_dir); home() and shared
+  // paths are this computer's. `missing` says what the props lack, else null. `unknown`: no
+  // machine yet, so nothing is read.
   where() {
     const p = props() ?? {};
-    const on = this.machine() ?? null;
+    const on = this.machine();
+    if (on === undefined) return { on, unknown: true, dir: null, stateExplicit: null, stateDir: null, missing: null };
     if (on) {
       const dir = p.dir || null;
       const stateExplicit = p.state_dir || null;
       const missing = !dir ? `no octopilot dir for ${on}` : !stateExplicit ? `no octopilot state dir for ${on}` : null;
-      return { on, dir, stateExplicit, stateDir: stateExplicit, missing };
+      return { on, unknown: false, dir, stateExplicit, stateDir: stateExplicit, missing };
     }
     const stateExplicit = setting("state_dir", "octopilot.state_dir");
     return {
       on: null,
+      unknown: false,
       dir: setting("dir", "octopilot.dir") ?? `${home()}/.dotfiles/ai/octopilot`,
       stateExplicit,
       stateDir: stateExplicit ?? `${home()}/.local/state/octopilot`,
@@ -191,6 +195,7 @@ export default class Kitchen extends View {
   async loadView() {
     const p = props() ?? {};
     const w = this.where();
+    if (w.unknown) return;   // not known yet: the next poll asks again
     try {
       if (w.missing) throw new Error(w.missing);
       this.view = await readJson(p.fixture ?? `${w.stateDir}/view.json`, w.on);
@@ -209,6 +214,7 @@ export default class Kitchen extends View {
       else if (p.fixture) this.speech = null;
       else {
         const w = this.where();
+        if (w.unknown) return;   // not known yet: the speech waits for the next poll
         if (w.missing) throw new Error(w.missing);
         const r = await exec("env", scanArgs(w, "speech", "--json"), { timeout: 15000, on: w.on });
         if (r.code !== 0) throw new Error(r.stderr.trim().split("\n")[0] || `exit ${r.code}`);
@@ -242,7 +248,8 @@ export default class Kitchen extends View {
 
   peek() {
     const terminal = this.speech?.terminal;
-    if (terminal) run("terminal.peek", { terminal: addressOn(this.machine(), terminal) });
+    const on = this.machine();
+    if (terminal && on !== undefined) run("terminal.peek", { terminal: addressOn(on, terminal) });
   }
 
   openFull() {

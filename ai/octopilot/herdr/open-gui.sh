@@ -92,7 +92,9 @@ PROMPTER_PROPS="$(jq -nc --argjson mod "$MOD_PROPS" --arg name "$(pane_name "$PR
 # hashed name too, but no pane_name prop: the side mod finds the agent's terminal, not its pane.
 SIDE_PROPS="$(jq -nc --argjson mod "$MOD_PROPS" --arg agent "$CODE_AGENT" \
   '$mod + {agent: $agent, title: "Code changes"}')"
-# The kitchen takes the MOD_PROPS only: its pane is named by pane.rename, and the mod reads no name.
+# The kitchen's pane is named by pane.rename to the same name, which its mod finds by pane_name.
+KITCHEN_PROPS="$(jq -nc --argjson mod "$MOD_PROPS" --arg name "$(pane_name "$KITCHEN_PANE")" \
+  '$mod + {pane_name: $name}')"
 
 # `herdr-app ...` with its output on stdout; a failure stops here with the
 # output it printed, so a refused command says why.
@@ -337,7 +339,7 @@ add_kitchen() {
     return 0
   fi
   if ! created=$("$APP" do pane.split --direction down --pane "$chat" --mod octopilot-kitchen \
-    --props "$MOD_PROPS" 2>&1); then
+    --props "$KITCHEN_PROPS" 2>&1); then
     echo "open-gui.sh: could not split the $KITCHEN_PANE pane from the chat: $created" >&2
     return 0
   fi
