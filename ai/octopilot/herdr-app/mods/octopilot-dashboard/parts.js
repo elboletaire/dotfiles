@@ -138,7 +138,7 @@ function card(v, t, e, tone, now) {
 export function column(v, t, col, now) {
   const tone = COLUMN_TONE[col.id] ?? "dim";
   const cards = col.shown.map((e) => card(v, t, e, tone, now));
-  return v_flex().flex_1().h_full().min_w_0().min_h_0().rounded(14).border_1().border_color(t.border)
+  return v_flex().flex_1().min_w_0().min_h(0).overflow_hidden().rounded(14).border_1().border_color(t.border)
     .bg(t.surface).p(8).gap(8)
     .child(h_flex().items_center().gap(7).px(4).pt(2)
       .child(div().text_size(12.5).font_semibold().text_color(t[tone]).truncate().child(col.title))
@@ -146,9 +146,10 @@ export function column(v, t, col, now) {
       .child(div().flex_1())
       .when(col.hidden > 0, (el) => el.child(div().text_size(10.5).text_color(t.dim)
         .child(`+${col.hidden} hidden`))))
-    .child(v_flex().id(`col-${col.id}`).flex_1().min_h_0().overflow_y_scrollbar()
-      .track_scroll(v.scrolls[col.id]).gap(8)
-      .children(cards.length ? cards : [div().py(24).text_center().text_color(t.dim).child("—")]));
+    .child(div().flex_1().min_h(0).relative()
+      .child(v_flex().id(`col-${col.id}`).absolute().inset_0().overflow_y_scroll()
+        .track_scroll(v.scrolls[col.id]).gap(8)
+        .children(cards.length ? cards : [div().py(24).text_center().text_color(t.dim).child("—")])));
 }
 
 function repoRow(v, t, line) {
@@ -181,23 +182,24 @@ function pickRow(v, t, line) {
 }
 
 export function pickPanel(v, t, arr, total) {
-  return v_flex().flex_1().h_full().min_w_0().min_h_0().rounded(14).border_1().border_color(t.border)
+  return v_flex().flex_1().min_w_0().min_h(0).overflow_hidden().rounded(14).border_1().border_color(t.border)
     .bg(t.surface).p(8).gap(6)
     .child(h_flex().items_center().gap(7).px(4).pt(2)
       .child(div().text_size(12.5).font_semibold().child("⚪ Pick next"))
       .child(pill(t, String(total), t.muted))
       .child(div().flex_1())
       .child(div().text_size(10.5).text_color(t.dim).child("# is what go N takes")))
-    .child(v_flex().id("pick").flex_1().min_h_0().overflow_y_scrollbar()
-      .track_scroll(v.scrolls.pick).gap(1)
-      .children(arr.tree.length
-        ? arr.tree.map((line) => (line.kind === "repo" ? repoRow(v, t, line) : pickRow(v, t, line)))
-        : [div().py(20).text_center().text_size(12).text_color(t.dim).child("nothing to pick")]));
+    .child(div().flex_1().min_h(0).relative()
+      .child(v_flex().id("pick").absolute().inset_0().overflow_y_scroll()
+        .track_scroll(v.scrolls.pick).gap(1)
+        .children(arr.tree.length
+          ? arr.tree.map((line) => (line.kind === "repo" ? repoRow(v, t, line) : pickRow(v, t, line)))
+          : [div().py(20).text_center().text_size(12).text_color(t.dim).child("nothing to pick")])));
 }
 
 export function activityPanel(t, view, now) {
   const rows = view.activity ?? [];
-  return v_flex().w(372).h_full().flex_none().min_h_0().rounded(14).border_1().border_color(t.border)
+  return v_flex().w(372).flex_none().min_h(0).overflow_hidden().rounded(14).border_1().border_color(t.border)
     .bg(t.surface).p(10).gap(4)
     .child(div().px(4).pt(2).pb(4).text_size(12.5).font_semibold().child("Activity"))
     .children(rows.length

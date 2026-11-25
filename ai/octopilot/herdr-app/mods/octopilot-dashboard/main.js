@@ -143,14 +143,8 @@ export default class OctopilotDashboard extends View {
     setShared("octopilot.octopus", id);
   }
 
-  toggleOctopus() {
-    if (this.octopusOpen()) {
-      closeOverlay(shared("octopilot.octopus"));
-      setShared("octopilot.octopus", "hidden");
-    } else {
-      this.showOctopus();
-    }
-  }
+  // The window's key makes a reopen replace the open one in place, so the
+  // button always shows it, even when shared state says otherwise.
 
   // ---- dialogs: this mod opened with props.dialog ----
 
@@ -390,7 +384,7 @@ export default class OctopilotDashboard extends View {
     const key = entry?.key ?? null;
     if (action.id === "toggle_done") return this.toggleDone(cx);
     if (action.id === "fold_all") return this.toggleAll(cx);
-    if (action.id === "octopus") return this.toggleOctopus(), cx.notify();
+    if (action.id === "octopus") return this.showOctopus(), cx.notify();
     if (action.id === "investigate" && action.args?.length) {
       this.openDialog("investigate", { action: action.id });
       return;
@@ -427,7 +421,7 @@ export default class OctopilotDashboard extends View {
     if (p.dialog === "investigate") return investigateDialog(this, t);
     const now = Date.now();
     const root = v_flex().id("octopilot-dashboard").track_focus(this.handle)
-      .on_key_down((e, cx) => this.key(e, cx)).size_full().min_h_0().p(14).gap(10)
+      .on_key_down((e, cx) => this.key(e, cx)).size_full().min_h(0).overflow_hidden().p(14).gap(10)
       .bg(t.background).text_color(t.foreground).text_size(12.5);
     const { view } = this;
     if (!view) return root.child(emptyState(t, this.viewFile, this.error));
