@@ -5,7 +5,7 @@
 import { View } from "gpui-kit";
 import { v_flex, h_flex, ScrollHandle, InputState } from "gpui-base";
 import {
-  exec, readTextFile, watchFolder, nextCommand, checking, home, props, shared, run, layouts,
+  exec, readTextFile, watchFolder, nextCommand, checking, home, props, shared,
   openOverlay, closeOverlay, notify, theme, window, focused, panes, spaces,
 } from "herdr";
 import {
@@ -22,8 +22,6 @@ import { kitchenDialog, investigateDialog } from "./dialogs.js";
 const MOD = "octopilot-dashboard";
 // The name open-gui.sh gives this pane (pane.rename), so it is found among the mod's panes.
 const PANE_NAME = "octopilot-dashboard";
-// The kitchen corner: the octopilot layout's floating kitchen block.
-const KITCHEN_LAYOUT = "octopilot";
 // view.json is also read on a timer, besides the folder watch, in case a watch is lost.
 const POLL_MS = 2000;
 // How long a peek this pane opened is watched for its close before giving up.
@@ -157,20 +155,6 @@ export default class OctopilotDashboard extends View {
       }
     }
     cx.notify();
-  }
-
-  kitchenOpen() {
-    return shared("layout") === KITCHEN_LAYOUT;
-  }
-
-  // Shows or hides the kitchen corner by switching layouts; the layout's own
-  // floating block holds the kitchen mod.
-  toggleKitchen(cx) {
-    if (!layouts().includes(KITCHEN_LAYOUT)) {
-      this.say("kitchen layout not installed: run herdr-app/install.sh", false, cx);
-      return;
-    }
-    run("layout.switch", { name: this.kitchenOpen() ? "main" : KITCHEN_LAYOUT });
   }
 
   // ---- dialogs: this mod opened with props.dialog ----
@@ -428,7 +412,6 @@ export default class OctopilotDashboard extends View {
     const key = entry?.key ?? null;
     if (action.id === "toggle_done") return this.toggleDone(cx);
     if (action.id === "fold_all") return this.toggleAll(cx);
-    if (action.id === "kitchen") return this.toggleKitchen(cx), cx.notify();
     if (action.id === "investigate" && action.args?.length) {
       this.openDialog("investigate", { action: action.id });
       return;
@@ -522,7 +505,7 @@ export default class OctopilotDashboard extends View {
     const arr = this.arr();
     this.sel = resolveSel(this.sel, arr);
     const entry = entryOf(view, this.sel);
-    const globals = [...globalActions(view, this), { id: "kitchen", label: "🍳 kitchen", active: this.kitchenOpen() }];
+    const globals = globalActions(view, this);
     const notes = view.notes ?? [];
     return root
       .child(header(this, t, now))

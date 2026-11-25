@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # The GUI twin of open.sh: the Octopilot space in herdr-app, with three tabs:
-#   OCTOPILOT: the octopilot-dashboard and octopilot-chat mods
+#   OCTOPILOT: the octopilot-dashboard mod on the left; on the right the
+#     octopilot-chat mod over the octopilot-kitchen mod (KITCHEN_PX tall)
 #   engine: the orchestrator, the prompter and the headless dashboard, as hc
 #     terminals; parked after building (no pane, still running), so the tab goes away
 #   Octopilot (code changes): the code agent's own claude (a terminal, never parked)
@@ -8,12 +9,10 @@
 # Each claude is labelled octopilot.agent=<name> and octopilot.session=<uuid>
 # (its transcript, read by scan.py speech and chat). --terminals builds the
 # TUI-style layout instead. --show-engine keeps the engine tab visible (no park).
-# After building it switches to the `octopilot` layout (the kitchen corner) when
-# herdr-app/install.sh made one and the shown layout is `main` (a layout you
-# picked stays); --no-layout skips that. --close-launcher closes this terminal's
-# own pane at the end (the tab goes with its last pane), for the key or the
-# palette (programs.json). From a worktree it needs OCTOPILOT_STATE_DIR (see
-# herdr/README.md).
+# --no-layout is accepted and does nothing (there is no octopilot layout any more).
+# --close-launcher closes this terminal's own pane at the end (the tab goes with
+# its last pane), for the key or the palette (programs.json). From a worktree it
+# needs OCTOPILOT_STATE_DIR (see herdr/README.md).
 set -euo pipefail
 APP="herdr-app"
 HC="hc"
@@ -28,6 +27,8 @@ CODE_AGENT="octopilot-code"            # scan.py's CODE_AGENT
 DASHBOARD_PANE="octopilot-dashboard"
 PROMPTER_PANE="octopilot-prompter"
 SIDE_PANE="octopilot-side"
+KITCHEN_PANE="octopilot-kitchen"
+KITCHEN_PX=300                         # the kitchen's height under the chat
 MAIN_TAB="OCTOPILOT"
 ENGINE_TAB="engine"
 CODE_TAB="Octopilot (code changes)"
@@ -35,13 +36,12 @@ CODE_CWD="$(cd "$DIR/../.." && pwd -P)"   # the checkout this octopilot lives in
 
 TERMINALS=0
 CLOSE_LAUNCHER=0
-LAYOUT=1
 SHOW_ENGINE=0
 for arg in "$@"; do
   case "$arg" in
     --terminals) TERMINALS=1 ;;
     --close-launcher) CLOSE_LAUNCHER=1 ;;
-    --no-layout) LAYOUT=0 ;;
+    --no-layout) ;;
     --show-engine) SHOW_ENGINE=1 ;;
     -h|--help) echo "usage: open-gui.sh [--terminals] [--show-engine] [--no-layout] [--close-launcher]"; exit 0 ;;
     *) echo "open-gui.sh: unknown argument $arg" >&2; exit 2 ;;
@@ -78,6 +78,9 @@ MOD_PROPS="$(jq -nc --arg dir "$DIR" --arg state "$STATE_DIR" '{dir: $dir, state
 # The code tab's side panel: the code agent it shows, and its title.
 SIDE_PROPS="$(jq -nc --argjson mod "$MOD_PROPS" --arg agent "$CODE_AGENT" \
   '$mod + {agent: $agent, title: "Code changes"}')"
+# The kitchen's props: the mod's dir and state dir, and the name of its pane.
+KITCHEN_PROPS="$(jq -nc --argjson mod "$MOD_PROPS" --arg name "$KITCHEN_PANE" \
+  '$mod + {pane_name: $name}')"
 
 # `herdr-app ...` with its output on stdout; a failure stops here with the
 # output it printed, so a refused command says why.
@@ -236,9 +239,10 @@ add_engine_agents() {
 }
 
 # The OCTOPILOT tab, unless the space has one: the dashboard mod, and the chat
-# mod (the prompter) beside it.
+# mod (the prompter) beside it. The chat's pane is recorded on the orchestrator
+# (octopilot.chat): the kitchen splits from it on a later run.
 add_main_tab() {
-  local created pane
+  local created pane chat
   if [ -n "$(tab_named "$1" "$MAIN_TAB")" ]; then return 0; fi
   created=$(app do tab.new --space "$1" --name "$MAIN_TAB" \
     --mod octopilot-dashboard --props "$MOD_PROPS" --focus false)
@@ -250,7 +254,41 @@ add_main_tab() {
   name_mod_pane "$pane" "$DASHBOARD_PANE"
   created=$(app do pane.split --direction right --pane "$pane" \
     --mod octopilot-chat --props "$MOD_PROPS")
-  name_mod_pane "$(jq -r '.pane' <<<"$created")" "$PROMPTER_PANE"
+  chat=$(jq -r '.pane' <<<"$created")
+  name_mod_pane "$chat" "$PROMPTER_PANE"
+  "$HC" label "$(find_orch)" "octopilot.chat=$chat" >/dev/null
+}
+
+# Sizes the kitchen (pane $2) to KITCHEN_PX: the divider above it (the chat's bottom
+# edge, pane $1) goes down, so the kitchen is at its minimum whatever the split gave,
+# then up by KITCHEN_PX. A refused first move is not fatal: the size is then the split's.
+size_kitchen() {
+  "$APP" do pane.resize --direction down --pane "$1" --px 10000 >/dev/null 2>&1 || true
+  app do pane.resize --direction up --pane "$2" --px "$KITCHEN_PX" >/dev/null
+}
+
+# The kitchen under the chat in the OCTOPILOT tab, once. The pane this run recorded on
+# the orchestrator (octopilot.kitchen) is kept while it exists (pane.rename fails on a
+# pane that is gone), as the side panel's is. A tab from an earlier run has no chat
+# record: the kitchen cannot be split from its chat, so it is left out with a note.
+add_kitchen() {
+  local orch kitchen chat created
+  orch=$(find_orch)
+  kitchen=$("$HC" get "$orch" --json | jq -r '.labels["octopilot.kitchen"] // empty')
+  if [ -n "$kitchen" ] && "$APP" do pane.rename --pane "$kitchen" --name "$KITCHEN_PANE" >/dev/null 2>&1; then
+    return 0
+  fi
+  chat=$("$HC" get "$orch" --json | jq -r '.labels["octopilot.chat"] // empty')
+  if [ -z "$chat" ] || ! "$APP" do pane.rename --pane "$chat" --name "$PROMPTER_PANE" >/dev/null 2>&1; then
+    echo "open-gui.sh: the $PROMPTER_PANE pane is not recorded (octopilot.chat), so the" \
+      "$KITCHEN_PANE pane is not added; see herdr/README.md" >&2
+    return 0
+  fi
+  created=$(app do pane.split --direction down --pane "$chat" --mod octopilot-kitchen --props "$KITCHEN_PROPS")
+  kitchen=$(jq -r '.pane' <<<"$created")
+  name_mod_pane "$kitchen" "$KITCHEN_PANE"
+  size_kitchen "$chat" "$kitchen"
+  "$HC" label "$orch" "octopilot.kitchen=$kitchen" >/dev/null
 }
 
 # The code agent's claude in a tab of its own, named CODE_TAB, in the dotfiles root.
@@ -449,20 +487,11 @@ existing_space() {
 }
 
 # Runs at the end of every path that did its work: the engine parked (the GUI
-# layout), the octopilot layout (the kitchen corner), then the launcher's own pane.
+# layout), then the launcher's own pane.
 finish() {
   local space=$1
   if [ "$TERMINALS" = 0 ]; then park_engine "$space"; fi
-  if [ "$TERMINALS" = 0 ] && [ "$LAYOUT" = 1 ] && layout_exists octopilot \
-    && [ "$("$APP" status | jq -r '.layout // empty')" = main ]; then
-    app do layout.switch --name octopilot >/dev/null
-  fi
   if [ "$CLOSE_LAUNCHER" = 1 ]; then close_launcher; fi
-}
-
-# True when herdr-app has a layout of this name (layouts/<name>.json).
-layout_exists() {
-  [ -f "${HERDR_APP_HOME:-$HOME/.config/herdr-app}/layouts/$1.json" ]
 }
 
 # Shows the space and its OCTOPILOT tab.
@@ -538,6 +567,7 @@ if [ -n "$orch" ]; then
     if [ -n "$pane" ]; then app do tab.rename --id "$tab" --name "$ENGINE_TAB" >/dev/null; fi
     add_engine_agents "$space" "$pane"
     add_main_tab "$space"
+    add_kitchen
     add_code_tab "$space"
     focus_main "$space"
   fi
@@ -586,6 +616,7 @@ if [ "$TERMINALS" = 1 ]; then
 else
   add_engine_agents "$space" "$root"
   add_main_tab "$space"
+  add_kitchen
   add_code_tab "$space"
   focus_main "$space"
 fi

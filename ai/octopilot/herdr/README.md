@@ -84,7 +84,7 @@ terminals run in herdr-core) as one space with three tabs:
 
 | Tab | Holds |
 |---|---|
-| **OCTOPILOT** | the `octopilot-dashboard` mod (the table below) and, beside it, the `octopilot-chat` mod: the prompter as a chat |
+| **OCTOPILOT** | the `octopilot-dashboard` mod (the table below) on the left, full height; on the right the `octopilot-chat` mod (the prompter as a chat) over the `octopilot-kitchen` mod, a pane 300 px tall (`props`: `dir`, `state_dir`, `pane_name`) |
 | **engine** | the orchestrator (`octopilot`, `/octopilot:messenger`), the prompter (`octopilot-prompter`) and `dashboard.sh --headless` (`octopilot-headless`), each an hc terminal. Parked after building: they keep running with no pane, so the tab goes away (see below) |
 | **Octopilot (code changes)** | the code agent's own claude (`octopilot-code`, a claude in the dotfiles root, an hc terminal that is never parked) and, beside it, the `octopilot-side` mod: the agent's status, its sub-agents, the model and the commands (`props`: `dir`, `state_dir`, `agent`, `title`) |
 
@@ -145,9 +145,15 @@ uses `exec`, not herdr's keep-shell form: a shell left behind would keep a dead
 agent's terminal alive and labelled, and the reruns would never restart it.
 
 The headless dashboard runs the loops and writes `view.json`; the mods only
-render it and send actions. The kitchen is the `octopilot-kitchen` mod, a
-floating block of the `octopilot` layout (the dashboard's kitchen button toggles
-that layout).
+render it and send actions. The kitchen is the `octopilot-kitchen` mod, a pane
+split down from the chat (`pane.split`), then sized to 300 px with `pane.resize`.
+The run records the chat's pane on the orchestrator (`octopilot.chat` label) and
+the kitchen's (`octopilot.kitchen`), and a rerun keeps the kitchen while its pane
+exists (a `pane.rename` probe, as the side panel's), else splits a new one. A tab
+from an earlier run has no `octopilot.chat` record, so a rerun cannot split its
+kitchen: it says so and leaves the tab as it is. Add it once by hand: focus the
+chat pane, record its id (`herdr-app status` `focused_pane`) as `octopilot.chat`
+on the orchestrator, and rerun `open-gui.sh`.
 
 Each claude starts with `claude --session-id <uuid>` and is labelled
 `octopilot.session=<uuid>`. Its transcript (`~/.claude/projects/*/<uuid>.jsonl`)
@@ -178,16 +184,11 @@ home, as herdr-app does. A `keys.json` you edit stops getting herdr-app's new
 default shortcuts on upgrade, which is why the key is opt-in. A rejected
 `programs.json` or `keys.json` leaves a `.error` file, which the installer reports.
 
-**The octopilot layout.** The installer also writes `~/.config/herdr-app/layouts/octopilot.json`:
-a copy of your `layouts/main.json` (recorded as `cloned_from`) plus a floating block
-that docks the `octopilot-kitchen` mod in the right-hand corner of every tab. It is
-regenerated on each run, a file of that name that is not ours is left alone,
-`--uninstall` removes it, and it is written only when the `octopilot-kitchen` mod
-is in `herdr-app/mods`. A rejection is reported (`octopilot.error`, `layout.error`,
-or `herdr-app status` `errors`). After building the space, `open-gui.sh` switches
-to it with `layout.switch` when it exists and the shown layout is `main`
-(`--no-layout` skips that; `--terminals` never switches). Re-run the installer after
-changing `main.json`.
+**No octopilot layout.** Earlier versions wrote `~/.config/herdr-app/layouts/octopilot.json`
+(the kitchen as a floating block of every tab). The installer removes it when it is
+ours (recognised by that block), on install and on `--uninstall`; when the app shows
+it, the app is switched to `main` first. A layout of that name that is not ours is
+left alone. `open-gui.sh --no-layout` is accepted and does nothing.
 
 **Fallback.** `open-gui.sh --terminals` builds the TUI-style layout instead:
 one OCTOPILOT tab with the messenger, the curses dashboard and the prompter as
