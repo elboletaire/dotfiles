@@ -1,8 +1,9 @@
 // An octopilot agent as a chat: its session's messages, a composer that types into it,
 // and the answers to a prompt it waits on. Reads `scan.sh chat --json`, writes through
 // `chat-send` and `chat-keys`. Props: `agent` (scan.sh --agent, default the prompter),
-// `title` (header and copy, default "Prompter"), `chips` ([{label, text}]), and for tests
-// `dir` (scan.sh folder) and `fixture` (chat JSON file).
+// `title` (header, default "Prompter"), `subject` (the agent in copy, default "the prompter"),
+// `chips` ([{label, text}] or strings), and for tests `dir` (scan.sh folder) and
+// `fixture` (chat JSON file).
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, ScrollHandle, TextareaState, Textarea, TextView } from "gpui-base";
 import { exec, readTextFile, run, props, shared, home, window, theme, nextCommand, checking } from "herdr";
@@ -42,6 +43,11 @@ function scanCall(args) {
   return ["env", [...env, `${dir}/scan.sh`, ...argv]];
 }
 
+// Sentence start: "the prompter" -> "The prompter".
+function sentence(s) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 // HH:MM of an ISO time, in the local zone.
 function clock(at) {
   const d = new Date(at);
@@ -52,10 +58,11 @@ function clock(at) {
 export default class Chat extends View {
   init(_props, cx) {
     this.title = props()?.title || "Prompter";
-    this.chips = props()?.chips ?? CHIPS;
+    this.subject = props()?.subject || "the prompter";
+    this.chips = (props()?.chips ?? CHIPS).map((c) => (typeof c === "string" ? { label: c, text: c } : c));
     this.scroll = ScrollHandle.new();
     this.handle = cx.focus_handle();
-    this.input = TextareaState.new({ placeholder: `Ask the ${this.title.toLowerCase()}, or type a command` });
+    this.input = TextareaState.new({ placeholder: `Ask ${this.subject}, or type a command` });
     this.input.set_auto_grow(1, 6);
     this.input.on("change", (_e, cx) => {
       const has = this.input.value().trim() !== "";
@@ -239,8 +246,8 @@ export default class Chat extends View {
   // What a chat-send or clear exit means, as a notice; null when it went through.
   sendNotice(r) {
     if (r.code === 0) return null;
-    if (r.code === 4) return `${this.title} is waiting on a prompt. Answer it first.`;
-    if (r.code === 3) return `${this.title} isn't running.`;
+    if (r.code === 4) return `${sentence(this.subject)} is waiting on a prompt. Answer it first.`;
+    if (r.code === 3) return `${sentence(this.subject)} isn't running.`;
     return r.error || `scan.sh exited ${r.code}`;
   }
 
@@ -248,7 +255,7 @@ export default class Chat extends View {
     const text = this.input.value().trim();
     if (!text || !this.online()) return;
     if (this.blocked) {
-      this.notice = `${this.title} is waiting on a prompt. Answer it first.`;
+      this.notice = `${sentence(this.subject)} is waiting on a prompt. Answer it first.`;
       cx.notify();
       return;
     }
@@ -543,14 +550,14 @@ export default class Chat extends View {
         .bg(t.surface)
         .border_1()
         .border_color(t.border)
-        .child(div().flex_1().text_size(12).text_color(t.muted).child(`Clear this conversation? This sends /clear to ${this.title}.`))
+        .child(div().flex_1().text_size(12).text_color(t.muted).child(`Clear this conversation? This sends /clear to ${this.subject}.`))
         .child(this.button(t, "chat-clear-no", "Cancel", (_e, cx) => {
           this.confirming = false;
           cx.notify();
         }))
         .child(this.button(t, "chat-clear-yes", "Clear", (_e, cx) => cx.spawn(async (cx) => this.clear(cx)), true));
     }
-    const msg = this.error ? `Can't reach ${this.title}: ${this.error}` : this.notice;
+    const msg = this.error ? `Can't reach ${this.subject}: ${this.error}` : this.notice;
     if (!msg) return null;
     return div()
       .mx(14)
@@ -580,7 +587,7 @@ export default class Chat extends View {
           .bg(t.surface)
           .text_size(12.5)
           .text_color(t.muted)
-          .child(this.status === null ? `Connecting to ${this.title}…` : `${this.title} is offline -- start it to chat.`));
+          .child(this.status === null ? `Connecting to ${this.subject}…` : `${sentence(this.subject)} is offline -- start it to chat.`));
     }
     return v_flex()
       .flex_none()
