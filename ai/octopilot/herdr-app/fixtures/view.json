@@ -1,19 +1,19 @@
 {
   "v": 1,
-  "generated_at": 1795615929.0482373,
+  "generated_at": 1795616702.7356691,
   "header": {
-    "needs": 2,
-    "running": 0,
-    "pick": 70,
+    "needs": 3,
+    "running": 3,
+    "pick": 66,
     "active": 2,
-    "max_active": 6,
+    "max_active": 8,
     "untracked": 0,
     "github": {
-      "state": "ok",
-      "age_s": 5,
+      "state": "refreshing",
+      "age_s": 4,
       "error": null
     },
-    "last_tick_s": 1140,
+    "last_tick_s": 1913,
     "orch_label": "octopilot",
     "paused": false,
     "wind_down": {
@@ -25,7 +25,185 @@
     {
       "id": "running",
       "title": "🟡 Running",
-      "entries": []
+      "entries": [
+        {
+          "key": "vocdoni/argos-code#3",
+          "label": "argos-code#3",
+          "kind": "NEW",
+          "section": "running",
+          "title": "chore/relicense-lgpl-89",
+          "draft": false,
+          "url": null,
+          "checks": null,
+          "agent": null,
+          "rounds": 2,
+          "max_rounds": 3,
+          "quiet_s": 112,
+          "stalled": false,
+          "needs": false,
+          "why": null,
+          "note": "spawned, waiting for the next GitHub refresh",
+          "pick_kind": "your PR",
+          "session": null,
+          "backend": null,
+          "pane": null,
+          "path": null,
+          "branch": "chore/relicense-lgpl-89",
+          "pr": 3,
+          "stack": 0,
+          "open": false,
+          "parked": false,
+          "tracked": true,
+          "actions": [
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            },
+            {
+              "id": "detach",
+              "key": "z",
+              "label": "detach",
+              "confirm": "press z again to detach vocdoni/argos-code#3 (worktree kept, untracked)"
+            },
+            {
+              "id": "park",
+              "key": "d",
+              "label": "done",
+              "confirm": "press d again to move vocdoni/argos-code#3 to Done (session kept, slot freed)"
+            },
+            {
+              "id": "remove",
+              "key": "Delete",
+              "label": "remove",
+              "confirm": "press del again to remove vocdoni/argos-code#3 (worktree kept, untracked)"
+            }
+          ]
+        },
+        {
+          "key": "vocdoni/davinci-sdk#14",
+          "label": "davinci-sdk#14",
+          "kind": "NEW",
+          "section": "running",
+          "title": "chore/relicense-lgpl-89",
+          "draft": false,
+          "url": null,
+          "checks": null,
+          "agent": null,
+          "rounds": 2,
+          "max_rounds": 3,
+          "quiet_s": 112,
+          "stalled": false,
+          "needs": false,
+          "why": null,
+          "note": "spawned, waiting for the next GitHub refresh",
+          "pick_kind": "your PR",
+          "session": "sp-stall",
+          "backend": null,
+          "pane": null,
+          "path": null,
+          "branch": "chore/relicense-lgpl-89",
+          "pr": 14,
+          "stack": 0,
+          "open": false,
+          "parked": false,
+          "tracked": true,
+          "actions": [
+            {
+              "id": "focus",
+              "key": "Enter",
+              "label": "open",
+              "confirm": null
+            },
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            },
+            {
+              "id": "detach",
+              "key": "z",
+              "label": "detach",
+              "confirm": "press z again to detach vocdoni/davinci-sdk#14 (worktree kept, untracked)"
+            },
+            {
+              "id": "park",
+              "key": "d",
+              "label": "done",
+              "confirm": "press d again to move vocdoni/davinci-sdk#14 to Done (session kept, slot freed)"
+            },
+            {
+              "id": "remove",
+              "key": "Delete",
+              "label": "remove",
+              "confirm": "press del again to remove vocdoni/davinci-sdk#14 (workspace and worktree deleted, untracked)"
+            }
+          ]
+        },
+        {
+          "key": "vocdoni/explorer-ng#45",
+          "label": "explorer-ng#45",
+          "kind": "NEW",
+          "section": "running",
+          "title": "chore/relicense-lgpl-89",
+          "draft": false,
+          "url": null,
+          "checks": null,
+          "agent": null,
+          "rounds": 2,
+          "max_rounds": 3,
+          "quiet_s": 112,
+          "stalled": false,
+          "needs": false,
+          "why": null,
+          "note": "spawned, waiting for the next GitHub refresh",
+          "pick_kind": "your PR",
+          "session": "sp-burnt",
+          "backend": null,
+          "pane": null,
+          "path": null,
+          "branch": "chore/relicense-lgpl-89",
+          "pr": 45,
+          "stack": 0,
+          "open": false,
+          "parked": false,
+          "tracked": true,
+          "actions": [
+            {
+              "id": "focus",
+              "key": "Enter",
+              "label": "open",
+              "confirm": null
+            },
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            },
+            {
+              "id": "detach",
+              "key": "z",
+              "label": "detach",
+              "confirm": "press z again to detach vocdoni/explorer-ng#45 (worktree kept, untracked)"
+            },
+            {
+              "id": "park",
+              "key": "d",
+              "label": "done",
+              "confirm": "press d again to move vocdoni/explorer-ng#45 to Done (session kept, slot freed)"
+            },
+            {
+              "id": "remove",
+              "key": "Delete",
+              "label": "remove",
+              "confirm": "press del again to remove vocdoni/explorer-ng#45 (workspace and worktree deleted, untracked)"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "orch",
@@ -48,7 +226,7 @@
           "agent": "idle",
           "rounds": 1,
           "max_rounds": 3,
-          "quiet_s": 4813,
+          "quiet_s": 5586,
           "stalled": false,
           "needs": true,
           "why": "STALLED",
@@ -69,12 +247,6 @@
               "id": "focus",
               "key": "Enter",
               "label": "open",
-              "confirm": null
-            },
-            {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
               "confirm": null
             },
             {
@@ -121,7 +293,7 @@
           "agent": "idle",
           "rounds": 2,
           "max_rounds": 3,
-          "quiet_s": 1487,
+          "quiet_s": 2260,
           "stalled": false,
           "needs": true,
           "why": "READY",
@@ -142,12 +314,6 @@
               "id": "focus",
               "key": "Enter",
               "label": "open",
-              "confirm": null
-            },
-            {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
               "confirm": null
             },
             {
@@ -181,6 +347,73 @@
               "confirm": "press del again to remove vocdoni/dvote-protobuf#90 (workspace and worktree deleted, untracked)"
             }
           ]
+        },
+        {
+          "key": "vocdoni/oauth#7",
+          "label": "oauth#7",
+          "kind": "CAPPED",
+          "section": "needs",
+          "title": "Add OAuth scopes",
+          "draft": false,
+          "url": "https://github.com/vocdoni/oauth/pull/7",
+          "checks": "fail",
+          "agent": null,
+          "rounds": 2,
+          "max_rounds": 3,
+          "quiet_s": 112,
+          "stalled": false,
+          "needs": true,
+          "why": "CAPPED",
+          "note": "waiting for CI",
+          "pick_kind": "your PR",
+          "session": "sp-capped",
+          "backend": null,
+          "pane": null,
+          "path": null,
+          "branch": "chore/relicense-lgpl-89",
+          "pr": 7,
+          "stack": 0,
+          "open": false,
+          "parked": false,
+          "tracked": true,
+          "actions": [
+            {
+              "id": "focus",
+              "key": "Enter",
+              "label": "open",
+              "confirm": null
+            },
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            },
+            {
+              "id": "grant",
+              "key": "R",
+              "label": "another round",
+              "confirm": "press R again to grant vocdoni/oauth#7 another 3 review rounds"
+            },
+            {
+              "id": "detach",
+              "key": "z",
+              "label": "detach",
+              "confirm": "press z again to detach vocdoni/oauth#7 (worktree kept, untracked)"
+            },
+            {
+              "id": "park",
+              "key": "d",
+              "label": "done",
+              "confirm": "press d again to move vocdoni/oauth#7 to Done (session kept, slot freed)"
+            },
+            {
+              "id": "remove",
+              "key": "Delete",
+              "label": "remove",
+              "confirm": "press del again to remove vocdoni/oauth#7 (workspace and worktree deleted, untracked)"
+            }
+          ]
         }
       ]
     },
@@ -197,23 +430,23 @@
           "draft": false,
           "url": "https://github.com/vocdoni/saas-backend/pull/737",
           "checks": "pass",
-          "agent": "idle",
-          "rounds": 1,
+          "agent": null,
+          "rounds": 2,
           "max_rounds": 3,
-          "quiet_s": 10919,
+          "quiet_s": 112,
           "stalled": false,
           "needs": false,
           "why": null,
           "note": "not yours to merge",
-          "pick_kind": "review only",
-          "session": "w8V",
-          "backend": "herdr",
-          "pane": "w8V:p1",
-          "path": "/home/elboletaire/src/vocdoni/saas-backend/.worktrees/fix-csp-otp-reuse",
-          "branch": "fix/csp-otp-reuse",
+          "pick_kind": "your PR",
+          "session": "sp-done1",
+          "backend": null,
+          "pane": null,
+          "path": null,
+          "branch": "chore/relicense-lgpl-89",
           "pr": 737,
           "stack": 0,
-          "open": true,
+          "open": false,
           "parked": false,
           "tracked": true,
           "actions": [
@@ -221,18 +454,6 @@
               "id": "focus",
               "key": "Enter",
               "label": "open",
-              "confirm": null
-            },
-            {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
-              "id": "shell",
-              "key": "t",
-              "label": "shell",
               "confirm": null
             },
             {
@@ -273,7 +494,7 @@
           "agent": "idle",
           "rounds": 1,
           "max_rounds": 3,
-          "quiet_s": 10917,
+          "quiet_s": 11690,
           "stalled": false,
           "needs": false,
           "why": null,
@@ -294,12 +515,6 @@
               "id": "focus",
               "key": "Enter",
               "label": "open",
-              "confirm": null
-            },
-            {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
               "confirm": null
             },
             {
@@ -343,23 +558,23 @@
           "draft": false,
           "url": "https://github.com/vocdoni/vocdoni-app/pull/2024",
           "checks": "pass",
-          "agent": "idle",
-          "rounds": 1,
+          "agent": null,
+          "rounds": 2,
           "max_rounds": 3,
-          "quiet_s": 451238,
+          "quiet_s": 112,
           "stalled": false,
           "needs": false,
           "why": null,
           "note": "not yours to merge",
-          "pick_kind": "review only",
-          "session": "w83",
-          "backend": "herdr",
-          "pane": "w83:p1",
-          "path": "/home/elboletaire/src/vocdoni/ui-scaffold/.worktrees/feat-cert-auth",
-          "branch": "feat/cert-auth",
+          "pick_kind": "your PR",
+          "session": "sp-done2",
+          "backend": null,
+          "pane": null,
+          "path": null,
+          "branch": "chore/relicense-lgpl-89",
           "pr": 2024,
           "stack": 0,
-          "open": true,
+          "open": false,
           "parked": false,
           "tracked": true,
           "actions": [
@@ -367,18 +582,6 @@
               "id": "focus",
               "key": "Enter",
               "label": "open",
-              "confirm": null
-            },
-            {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
-              "id": "shell",
-              "key": "t",
-              "label": "shell",
               "confirm": null
             },
             {
@@ -408,132 +611,10 @@
           ]
         }
       ],
-      "hidden": 0
+      "hidden": 2
     }
   ],
   "pick": [
-    {
-      "repo": "vocdoni/argos-code",
-      "entries": [
-        {
-          "key": "vocdoni/argos-code#3",
-          "label": "argos-code#3",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "pr_review: on-demand security review backed by Cloudflare's security-audit skill",
-          "draft": false,
-          "url": "https://github.com/vocdoni/argos-code/pull/3",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "your PR",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 3,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/argos-code#3' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/argos-code#3' to the orchestrator"
-            }
-          ],
-          "index": 1
-        }
-      ]
-    },
-    {
-      "repo": "vocdoni/davinci-sdk",
-      "entries": [
-        {
-          "key": "vocdoni/davinci-sdk#14",
-          "label": "davinci-sdk#14",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "chore(build): 🧹 add clean-package to optimize package output",
-          "draft": false,
-          "url": "https://github.com/vocdoni/davinci-sdk/pull/14",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "your PR",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 14,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/davinci-sdk#14' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/davinci-sdk#14' to the orchestrator"
-            }
-          ],
-          "index": 2
-        }
-      ]
-    },
     {
       "repo": "vocdoni/davinci-ui",
       "entries": [
@@ -567,12 +648,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -591,69 +666,13 @@
               "confirm": "press n again to send 'no vocdoni/davinci-ui#53' to the orchestrator"
             }
           ],
-          "index": 3
+          "index": 1
         }
       ]
     },
     {
       "repo": "vocdoni/explorer-ng",
       "entries": [
-        {
-          "key": "vocdoni/explorer-ng#45",
-          "label": "explorer-ng#45",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "chore: bump `main` into `stage`",
-          "draft": false,
-          "url": "https://github.com/vocdoni/explorer-ng/pull/45",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "your PR",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 45,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/explorer-ng#45' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/explorer-ng#45' to the orchestrator"
-            }
-          ],
-          "index": 4
-        },
         {
           "key": "vocdoni/explorer-ng#47",
           "label": "explorer-ng#47",
@@ -684,12 +703,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -708,68 +721,7 @@
               "confirm": "press n again to send 'no vocdoni/explorer-ng#47' to the orchestrator"
             }
           ],
-          "index": 5
-        }
-      ]
-    },
-    {
-      "repo": "vocdoni/oauth",
-      "entries": [
-        {
-          "key": "vocdoni/oauth#7",
-          "label": "oauth#7",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "feat: auditore-mcp public client and bearer tokens in the Go kit",
-          "draft": false,
-          "url": "https://github.com/vocdoni/oauth/pull/7",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "your PR",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 7,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/oauth#7' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/oauth#7' to the orchestrator"
-            }
-          ],
-          "index": 6
+          "index": 2
         }
       ]
     },
@@ -806,12 +758,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -830,7 +776,7 @@
               "confirm": "press n again to send 'no vocdoni/skills#60' to the orchestrator"
             }
           ],
-          "index": 7
+          "index": 3
         }
       ]
     },
@@ -867,12 +813,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -891,7 +831,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app!1742' to the orchestrator"
             }
           ],
-          "index": 8
+          "index": 4
         },
         {
           "key": "vocdoni/vocdoni-app!1767",
@@ -923,12 +863,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -947,7 +881,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app!1767' to the orchestrator"
             }
           ],
-          "index": 9
+          "index": 5
         },
         {
           "key": "vocdoni/vocdoni-app!1775",
@@ -979,12 +913,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -1003,7 +931,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app!1775' to the orchestrator"
             }
           ],
-          "index": 10
+          "index": 6
         },
         {
           "key": "vocdoni/vocdoni-app!1776",
@@ -1035,12 +963,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -1059,7 +981,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app!1776' to the orchestrator"
             }
           ],
-          "index": 11
+          "index": 7
         },
         {
           "key": "vocdoni/vocdoni-app!1797",
@@ -1091,12 +1013,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -1115,7 +1031,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app!1797' to the orchestrator"
             }
           ],
-          "index": 12
+          "index": 8
         },
         {
           "key": "vocdoni/vocdoni-app!1825",
@@ -1147,12 +1063,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -1171,7 +1081,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app!1825' to the orchestrator"
             }
           ],
-          "index": 13
+          "index": 9
         },
         {
           "key": "vocdoni/vocdoni-app!1870",
@@ -1203,12 +1113,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -1227,7 +1131,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app!1870' to the orchestrator"
             }
           ],
-          "index": 14
+          "index": 10
         },
         {
           "key": "vocdoni/vocdoni-app!1901",
@@ -1259,12 +1163,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -1283,7 +1181,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app!1901' to the orchestrator"
             }
           ],
-          "index": 15
+          "index": 11
         },
         {
           "key": "vocdoni/vocdoni-app!1916",
@@ -1315,12 +1213,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -1339,7 +1231,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app!1916' to the orchestrator"
             }
           ],
-          "index": 16
+          "index": 12
         },
         {
           "key": "vocdoni/vocdoni-app!1970",
@@ -1371,12 +1263,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -1395,7 +1281,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app!1970' to the orchestrator"
             }
           ],
-          "index": 17
+          "index": 13
         },
         {
           "key": "vocdoni/vocdoni-app!1994",
@@ -1427,12 +1313,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -1451,7 +1331,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app!1994' to the orchestrator"
             }
           ],
-          "index": 18
+          "index": 14
         },
         {
           "key": "vocdoni/vocdoni-app!2021",
@@ -1483,12 +1363,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -1507,7 +1381,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app!2021' to the orchestrator"
             }
           ],
-          "index": 19
+          "index": 15
         },
         {
           "key": "vocdoni/vocdoni-app#1832",
@@ -1539,12 +1413,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -1563,7 +1431,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app#1832' to the orchestrator"
             }
           ],
-          "index": 20
+          "index": 16
         },
         {
           "key": "vocdoni/vocdoni-app#1862",
@@ -1595,12 +1463,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -1619,7 +1481,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app#1862' to the orchestrator"
             }
           ],
-          "index": 21
+          "index": 17
         },
         {
           "key": "vocdoni/vocdoni-app#1863",
@@ -1651,12 +1513,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -1675,7 +1531,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app#1863' to the orchestrator"
             }
           ],
-          "index": 22
+          "index": 18
         },
         {
           "key": "vocdoni/vocdoni-app#1864",
@@ -1707,12 +1563,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -1731,7 +1581,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app#1864' to the orchestrator"
             }
           ],
-          "index": 23
+          "index": 19
         },
         {
           "key": "vocdoni/vocdoni-app#1869",
@@ -1763,12 +1613,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -1787,7 +1631,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app#1869' to the orchestrator"
             }
           ],
-          "index": 24
+          "index": 20
         },
         {
           "key": "vocdoni/vocdoni-app#1871",
@@ -1819,12 +1663,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -1843,7 +1681,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app#1871' to the orchestrator"
             }
           ],
-          "index": 25
+          "index": 21
         },
         {
           "key": "vocdoni/vocdoni-app#1872",
@@ -1875,12 +1713,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -1899,7 +1731,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app#1872' to the orchestrator"
             }
           ],
-          "index": 26
+          "index": 22
         },
         {
           "key": "vocdoni/vocdoni-app#2014",
@@ -1931,12 +1763,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -1955,7 +1781,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app#2014' to the orchestrator"
             }
           ],
-          "index": 27
+          "index": 23
         },
         {
           "key": "vocdoni/vocdoni-app#2015",
@@ -1987,12 +1813,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -2011,7 +1831,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app#2015' to the orchestrator"
             }
           ],
-          "index": 28
+          "index": 24
         },
         {
           "key": "vocdoni/vocdoni-app#2016",
@@ -2043,12 +1863,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -2067,7 +1881,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app#2016' to the orchestrator"
             }
           ],
-          "index": 29
+          "index": 25
         },
         {
           "key": "vocdoni/vocdoni-app#2026",
@@ -2099,12 +1913,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -2123,7 +1931,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app#2026' to the orchestrator"
             }
           ],
-          "index": 30
+          "index": 26
         },
         {
           "key": "vocdoni/vocdoni-app#2058",
@@ -2155,12 +1963,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -2179,7 +1981,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app#2058' to the orchestrator"
             }
           ],
-          "index": 31
+          "index": 27
         },
         {
           "key": "vocdoni/vocdoni-app#2061",
@@ -2211,12 +2013,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -2235,7 +2031,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app#2061' to the orchestrator"
             }
           ],
-          "index": 32
+          "index": 28
         },
         {
           "key": "vocdoni/vocdoni-app#2063",
@@ -2267,12 +2063,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -2291,7 +2081,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app#2063' to the orchestrator"
             }
           ],
-          "index": 33
+          "index": 29
         },
         {
           "key": "vocdoni/vocdoni-app#2067",
@@ -2323,12 +2113,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -2347,7 +2131,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app#2067' to the orchestrator"
             }
           ],
-          "index": 34
+          "index": 30
         },
         {
           "key": "vocdoni/vocdoni-app#2072",
@@ -2379,12 +2163,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -2403,7 +2181,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app#2072' to the orchestrator"
             }
           ],
-          "index": 35
+          "index": 31
         },
         {
           "key": "vocdoni/vocdoni-app#2074",
@@ -2435,12 +2213,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -2459,7 +2231,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-app#2074' to the orchestrator"
             }
           ],
-          "index": 36
+          "index": 32
         }
       ]
     },
@@ -2496,12 +2268,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -2520,7 +2286,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk!66' to the orchestrator"
             }
           ],
-          "index": 37
+          "index": 33
         },
         {
           "key": "vocdoni/vocdoni-integrator-sdk!67",
@@ -2552,12 +2318,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -2576,7 +2336,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk!67' to the orchestrator"
             }
           ],
-          "index": 38
+          "index": 34
         },
         {
           "key": "vocdoni/vocdoni-integrator-sdk!68",
@@ -2608,12 +2368,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -2632,7 +2386,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk!68' to the orchestrator"
             }
           ],
-          "index": 39
+          "index": 35
         },
         {
           "key": "vocdoni/vocdoni-integrator-sdk!73",
@@ -2664,12 +2418,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -2688,7 +2436,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk!73' to the orchestrator"
             }
           ],
-          "index": 40
+          "index": 36
         },
         {
           "key": "vocdoni/vocdoni-integrator-sdk!76",
@@ -2720,12 +2468,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -2744,7 +2486,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk!76' to the orchestrator"
             }
           ],
-          "index": 41
+          "index": 37
         },
         {
           "key": "vocdoni/vocdoni-integrator-sdk!85",
@@ -2776,12 +2518,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -2800,7 +2536,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk!85' to the orchestrator"
             }
           ],
-          "index": 42
+          "index": 38
         },
         {
           "key": "vocdoni/vocdoni-integrator-sdk#126",
@@ -2832,12 +2568,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -2856,7 +2586,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk#126' to the orchestrator"
             }
           ],
-          "index": 43
+          "index": 39
         },
         {
           "key": "vocdoni/vocdoni-integrator-sdk#128",
@@ -2888,12 +2618,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -2912,7 +2636,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk#128' to the orchestrator"
             }
           ],
-          "index": 44
+          "index": 40
         },
         {
           "key": "vocdoni/vocdoni-integrator-sdk#130",
@@ -2944,12 +2668,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -2968,7 +2686,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk#130' to the orchestrator"
             }
           ],
-          "index": 45
+          "index": 41
         },
         {
           "key": "vocdoni/vocdoni-integrator-sdk#132",
@@ -3000,12 +2718,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -3024,7 +2736,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk#132' to the orchestrator"
             }
           ],
-          "index": 46
+          "index": 42
         },
         {
           "key": "vocdoni/vocdoni-integrator-sdk#79",
@@ -3056,12 +2768,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -3080,7 +2786,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk#79' to the orchestrator"
             }
           ],
-          "index": 47
+          "index": 43
         },
         {
           "key": "vocdoni/vocdoni-integrator-sdk#80",
@@ -3112,12 +2818,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -3136,7 +2836,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk#80' to the orchestrator"
             }
           ],
-          "index": 48
+          "index": 44
         },
         {
           "key": "vocdoni/vocdoni-integrator-sdk#82",
@@ -3168,12 +2868,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -3192,7 +2886,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk#82' to the orchestrator"
             }
           ],
-          "index": 49
+          "index": 45
         },
         {
           "key": "vocdoni/vocdoni-integrator-sdk#83",
@@ -3224,12 +2918,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -3248,7 +2936,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk#83' to the orchestrator"
             }
           ],
-          "index": 50
+          "index": 46
         },
         {
           "key": "vocdoni/vocdoni-integrator-sdk#84",
@@ -3280,12 +2968,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -3304,7 +2986,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk#84' to the orchestrator"
             }
           ],
-          "index": 51
+          "index": 47
         },
         {
           "key": "vocdoni/vocdoni-integrator-sdk#93",
@@ -3336,12 +3018,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -3360,7 +3036,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk#93' to the orchestrator"
             }
           ],
-          "index": 52
+          "index": 48
         }
       ]
     },
@@ -3397,12 +3073,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -3421,7 +3091,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-node!1496' to the orchestrator"
             }
           ],
-          "index": 53
+          "index": 49
         }
       ]
     },
@@ -3458,12 +3128,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -3482,7 +3146,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni-sdk#460' to the orchestrator"
             }
           ],
-          "index": 54
+          "index": 50
         }
       ]
     },
@@ -3519,12 +3183,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -3543,7 +3201,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni.io!132' to the orchestrator"
             }
           ],
-          "index": 55
+          "index": 51
         },
         {
           "key": "vocdoni/vocdoni.io!210",
@@ -3575,12 +3233,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -3599,7 +3251,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni.io!210' to the orchestrator"
             }
           ],
-          "index": 56
+          "index": 52
         },
         {
           "key": "vocdoni/vocdoni.io!213",
@@ -3631,12 +3283,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -3655,7 +3301,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni.io!213' to the orchestrator"
             }
           ],
-          "index": 57
+          "index": 53
         },
         {
           "key": "vocdoni/vocdoni.io!214",
@@ -3687,12 +3333,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -3711,7 +3351,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni.io!214' to the orchestrator"
             }
           ],
-          "index": 58
+          "index": 54
         },
         {
           "key": "vocdoni/vocdoni.io!280",
@@ -3743,12 +3383,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -3767,7 +3401,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni.io!280' to the orchestrator"
             }
           ],
-          "index": 59
+          "index": 55
         },
         {
           "key": "vocdoni/vocdoni.io!281",
@@ -3799,12 +3433,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -3823,7 +3451,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni.io!281' to the orchestrator"
             }
           ],
-          "index": 60
+          "index": 56
         },
         {
           "key": "vocdoni/vocdoni.io#232",
@@ -3855,12 +3483,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -3879,7 +3501,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni.io#232' to the orchestrator"
             }
           ],
-          "index": 61
+          "index": 57
         },
         {
           "key": "vocdoni/vocdoni.io#233",
@@ -3911,12 +3533,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -3935,7 +3551,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni.io#233' to the orchestrator"
             }
           ],
-          "index": 62
+          "index": 58
         },
         {
           "key": "vocdoni/vocdoni.io#251",
@@ -3967,12 +3583,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -3991,7 +3601,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni.io#251' to the orchestrator"
             }
           ],
-          "index": 63
+          "index": 59
         },
         {
           "key": "vocdoni/vocdoni.io#279",
@@ -4023,12 +3633,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -4047,7 +3651,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni.io#279' to the orchestrator"
             }
           ],
-          "index": 64
+          "index": 60
         },
         {
           "key": "vocdoni/vocdoni.io#282",
@@ -4079,12 +3683,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -4103,7 +3701,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni.io#282' to the orchestrator"
             }
           ],
-          "index": 65
+          "index": 61
         },
         {
           "key": "vocdoni/vocdoni.io#283",
@@ -4135,12 +3733,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -4159,7 +3751,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni.io#283' to the orchestrator"
             }
           ],
-          "index": 66
+          "index": 62
         },
         {
           "key": "vocdoni/vocdoni.io#284",
@@ -4191,12 +3783,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -4215,7 +3801,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni.io#284' to the orchestrator"
             }
           ],
-          "index": 67
+          "index": 63
         },
         {
           "key": "vocdoni/vocdoni.io#286",
@@ -4247,12 +3833,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -4271,7 +3851,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni.io#286' to the orchestrator"
             }
           ],
-          "index": 68
+          "index": 64
         },
         {
           "key": "vocdoni/vocdoni.io#287",
@@ -4303,12 +3883,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -4327,7 +3901,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni.io#287' to the orchestrator"
             }
           ],
-          "index": 69
+          "index": 65
         },
         {
           "key": "vocdoni/vocdoni.io#89",
@@ -4359,12 +3933,6 @@
           "tracked": false,
           "actions": [
             {
-              "id": "peek",
-              "key": "v",
-              "label": "agent",
-              "confirm": null
-            },
-            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -4383,7 +3951,7 @@
               "confirm": "press n again to send 'no vocdoni/vocdoni.io#89' to the orchestrator"
             }
           ],
-          "index": 70
+          "index": 66
         }
       ]
     }
@@ -4396,22 +3964,16 @@
   ],
   "activity": [
     {
-      "at": 1795615928,
-      "kind": "request",
-      "key": "",
-      "detail": ""
+      "at": 1795616702,
+      "kind": "report",
+      "key": "vocdoni-app#2022",
+      "detail": "ready PR open, CI green"
     },
     {
-      "at": 1795615925,
-      "kind": "resume",
-      "key": "",
-      "detail": ""
-    },
-    {
-      "at": 1795615922,
-      "kind": "pause",
-      "key": "",
-      "detail": ""
+      "at": 1795616655,
+      "kind": "report",
+      "key": "vocdoni-app#2022",
+      "detail": "ready PR open, CI green"
     },
     {
       "at": 1795614442,
@@ -4430,150 +3992,285 @@
       "kind": "round",
       "key": "dvote-protobuf!89",
       "detail": "2"
+    },
+    {
+      "at": 1795614229,
+      "kind": "heartbeat",
+      "key": "dvote-protobuf!89",
+      "detail": "waiting for CI"
     }
   ],
   "kitchen": [
+    {
+      "at": 1795609749,
+      "kind": "tick",
+      "mood": "flip",
+      "text": "tick · 0 cooking",
+      "good": false,
+      "key": null,
+      "ms": 2500,
+      "burst": "steam"
+    },
+    {
+      "at": 1795611067,
+      "kind": "request",
+      "mood": "surprised",
+      "text": "asked: go vocdoni/vocdoni-app#2022 (stack: 2022:refactor/theme-fil-prep 2023:feat/fil-theme 2032:feat/fil-dark 2031:f...",
+      "good": false,
+      "key": null,
+      "ms": 2000,
+      "burst": "bang"
+    },
+    {
+      "at": 1795611090,
+      "kind": "spawn",
+      "mood": "pour",
+      "text": "new order vocdoni-app#2022 Fil Theme Stack",
+      "good": true,
+      "key": "vocdoni/vocdoni-app#2022",
+      "ms": 2500,
+      "burst": "batter"
+    },
     {
       "at": 1795611095,
       "kind": "sent",
       "mood": "flip",
       "text": "→ vocdoni-app#2022 You own a stack of PRs in vocdoni/vocdoni-app, base `develop`. Bottom to top, ea",
-      "good": false
+      "good": false,
+      "key": "vocdoni/vocdoni-app#2022",
+      "ms": 1500,
+      "burst": null
     },
     {
       "at": 1795611116,
       "kind": "round",
       "mood": "flip",
       "text": "review round vocdoni-app#2022",
-      "good": false
+      "good": false,
+      "key": "vocdoni/vocdoni-app#2022",
+      "ms": 2000,
+      "burst": null
     },
     {
       "at": 1795611126,
       "kind": "review-base",
       "mood": "idle",
       "text": "review-base vocdoni-app#2022",
-      "good": false
+      "good": false,
+      "key": null,
+      "ms": 0,
+      "burst": null
     },
     {
       "at": 1795612930,
       "kind": "tick",
       "mood": "flip",
       "text": "tick · 1 cooking",
-      "good": false
+      "good": false,
+      "key": null,
+      "ms": 2500,
+      "burst": "steam"
     },
     {
       "at": 1795613394,
       "kind": "request",
       "mood": "surprised",
       "text": "asked: go vocdoni/dvote-protobuf!89",
-      "good": false
+      "good": false,
+      "key": null,
+      "ms": 2000,
+      "burst": "bang"
     },
     {
       "at": 1795613407,
       "kind": "tick",
       "mood": "flip",
       "text": "tick · 1 cooking",
-      "good": false
+      "good": false,
+      "key": null,
+      "ms": 2500,
+      "burst": "steam"
     },
     {
       "at": 1795613423,
       "kind": "spawn",
       "mood": "pour",
       "text": "new order dvote-protobuf!89 Relicense Lgpl",
-      "good": true
+      "good": true,
+      "key": "vocdoni/dvote-protobuf!89",
+      "ms": 2500,
+      "burst": "batter"
     },
     {
       "at": 1795613428,
       "kind": "sent",
       "mood": "flip",
       "text": "→ dvote-protobuf!89 You are working on vocdoni/dvote-protobuf issue #89, on branch `chore/relicense-",
-      "good": false
-    },
-    {
-      "at": 1795613854,
-      "kind": "heartbeat",
-      "mood": "idle",
-      "text": "",
-      "good": false
+      "good": false,
+      "key": "vocdoni/dvote-protobuf!89",
+      "ms": 1500,
+      "burst": null
     },
     {
       "at": 1795613922,
       "kind": "round",
       "mood": "flip",
       "text": "review round dvote-protobuf!89",
-      "good": false
+      "good": false,
+      "key": "vocdoni/dvote-protobuf!89",
+      "ms": 2000,
+      "burst": null
     },
     {
       "at": 1795613930,
       "kind": "review-base",
       "mood": "idle",
       "text": "review-base dvote-protobuf!89",
-      "good": false
-    },
-    {
-      "at": 1795614229,
-      "kind": "heartbeat",
-      "mood": "idle",
-      "text": "",
-      "good": false
+      "good": false,
+      "key": null,
+      "ms": 0,
+      "burst": null
     },
     {
       "at": 1795614265,
       "kind": "round",
       "mood": "flip",
       "text": "review round dvote-protobuf!89",
-      "good": false
+      "good": false,
+      "key": "vocdoni/dvote-protobuf!89",
+      "ms": 2000,
+      "burst": null
     },
     {
       "at": 1795614271,
       "kind": "review-base",
       "mood": "idle",
       "text": "review-base dvote-protobuf!89",
-      "good": false
+      "good": false,
+      "key": null,
+      "ms": 0,
+      "burst": null
     },
     {
       "at": 1795614442,
       "kind": "report",
       "mood": "happy",
       "text": "ready dvote-protobuf!89: PR #90 relicenses to LGPL-3.0-or-later (COPYING + COPYING.LESSER), CI green, review clean\nRe...",
-      "good": true
+      "good": true,
+      "key": "vocdoni/dvote-protobuf!89",
+      "ms": 4000,
+      "burst": "sparkle"
     },
     {
       "at": 1795614455,
       "kind": "tick",
       "mood": "flip",
       "text": "tick · 2 cooking",
-      "good": false
+      "good": false,
+      "key": null,
+      "ms": 2500,
+      "burst": "steam"
     },
     {
       "at": 1795614789,
       "kind": "tick",
       "mood": "flip",
       "text": "tick · 2 cooking",
-      "good": false
+      "good": false,
+      "key": null,
+      "ms": 2500,
+      "burst": "steam"
     },
     {
-      "at": 1795615922,
-      "kind": "pause",
-      "mood": "sleep",
-      "text": "paused",
-      "good": false
+      "at": 1795616655,
+      "kind": "report",
+      "mood": "happy",
+      "text": "ready vocdoni-app#2022: PR open, CI green",
+      "good": true,
+      "key": "vocdoni/vocdoni-app#2022",
+      "ms": 4000,
+      "burst": "sparkle"
     },
     {
-      "at": 1795615925,
-      "kind": "resume",
-      "mood": "surprised",
-      "text": "resumed",
-      "good": false
-    },
-    {
-      "at": 1795615928,
-      "kind": "request",
-      "mood": "surprised",
-      "text": "asked: go vocdoni/argos-code#3",
-      "good": false
+      "at": 1795616702,
+      "kind": "report",
+      "mood": "happy",
+      "text": "ready vocdoni-app#2022: PR open, CI green",
+      "good": true,
+      "key": "vocdoni/vocdoni-app#2022",
+      "ms": 4000,
+      "burst": "sparkle"
     }
   ],
+  "pan": {
+    "holes": 8,
+    "paused": false,
+    "busy": false,
+    "balls": [
+      {
+        "key": "vocdoni/dvote-protobuf#90",
+        "label": "dvote-protobuf#90",
+        "state": "ready",
+        "heat": 1.0,
+        "focus": false
+      },
+      {
+        "key": "vocdoni/argos-code#3",
+        "label": "argos-code#3",
+        "state": "raw",
+        "heat": 1.0,
+        "focus": false
+      },
+      {
+        "key": "vocdoni/explorer-ng#45",
+        "label": "explorer-ng#45",
+        "state": "burnt",
+        "heat": 1.0,
+        "focus": false
+      },
+      {
+        "key": "vocdoni/davinci-sdk#14",
+        "label": "davinci-sdk#14",
+        "state": "stalled",
+        "heat": 1.0,
+        "focus": false
+      },
+      {
+        "key": "vocdoni/oauth#7",
+        "label": "oauth#7",
+        "state": "capped",
+        "heat": 0.64,
+        "focus": false
+      },
+      {
+        "key": "vocdoni/vocdoni-app#2022",
+        "label": "vocdoni-app#2022",
+        "state": "cooking",
+        "heat": 0.4,
+        "focus": true
+      }
+    ],
+    "shelf": [
+      {
+        "key": "vocdoni/saas-backend#872",
+        "label": "saas-backend#872"
+      },
+      {
+        "key": "vocdoni/saas-backend#737",
+        "label": "saas-backend#737"
+      },
+      {
+        "key": "vocdoni/vocdoni-app#2024",
+        "label": "vocdoni-app#2024"
+      }
+    ],
+    "chef": {
+      "mood": "happy",
+      "since": 1795616702,
+      "ms": 4000,
+      "resting": "idle"
+    }
+  },
   "global_actions": [
     {
       "id": "refresh",

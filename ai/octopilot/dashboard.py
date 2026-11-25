@@ -98,8 +98,12 @@ CONFIRMED = "(confirmed past wind-down)"
 VIEW_FILE = os.path.join(STATE_DIR, "view.json")
 VIEW_EVERY = 5         # rewrite at least this often, even when unchanged
 KICK_FILE = os.path.join(STATE_DIR, "kick")
+# A refresh is refused when view.json is older than this: no daemon is running.
+VIEW_STALE_SECS = 3 * VIEW_EVERY
+# How long the chef rests after the last event before dozing (register.tsx).
+DOZE_SECS = 10 * 60
 # Clock-relative fields move every second: left out of the change check.
-VIEW_VOLATILE = ("generated_at", "quiet_s", "age_s", "last_tick_s")
+VIEW_VOLATILE = ("generated_at", "quiet_s", "age_s", "last_tick_s", "heat")
 INVESTIGATE_ARGS = ["repo", "question", "read_only"]
 # Row actions: id, the TUI key that runs it, and its footer label. The order
 # is the order the mods list them in.
@@ -907,19 +911,14 @@ def peek_row(model, e):
     """The row's agent in a popup over the dashboard, without leaving it.
     `ctrl+b q` detaches herdr's attach client, which closes the popup."""
     if scan.backend_for(e["session"]) is scan.HC:
-        # Only a live terminal can be peeked: a stored agent name cannot.
-        if not e["pane"]:
-            return Result(False, "no live agent for this row")
         # herdr-app's peek is its popup: the terminal over this tab.
         code, _, raw = scan.app_do("terminal.peek",
                                    ["--terminal", e["pane"]], timeout=10)
         if code != 0:
             return Result(False, f"peek failed: {raw[:100]}")
         return Result(True, "")
-    target = e["pane"] or (tracked_item(model, e["key"]) or {}).get("agent")
-    if not target:
-        return Result(False, "no live agent for this row")
-    opened, err = popup("agent", {"AP_AGENT": target})
+    opened, err = popup("agent", {"AP_AGENT": e["pane"] or
+                                  tracked_item(model, e["key"])["agent"]})
     if opened:
         return Result(True, "ctrl+b q closes the popup")
     return Result(False, err or "peek needs herdr")
@@ -947,8 +946,6 @@ def shell_row(model, e, suspend=None):
 def browse_row(e):
     """The row's issue or PR on GitHub, in the browser (gh --web)."""
     slug, num, kind = split_key(e["key"])
-    if kind not in ("pr", "issue"):
-        return Result(False, "nothing to open for an investigation")
     args = ["gh", "pr" if kind == "pr" else "issue", "view", num, "-R",
             slug, "--web"]
     subprocess.Popen(args, stdout=subprocess.DEVNULL,
@@ -988,6 +985,15 @@ def row_refusal(model, aid, e):
             return (f"{e['key']} is {'not in' if aid == 'unpark' else 'already in'}"
                     " Done")
         return None
+    if aid == "peek":
+        if scan.backend_for(e["session"]) is scan.HC:
+            return None if e["pane"] else "no live agent for this row"
+        if not (e["pane"] or (it or {}).get("agent")):
+            return "no live agent for this row"
+        return None if IN_HERDR else "peek needs herdr"
+    if aid == "browser":
+        return (None if split_key(e["key"])[2] in ("pr", "issue")
+                else "nothing to open for an investigation")
     if aid == "remove":
         if it is None:
             return "remove only applies to tracked items"
@@ -1091,62 +1097,156 @@ def activity_rows(model):
             for e in reversed(evs)]
 
 
-def kitchen_line(ev):
-    """An event as takoyaki's feed.ts reacts to it: a mood and a log line."""
+def kitchen_reaction(ev):
+    """feed.ts's react(): the mood and how long it lasts, the burst, the item
+    it is about (None unless the kind carries one) and the log line (None for
+    a heartbeat)."""
     kind = ev.get("kind") or ""
-    k = short(ev.get("key") or "")
+    key = ev.get("key") if isinstance(ev.get("key"), str) else None
+    k = short(key or "")
 
     def text(name):
         v = ev.get(name)
         return v if isinstance(v, str) else ""
 
-    mood, line, good = "idle", "", False
+    def rx(mood, ms, burst=None, keyed=False, line=None, good=False):
+        return {"mood": mood, "ms": ms, "burst": burst,
+                "key": key if keyed else None, "text": line, "good": good}
+
     if kind == "tick":
         active = ev.get("active")
         active = int(active) if isinstance(active, (int, float)) else 0
-        mood, line = "flip", f"tick · {active} cooking"
-    elif kind == "spawn":
-        mood, line, good = "pour", f"new order {k} {text('title')}".strip(), True
-    elif kind == "sent":
-        mood, line = "flip", f"→ {k} {text('text')}".strip()
-    elif kind == "report":
+        return rx("flip", 2500, "steam", line=f"tick · {active} cooking")
+    if kind == "spawn":
+        return rx("pour", 2500, "batter", True,
+                  f"new order {k} {text('title')}".strip(), True)
+    if kind == "sent":
+        return rx("flip", 1500, None, True, f"→ {k} {text('text')}".strip())
+    if kind == "report":
         state, msg = text("state"), text("msg")
-        mood = {"ready": "happy", "capped": "happy",
-                "stalled": "worried"}.get(state, "sad")
         line = f"{state} {k}" + (f": {msg}" if msg else "")
-        good = state == "ready"
-    elif kind == "request":
-        mood, line = "surprised", f"asked: {text('text')}"
-    elif kind in ("cleanup", "merged"):
-        mood, line, good = "serve", f"served {k} (merged)", True
-    elif kind == "pause":
-        mood, line = "sleep", "paused"
-    elif kind == "resume":
-        mood, line = "surprised", "resumed"
-    elif kind in ("round", "reviewed"):
-        mood, line = "flip", f"review round {k}"
-    elif kind == "capped":
-        mood, line = "worried", f"out of review rounds {k}"
-    elif kind == "feedback":
-        mood, line = "flip", f"feedback {k}"
-    elif kind == "heartbeat":
-        mood = "idle"
-    elif kind == "reboot":
-        mood, line = "surprised", f"reboot {k}"
-    elif kind in ("decline", "untrack", "detach"):
-        mood, line = "worried", f"{kind} {k}".strip()
-    elif kind == "track":
-        mood, line = "pour", f"track {k}"
+        if state == "ready":
+            return rx("happy", 4000, "sparkle", True, line, True)
+        if state == "capped":
+            return rx("happy", 3000, "steam", True, line)
+        if state == "stalled":
+            return rx("worried", 3000, "smoke", True, line)
+        return rx("sad", 4500, "smoke", True, line)
+    if kind == "request":
+        return rx("surprised", 2000, "bang", line=f"asked: {text('text')}")
+    if kind in ("cleanup", "merged"):
+        return rx("serve", 3500, "heart", True, f"served {k} (merged)", True)
+    if kind == "pause":
+        return rx("sleep", 2000, "zzz", line="paused")
+    if kind == "resume":
+        return rx("surprised", 1500, line="resumed")
+    if kind in ("round", "reviewed"):
+        return rx("flip", 2000, None, True, f"review round {k}")
+    if kind == "capped":
+        return rx("worried", 2500, None, True, f"out of review rounds {k}")
+    if kind == "feedback":
+        return rx("flip", 1500, None, True, f"feedback {k}")
+    if kind == "heartbeat":
+        return rx("idle", 0, "steam", True)
+    if kind == "reboot":
+        return rx("surprised", 2000, "bang", True, f"reboot {k}")
+    if kind in ("decline", "untrack", "detach"):
+        return rx("worried", 1500, "ink", line=f"{kind} {k}".strip())
+    if kind == "track":
+        return rx("pour", 2000, "batter", True, f"track {k}")
+    return rx("idle", 0, line=f"{kind} {k}".strip())
+
+
+def kitchen_view(evs):
+    """The kitchen log: the last 20 events that have a line, oldest first."""
+    out = []
+    for ev in evs:
+        r = kitchen_reaction(ev)
+        if r["text"]:
+            out.append({"at": ev.get("at", 0), "kind": ev.get("kind") or "",
+                        "mood": r["mood"], "text": r["text"], "good": r["good"],
+                        "key": r["key"], "ms": r["ms"], "burst": r["burst"]})
+    return out[-20:]
+
+
+def ball_state(item, done_kind):
+    """readKitchen's ballState: the snapshot's READY, CAPPED and DONE, else the
+    agent's last report, else cooking once a session exists."""
+    if done_kind in ("READY", "CAPPED", "DONE"):
+        return {"READY": "ready", "CAPPED": "capped", "DONE": "done"}[done_kind]
+    report = item.get("last_report") or {}
+    state = report.get("state") if isinstance(report, dict) else None
+    if state in ("ready", "capped", "stalled"):
+        return state
+    if state in ("blocked", "failed"):
+        return "burnt"
+    return "cooking" if item.get("session") else "raw"
+
+
+def kitchen_pan(model, hdr, evs, now, busy):
+    """The pan and the chef: readKitchen() over the tracked items, the focus
+    of the newest event on the pan, and the chef's mood (register.tsx's
+    frame() and resting())."""
+    state = model.state or {}
+    items = state.get("items") or {}
+    snap_kinds = {r.get("key"): r.get("kind")
+                  for r in (model.snap or {}).get("rows") or []
+                  if isinstance(r, dict)}
+
+    def added_of(item):
+        v = item.get("added")
+        return float(v) if isinstance(v, (int, float)) else 0.0
+
+    holes = hdr["max_active"] or 6
+    balls = []
+    for key, item in sorted(items.items(), key=lambda kv: added_of(kv[1])):
+        added = added_of(item)
+        age = max(0.0, (now - added) / 60) if added else 0.0
+        balls.append({"key": key, "label": short(key),
+                      "state": ball_state(item, snap_kinds.get(key)),
+                      "heat": round(min(1.0, age / 25), 2)})
+    shelf = [{"key": b["key"], "label": b["label"]}
+             for b in balls if b["state"] == "done"][-8:]
+    on_pan = [b for b in balls if b["state"] != "done"][:holes]
+    on_pan_keys = {b["key"] for b in on_pan}
+    focus = next((r["key"] for r in map(kitchen_reaction, reversed(evs))
+                  if r["key"] in on_pan_keys), None)
+    for b in on_pan:
+        b["focus"] = b["key"] == focus
+
+    paused = state.get("paused") is True
+    last = evs[-1].get("at", 0) if evs else now
+    if paused:
+        rest = "sleep"
+    elif busy:
+        rest = "busy"
+    elif now - last > DOZE_SECS:
+        rest = "doze"
     else:
-        line = f"{kind} {k}".strip()
-    return {"at": ev.get("at", 0), "kind": kind, "mood": mood,
-            "text": line, "good": good}
+        rest = "idle"
+    chef = {"mood": rest, "since": last, "ms": 0, "resting": rest}
+    # The newest event that sets a mood decides it, while its time lasts.
+    for ev in reversed(evs):
+        r = kitchen_reaction(ev)
+        if r["ms"] > 0:
+            at = ev.get("at", 0)
+            if now < at + r["ms"] / 1000:
+                chef = {"mood": r["mood"], "since": at, "ms": r["ms"],
+                        "resting": rest}
+            break
+    return {"holes": holes, "paused": paused, "busy": busy, "balls": on_pan,
+            "shelf": shelf, "chef": chef}
 
 
-def kitchen_view(model):
+def orchestrator_busy(model, hdr):
+    """Whether the orchestrator's agent is running, by its live row."""
+    _, target = scan.split_address(hdr["orch"][0])
+    label = hdr["orch"][1]
     with model.lock:
-        evs = model.events[-20:]
-    return [kitchen_line(ev) for ev in evs]
+        live = list(model.live.values())
+    return any(a.get("state") == "running"
+               and (a.get("pane") == target or a.get("agent") == label)
+               for a in live)
 
 
 def row_actions(model, e):
@@ -1225,6 +1325,9 @@ def view_for(model):
                 "entries": [entry_view(model, e, section) for e in rows],
                 **extra}
 
+    with model.lock:
+        evs = list(model.events)
+    busy = orchestrator_busy(model, hdr)
     return {
         "v": 1,
         "generated_at": now,
@@ -1256,7 +1359,8 @@ def view_for(model):
                  for slug, grp in pick_groups(data["pick"])],
         "notes": [{"kind": e["kind"], "key": e["key"]} for e in data["notes"]],
         "activity": activity_rows(model),
-        "kitchen": kitchen_view(model),
+        "kitchen": kitchen_view(evs),
+        "pan": kitchen_pan(model, hdr, evs, now, busy),
         "global_actions": global_actions(model),
     }
 
@@ -1268,12 +1372,15 @@ def find_row(model, key):
 
 
 def run_action(model, aid, key, args):
-    """--action: the TUI key's code path for one action, by the id the mods
-    read from view.json. The mod asks for the second press itself (the
-    action's `confirm`), so this runs the action at once; confirmed=1 is the
-    kitchen alert's second press."""
+    """--action: one row or global action by its id, through the TUI key's
+    code path. The mod asks the second press (`confirm`), so this runs at
+    once; confirmed=1 is the kitchen alert's second press."""
     if aid == "refresh":
-        # The headless dashboard watches this file's mtime (see headless()).
+        # Only a running headless dashboard rewrites view.json; it watches the
+        # kick file's mtime (see headless()).
+        view = read_json(VIEW_FILE) or {}
+        if time.time() - (view.get("generated_at") or 0) > VIEW_STALE_SECS:
+            return Result(False, "no headless dashboard running")
         os.makedirs(STATE_DIR, exist_ok=True)
         with open(KICK_FILE, "a"):
             pass
@@ -2015,8 +2122,17 @@ def headless(model):
 
 # ------------------------------------------------------------------- main
 
+class ArgParser(argparse.ArgumentParser):
+    def error(self, message):
+        # --action always answers with one JSON line, usage errors included.
+        if "--action" in sys.argv:
+            print(json.dumps({"ok": False, "message": message}))
+            sys.exit(0)
+        super().error(message)
+
+
 def main():
-    ap = argparse.ArgumentParser(
+    ap = ArgParser(
         description="Octopilot live dashboard (run it through dashboard.sh).")
     ap.add_argument("--once", action="store_true",
                     help="one frame on stdout, for checking the layout")
@@ -2039,13 +2155,18 @@ def main():
         for pair in opts.arg:
             name, _, value = pair.partition("=")
             args[name] = value
-        model.poll_files()
-        model.live = backend.live()
-        model.sessions = backend.sessions()
-        res = run_action(model, opts.action, opts.key, args)
-        out = {"ok": res.ok, "message": res.message}
-        if res.kitchen:
-            out["kitchen"] = True
+        try:
+            model.poll_files()
+            # Only the row actions and the prompter need the live agents.
+            if opts.action in ROW_IDS or opts.action == "prompter":
+                model.live = backend.live()
+                model.sessions = backend.sessions()
+            res = run_action(model, opts.action, opts.key, args)
+            out = {"ok": res.ok, "message": res.message}
+            if res.kitchen:
+                out["kitchen"] = True
+        except Exception as e:
+            out = {"ok": False, "message": f"{type(e).__name__}: {e}"}
         print(json.dumps(out))
         return 0
 
