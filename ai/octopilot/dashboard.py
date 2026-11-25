@@ -250,9 +250,18 @@ def repo_key(slug):
 
 # ----------------------------------------------------------------- backend
 
+def focus_hc_terminal(session, pane):
+    """Show a herdr-app terminal: its space, then the terminal -> bool. The
+    short timeouts keep a key press from freezing the screen."""
+    code, _, _ = scan.app_do("space.select", ["--id", session], timeout=10)
+    if code == 0:
+        code, _, _ = scan.app_do("agent.focus", ["--terminal", pane], timeout=10)
+    return code == 0
+
+
 class Hosts:
-    """Where the agents live: herdr workspaces, through scan.py so the
-    dashboard and the orchestrator agree on them."""
+    """Where the agents live: herdr workspaces and herdr-app spaces, through
+    scan.py so the dashboard and the orchestrator agree on them."""
 
     def live(self):
         return scan.all_live()
@@ -264,11 +273,17 @@ class Hosts:
         return scan.send_to(address, text)
 
     def focus(self, session, live):
-        """Bring the item's herdr agent forward, or its workspace."""
+        """Bring the item's agent forward in its own backend, or its workspace
+        or space."""
         target = (live.get(session) or {}).get("pane")
+        if scan.backend_for(session) is scan.HC:
+            if target:
+                return focus_hc_terminal(session, target)
+            code, _, _ = scan.app_do("space.select", ["--id", session], timeout=10)
+            return code == 0
         args = ["agent", "focus", target] if target else \
             ["workspace", "focus", session]
-        return scan.herdr(args)[0] == 0
+        return scan.herdr(args, timeout=10)[0] == 0
 
     def publish(self, entries):
         """Octopilot's view of each herdr agent, as pane metadata tokens the
@@ -490,7 +505,9 @@ class Model:
             cur = {}
             for section in ("needs", "orch", "running", "done"):
                 for e in data[section]:
-                    if e["pane"]:
+                    # The sidebar is herdr's TUI: herdr-app agents have none.
+                    if e["pane"] and \
+                            scan.backend_for(e["session"]) is not scan.HC:
                         cur[e["pane"]] = sidebar_tokens(e, section)
             stale = time.time() - last_at > META_EVERY
             push = [(p, t) for p, t in cur.items() if stale or last.get(p) != t]
@@ -618,7 +635,7 @@ class Model:
                "untracked": snap.get("untracked") or 0,
                "generated_at": snap.get("generated_at"),
                "last_tick": state.get("last_tick"),
-               "orch": self.orch_target(state, sessions)}
+               "orch": self.orch_target(state, sessions, live)}
         return out, hdr
 
     def parked_done(self, row, it, snap_at):
@@ -704,12 +721,16 @@ class Model:
                 "pane": ag.get("pane"), "open": bool(sess and sess in sessions),
                 "why": why}
 
-    def orch_target(self, state, sessions):
-        """-> (address, label). Addresses are "herdr:<agent>"."""
-        addr = scan.orchestrator_target(state)
-        target = addr.split(":", 1)[1] if addr.startswith("herdr:") else addr
-        title = (sessions.get(target) or {}).get("title")
-        return f"herdr:{target}", title or target
+    def orch_target(self, state, sessions, live):
+        """-> (address, label). Addresses are "herdr:<agent>" or "hc:<terminal>".
+        An hc label is the agent's octopilot.agent name, from the live list."""
+        backend, target = scan.split_address(scan.orchestrator_target(state))
+        if backend is scan.HC:
+            title = next((a.get("agent") for a in live.values()
+                          if a.get("pane") == target), None)
+        else:
+            title = (sessions.get(target) or {}).get("title")
+        return f"{backend.prefix}{target}", title or target
 
 
 def sidebar_tokens(e, section):
@@ -1296,7 +1317,7 @@ class Dashboard:
             self.agent_popup(e)
         elif key == "t":
             if e["path"] and os.path.isdir(e["path"]):
-                self.shell(e["path"], live, term)
+                self.shell(e, live, term)
             else:
                 self.say("no worktree for this row")
         elif key == "o":
@@ -1378,8 +1399,9 @@ class Dashboard:
         lines = (out or err).splitlines()
         # cleanup ends with its SIBLINGS output; show a failed removal first,
         # else its "cleaned up" line.
+        removed = (f"{scan.HERDR.remove_label} ", f"{scan.HC.remove_label} ")
         failed = next((l for l in lines if not l.endswith(": ok")
-                       and l.startswith("herdr worktree remove ")), None)
+                       and l.startswith(removed)), None)
         done = next((l for l in lines if l.startswith("cleaned up")), None)
         self.say(failed or done or (lines[-1] if lines else
                                     f"{args[0]} exit {code}"))
@@ -1415,6 +1437,17 @@ class Dashboard:
     def agent_popup(self, e):
         """The row's agent in a popup over the dashboard, without leaving it.
         `ctrl+b q` detaches herdr's attach client, which closes the popup."""
+        if scan.backend_for(e["session"]) is scan.HC:
+            # Only a live terminal can be peeked: a stored agent name cannot.
+            if not e["pane"]:
+                self.say("no live agent for this row")
+                return
+            # herdr-app's peek is its popup: the terminal over this tab.
+            code, _, raw = scan.app_do("terminal.peek",
+                                       ["--terminal", e["pane"]], timeout=10)
+            if code != 0:
+                self.say(f"peek failed: {raw[:100]}")
+            return
         target = e["pane"] or (((self.m.state or {}).get("items") or {})
                                .get(e["key"], {}).get("agent"))
         if not target:
@@ -1422,17 +1455,54 @@ class Dashboard:
         elif self.popup("agent", {"AP_AGENT": target}):
             self.say("ctrl+b q closes the popup")
 
+    def focus_hc(self, pane=None, name=None):
+        """Show a herdr-app agent, by its terminal address or its
+        octopilot.agent label -> bool."""
+        if name:
+            code, data, _ = scan.hc(["ls", "--json", "--label",
+                                     f"octopilot.agent={name}"], timeout=10)
+            terms = (data or {}).get("terminals", []) if code == 0 else []
+            pane = terms[0]["address"] if terms else None
+        if not pane:
+            return False
+        _, info, _ = scan.hc(["get", pane, "--json"], timeout=10)
+        session = ((info or {}).get("labels") or {}).get("herdr.space")
+        return bool(session) and focus_hc_terminal(session, pane)
+
+    def focus_agent(self, backend, name):
+        """Show the agent called name in the given backend -> bool."""
+        if backend is scan.HC:
+            return self.focus_hc(name=name)
+        return scan.herdr(["agent", "focus", name], timeout=10)[0] == 0
+
     def open_orch(self, live, term):
         """The prompter when there is one (that is where the user types),
-        else the orchestrator itself."""
-        if scan.herdr(["agent", "focus", PROMPTER_AGENT])[0] == 0:
+        else the orchestrator itself. The dashboard's own backend is asked
+        first, the other only when that fails."""
+        order = (scan.HC, scan.HERDR) if scan.OCTOPILOT_BACKEND == "hc" \
+            else (scan.HERDR, scan.HC)
+        if any(self.focus_agent(b, PROMPTER_AGENT) for b in order):
             return
         _, hdr = self.m.build()
-        target = hdr["orch"][0].split(":", 1)[1]
-        if scan.herdr(["agent", "focus", target])[0] != 0:
-            self.say(f"no herdr agent named {target}")
+        backend, target = scan.split_address(hdr["orch"][0])
+        if backend is scan.HC:
+            ok = self.focus_hc(pane=target)
+        else:
+            ok = scan.herdr(["agent", "focus", target], timeout=10)[0] == 0
+        if not ok:
+            self.say(f"no agent named {target}")
 
-    def shell(self, path, live, term):
+    def shell(self, e, live, term):
+        """A shell in the row's worktree: a herdr-app tab in its space, or the
+        herdr popup, or else the dashboard's own terminal."""
+        path = e["path"]
+        if scan.backend_for(e["session"]) is scan.HC:
+            code, _, raw = scan.app_do("tab.new", ["--space", e["session"],
+                                                   "--folder", path],
+                                       timeout=10)
+            if code != 0:
+                self.say(f"new tab failed: {raw[:100]}")
+            return
         if self.popup("shell", {}, cwd=path):
             return
         term.suspend(live, [os.environ.get("SHELL", "sh")], cwd=path)
