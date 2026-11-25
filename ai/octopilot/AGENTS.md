@@ -58,7 +58,7 @@ The GUI is native mods over the same Python backend. The decisions stay in
   `herdr/README.md` has the full recipe.
 - **Mods**: `node --test test/*.mjs` in the mod's directory. `herdr-app check <mod>`
   loads the mod and exits 1 on load or render errors (it does not check layout or
-  paint). `herdr-app types <mod>` writes `gpui-kit.d.ts` next to the app (git-ignored);
+  paint). `herdr-app types <mod>` writes `gpui-kit.d.ts` into the mod folder (git-ignored);
   run it on a copy outside the repo (for example under `/tmp`) to keep that file out
   of the worktree.
 - **TUI changes**: capture `dashboard.sh --once` output with a fixed scratch state

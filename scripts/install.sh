@@ -222,7 +222,7 @@ _herdr_app_outdated() {
   # False when offline, and on macOS while Herdr.app runs: its installer would
   # replace the running app.
   local latest installed
-  if ! latest=$(curl -fsSL https://releases.herdr.dev/app/latest.json 2>/dev/null); then
+  if ! latest=$(curl -fsSL --max-time 15 https://releases.herdr.dev/app/latest.json 2>/dev/null); then
     echo "herdr-app: could not reach releases.herdr.dev; skipping the update"
     return 1
   fi
