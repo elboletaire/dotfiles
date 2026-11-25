@@ -133,8 +133,8 @@ export function offlineReason(view, nowMs, error) {
 
 // Everything the scene and the bubble draw, for `view` at `nowMs`. `walk` counts the steps
 // the chef has taken along the pan. `until` is when this stops being true (a mood or a
-// burst ends), or null.
-export function derive(view, nowMs, walk = 0) {
+// burst ends), or null. `logMax` is how many log lines to keep.
+export function derive(view, nowMs, walk = 0, logMax = LOG_LINES) {
   const nowS = nowMs / 1000;
   const header = view?.header ?? {};
   const pan = view?.pan ?? null;
@@ -189,7 +189,7 @@ export function derive(view, nowMs, walk = 0) {
       paused,
       offline,
     }),
-    log: logLines(kitchen),
+    log: logLines(kitchen, logMax),
     until,
   };
 }
