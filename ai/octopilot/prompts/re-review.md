@@ -34,16 +34,28 @@ isolate the author's changes, and say so in your report. If the range is
 empty, the author re-requested the review without pushing: the answers are in
 their replies on our threads, so step 1 carries the review.
 
-From that, draft:
-- for each earlier finding: FIXED, PARTLY FIXED, NOT FIXED, or ANSWERED (the
-  author explained why not, with a reason that holds);
-- new-issue candidates: defects **introduced by these commits only**.
+From that, draft the status of each earlier finding: FIXED, PARTLY FIXED,
+NOT FIXED, or ANSWERED (the author explained why not, with a reason that
+holds).
+
+New-issue candidates come from a fresh subagent, not from this conversation:
+use the `Agent` tool with `model: {{FIND_MODEL}}`. Give it the PR number, the
+branch, the merge-result worktree's path and the commit range, and this
+instruction:
+
+> On {{REPO}} PR #{{PR}} (branch `{{BRANCH}}`), review only the commits in
+> `<range>` (the commit range, or after a force-push the commits that
+> `git range-diff` isolated) in worktree <$mwt>, the PR merged into current
+> `{{BASE}}`, at `{{REVIEW_LEVEL_FOLLOWUP}}` depth. Report defects **introduced by these
+> commits only**; the rest of the PR was reviewed already. Return a numbered
+> list of candidate findings: file, line, the claimed defect, and whether it
+> would block a merge. Change nothing and post nothing.
 
 Post nothing yet.
 
 ## 3. Verify, in a fresh subagent
 
-Use the `Agent` tool with `model: {{COLD_REVIEW_MODEL}}`. Give it the PR
+Use the `Agent` tool with `model: {{VERIFY_MODEL}}`. Give it the PR
 number, the branch, the merge-result worktree's path and base sha, the commit
 range, the numbered earlier findings with your draft statuses, and the
 new-issue candidates -- not your reasoning:
@@ -55,8 +67,9 @@ new-issue candidates -- not your reasoning:
 > test you ran. For each new-issue candidate, return CONFIRMED with the
 > concrete input or state that breaks it and what you ran or read, or
 > REJECTED with the reason. A candidate may be rejected as pre-existing only
-> if the same defect exists at <$base> without the PR. Do not add findings
-> outside the commit range. Do not post anything to GitHub.
+> if the same defect exists at <$base> without the PR. A new candidate that
+> only restates an earlier finding is REJECTED as a duplicate. Do not add
+> findings outside the commit range. Do not post anything to GitHub.
 
 Use its verdicts, not your draft. A status or candidate it could not back
 with evidence does not go in the review.

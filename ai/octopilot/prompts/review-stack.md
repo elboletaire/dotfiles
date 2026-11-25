@@ -51,9 +51,9 @@ and `rm -rf "$(dirname "$mwt")"`.
 
 ## 1. Pass 1 -- candidates, one subagent per PR, all at once (nothing is posted)
 
-Launch one `Agent` per PR **in a single message**, so they run concurrently.
-Each gets the PR number, its branch, its own range from the table, the
-merge-result worktree's path, and this instruction:
+Launch one `Agent` per PR **in a single message**, so they run concurrently,
+each with `model: {{FIND_MODEL}}`. Each gets the PR number, its branch, its own
+range from the table, the merge-result worktree's path, and this instruction:
 
 > Run `{{REVIEW_CMD}} {{REVIEW_LEVEL}} <PR>` without `--comment`. Restrict
 > your findings to that PR's own range; do not judge the other branches. Read
@@ -85,7 +85,7 @@ GitHub.
 ## 3. Pass 2 -- verification in the merge result, in fresh subagents
 
 Launch one `Agent` per PR that still has survivors, **in a single message**,
-each with `model: {{COLD_REVIEW_MODEL}}`. Give each only the PR number, the
+each with `model: {{VERIFY_MODEL}}`. Give each only the PR number, the
 top branch, the merge-result worktree's path and base sha, the range table
 and that PR's numbered survivors -- not your reasoning about them, and no
 hint of which ones you believe:

@@ -170,9 +170,10 @@ that layer, because round 2 reviews it.
 
 4. **Review in two passes, both in fresh subagents.** Never review in this
    conversation: you reviewing your own work carries your own rationalisations
-   into the review, and finds less. Use the `Agent` tool with
-   `model: {{COLD_REVIEW_MODEL}}` for both passes -- the review is where the
-   thinking happens, so it is pinned regardless of what this session runs on.
+   into the review, and finds less. Use the `Agent` tool: `model: {{FIND_MODEL}}`
+   for pass 1 and `model: {{VERIFY_MODEL}}` for pass 2. The review is where the
+   thinking happens, so both are pinned regardless of what this session runs on,
+   and pass 2 on another model does not repeat pass 1's blind spots.
 
    Round 1 is the one full review of the whole stack. Every later round reviews
    only what the previous round's fixes changed, layer by layer (below) --
@@ -234,11 +235,11 @@ that layer, because round 2 reviews it.
    the `fork` line is the commit below the bottom, and each `<branch>` line is a
    layer's head.
 
-   **Pass 1 -- candidates (nothing is changed).** Launch one subagent per layer
-   **in a single message**, so they run concurrently. Give each only the PR
-   number, its branch, its range (below), and the merge-result worktree's path --
-   no history, no summary of what you already did, no defence of your earlier
-   choices.
+   **Pass 1 -- candidates (nothing is changed).** Launch one `Agent` per layer
+   **in a single message**, so they run concurrently, each with
+   `model: {{FIND_MODEL}}`. Give each only the PR number, its branch, its range
+   (below), and the merge-result worktree's path -- no history, no summary of
+   what you already did, no defence of your earlier choices.
 
    *Round 1* -- the layer's own range:
 
@@ -301,7 +302,7 @@ that layer, because round 2 reviews it.
    then gets only the survivors, grouped by attributed layer.
 
    **Pass 2 -- verification.** Launch one fresh subagent per layer that still
-   has survivors, **in a single message**, each with `model: {{COLD_REVIEW_MODEL}}`.
+   has survivors, **in a single message**, each with `model: {{VERIFY_MODEL}}`.
    Give each only the PR number, its branch, the merge-result worktree's path
    and the printed `base` sha, and that layer's numbered survivor list -- not
    pass 1's reasoning, and no hint of which ones you believe:

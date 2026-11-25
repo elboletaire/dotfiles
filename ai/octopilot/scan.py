@@ -36,9 +36,9 @@ RE_REVIEW_QUIET_HOURS = float(os.environ.get("RE_REVIEW_QUIET_HOURS", "4"))
 # model never decides what the workers run on.
 MODEL_FOR = {
     "work": os.environ.get("MODEL_WORK", "claude-opus-5-5[1m]"),
-    "investigate": os.environ.get("MODEL_INVESTIGATE", "claude-opus-5-5[1m]"),
+    "investigate": os.environ.get("MODEL_INVESTIGATE", "claude-fable-5-2[1m]"),
     "investigate-readonly": os.environ.get("MODEL_INVESTIGATE",
-                                           "claude-opus-5-5[1m]"),
+                                           "claude-fable-5-2[1m]"),
     "review-fix": os.environ.get("MODEL_REVIEW_FIX", "claude-opus-5-5[1m]"),
     "review-stack": os.environ.get("MODEL_REVIEW_COMMENT", "claude-opus-5-5[1m]"),
     "adopt-stack": os.environ.get("MODEL_REVIEW_FIX", "claude-opus-5-5[1m]"),
@@ -46,7 +46,11 @@ MODEL_FOR = {
     "review-comment": os.environ.get("MODEL_REVIEW_COMMENT", "claude-opus-5-5[1m]"),
     "re-review": os.environ.get("MODEL_REVIEW_COMMENT", "claude-opus-5-5[1m]"),
 }
-MODEL_COLD_REVIEW = os.environ.get("MODEL_COLD_REVIEW", "opus")
+# The Agent-tool aliases for the two review passes. A legacy MODEL_COLD_REVIEW
+# still sets the verify pass, so an old exported value keeps working.
+MODEL_REVIEW_FIND = os.environ.get("MODEL_REVIEW_FIND", "fable")
+MODEL_REVIEW_VERIFY = os.environ.get(
+    "MODEL_REVIEW_VERIFY", os.environ.get("MODEL_COLD_REVIEW", "opus"))
 STALE_HOURS = int(os.environ.get("STALE_HOURS", "48"))
 ISSUE_MAX_AGE_DAYS = int(os.environ.get("ISSUE_MAX_AGE_DAYS", "120"))
 STATE_FILE = os.environ.get(
@@ -1289,9 +1293,11 @@ def render_prompt(name, subs):
             subs.setdefault("STACK_LOOP", fh.read().strip())
     if "{{ORCH}}" in body or "{{LOOP}}" in body or "{{STACK_LOOP}}" in body:
         subs.setdefault("ORCH", orchestrator_session())
-    # Set unconditionally: this placeholder lives inside the LOOP fragment,
-    # not in the template body, so an `in body` test would never fire.
-    subs.setdefault("COLD_REVIEW_MODEL", MODEL_COLD_REVIEW)
+    # Set unconditionally: FIND_MODEL and VERIFY_MODEL also live inside the
+    # LOOP fragment, not only in the template body, so an `in body` test would
+    # never fire.
+    subs.setdefault("FIND_MODEL", MODEL_REVIEW_FIND)
+    subs.setdefault("VERIFY_MODEL", MODEL_REVIEW_VERIFY)
     # Read whenever the file exists, for the same reason: MERGE may sit inside
     # the LOOP fragment. Without the file the sweep below strips the placeholder.
     merge = os.path.join(pdir, "shared", "merge-result.md")
@@ -1325,7 +1331,7 @@ def render_prompt(name, subs):
     if name in ("review-comment", "re-review", "review-stack"):
         subs.setdefault("REVIEW_LEVEL",
                         os.environ.get("REVIEW_LEVEL_COMMENT", "medium"))
-    subs.setdefault("REVIEW_LEVEL", os.environ.get("REVIEW_LEVEL", "xhigh"))
+    subs.setdefault("REVIEW_LEVEL", os.environ.get("REVIEW_LEVEL", "high"))
     subs.setdefault("REVIEW_LEVEL_FOLLOWUP",
                     os.environ.get("REVIEW_LEVEL_FOLLOWUP", "high"))
     # Shared fragments are spliced in FIRST: they carry their own {{REPO}},

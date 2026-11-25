@@ -172,9 +172,12 @@ You choose the branch name and session title; the script does the mechanics
 (fetch, worktree in `<repo>/.worktrees/`, a herdr workspace grouped under the
 repo's with a claude agent named `ap-<repo>-<n>`, and tracking), **re-derives the mode itself** -- do
 not pass a mode -- and **pins the model** from `config.sh` by the template that
-creates the session (currently `opus[1m]` for every template -- Opus with 1M
-context, so review loops do not auto-compact). The worker never inherits your model, so running octopilot
-on a small model still gets you full-size workers. `spawn` prints `model=` --
+creates the session (currently Opus[1m] for the work and review templates, so
+review loops do not auto-compact, and Fable[1m] for the investigate templates,
+which cover open-ended questions). Inside a review loop, pass 1 runs on Fable
+and pass 2 on Opus, each in an Agent subagent. The worker never
+inherits your model, so running octopilot on a small model still gets you
+full-size workers. `spawn` prints `model=` --
 report it. Never pass a model yourself.
 
 - Issue: branch `<type>/<slug>-<issue>` (`feat/`, `fix/`, `chore/`, `docs/`,

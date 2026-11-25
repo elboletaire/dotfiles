@@ -77,9 +77,10 @@ comment and silently truncates the argument.
 
 4. **Review in two passes, both in fresh subagents.** Never review in this
    conversation: you reviewing your own work carries your own rationalisations
-   into the review, and finds less. Use the `Agent` tool with
-   `model: {{COLD_REVIEW_MODEL}}` for both passes -- the review is where the
-   thinking happens, so it is pinned regardless of what this session runs on.
+   into the review, and finds less. Use the `Agent` tool: `model: {{FIND_MODEL}}`
+   for pass 1 and `model: {{VERIFY_MODEL}}` for pass 2. The review is where the
+   thinking happens, so both are pinned regardless of what this session runs on,
+   and pass 2 on another model does not repeat pass 1's blind spots.
 
    Round 1 is the one full review of the whole PR. Every later round reviews
    only what your own fixes changed since round 1 -- re-reviewing the whole PR
@@ -102,9 +103,10 @@ comment and silently truncates the argument.
 
 {{MERGE}}
 
-   **Pass 1 -- candidates (nothing is changed).** Give the subagent only the
-   PR number, the branch and the merge-result worktree -- no history, no
-   summary of what you already did, no defence of your earlier choices.
+   **Pass 1 -- candidates (nothing is changed).** In an `Agent` with
+   `model: {{FIND_MODEL}}`, give it only the PR number, the branch and the
+   merge-result worktree -- no history, no summary of what you already did, no
+   defence of your earlier choices.
 
    *Round 1* -- the whole PR:
 
@@ -135,8 +137,9 @@ comment and silently truncates the argument.
 
    This pass casts a wide net, so some candidates are false positives.
 
-   **Pass 2 -- verification.** A second, separate subagent gets only the PR
-   number, the branch, the merge-result worktree's path and base sha, and the
+   **Pass 2 -- verification.** A second, separate subagent
+   (`model: {{VERIFY_MODEL}}`) gets only the PR number, the branch, the
+   merge-result worktree's path and base sha, and the
    numbered candidate list -- not pass 1's reasoning, and no hint of which
    ones you believe:
 

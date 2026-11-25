@@ -23,7 +23,9 @@ ISSUE_ORGS="vocdoni"
 # Slash command for review. `/review` is a verified alias of `/code-review`
 # (aliases:["review"] in the 2.1.267 bundle); both work.
 REVIEW_CMD="/review"
-REVIEW_LEVEL="xhigh"         # review-fix loop, round 1: the one full review of the whole PR
+# review-fix loop, round 1: the one full review of the whole PR. Fable runs pass 1,
+# and its effort guidance is to start at high; pass 1 is the largest spend.
+REVIEW_LEVEL="high"
 # Rounds 2+ review only the diff the loop's own fixes produced since round 1,
 # so a narrow pass is cheap. A full re-review every round kept finding new
 # nits in its own fixes and always burned the whole MAX_REVIEW_ROUNDS budget.
@@ -46,12 +48,14 @@ REVIEW_LEVEL_COMMENT="high"
 # (quoted, since [..] is a glob). Standard-context workers were
 # auto-compacting mid review loop.
 MODEL_WORK='claude-opus-5-5[1m]'               # issue -> implementation, ambiguous spec
-MODEL_INVESTIGATE='claude-opus-5-5[1m]'        # open-ended question
+MODEL_INVESTIGATE='claude-fable-5-2[1m]'       # open-ended question
 MODEL_REVIEW_FIX='claude-opus-5-5[1m]'         # own/assigned PR: rebase, 3 review rounds, CI waits -- the longest-lived session
 MODEL_REVIEW_COMMENT='claude-opus-5-5[1m]'     # public review of someone else's PR
-MODEL_COLD_REVIEW=opus                         # the Agent-tool review pass inside the loop; that
-                                               # tool takes only aliases, so settings.json pins
-                                               # opus to a full id (ANTHROPIC_DEFAULT_OPUS_MODEL)
+
+# Agent-tool aliases for the two review passes (settings.json pins each to a full id).
+# Pass 1 wants recall; pass 2 filters its false positives.
+MODEL_REVIEW_FIND=fable
+MODEL_REVIEW_VERIFY="${MODEL_REVIEW_VERIFY:-${MODEL_COLD_REVIEW:-opus}}"
 
 # Max concurrent work/review sessions octopilot will run. Candidates above the
 # cap queue as PROPOSE rows instead of spawning.

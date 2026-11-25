@@ -11,15 +11,20 @@ has verified it.
 
 ## Pass 1 -- candidates (nothing is posted)
 
-In the merge-result worktree, run: {{REVIEW_CMD}} {{REVIEW_LEVEL}} {{PR}}
+Use the `Agent` tool with `model: {{FIND_MODEL}}`. Give it only the PR number
+and the merge-result worktree's path, and this instruction:
 
-Without `--comment`. This pass casts a wide net, so its findings are
-candidates, and some will be false positives. Write them to a numbered list:
-file, line, and the claimed defect. Do not post any of it.
+> In worktree <$mwt> ({{REPO}} PR #{{PR}}, merged into current `{{BASE}}`),
+> run `{{REVIEW_CMD}} {{REVIEW_LEVEL}} {{PR}}` without `--comment`. Return a
+> numbered list of candidate findings: file, line, and the claimed defect.
+> Change nothing and post nothing.
+
+This pass casts a wide net, so its findings are candidates, and some will be
+false positives. Keep the numbered list; do not post any of it.
 
 ## Pass 2 -- verification, in a fresh subagent
 
-Use the `Agent` tool with `model: {{COLD_REVIEW_MODEL}}`. Give it only the PR
+Use the `Agent` tool with `model: {{VERIFY_MODEL}}`. Give it only the PR
 number, the branch, the merge-result worktree's path and base sha, and the
 numbered candidate list -- not your reasoning about them, and no hint of which
 ones you believe:
