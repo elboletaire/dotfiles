@@ -33,8 +33,9 @@ command = "elboletaire.octopilot.peek"
 ```
 
 The workspace has two tabs: **OCTOPILOT**, described below, and **Octopilot
-(code changes)**, a claude started in the dotfiles for changing octopilot itself
-(`octopilot-code`). In OCTOPILOT, the dashboard pane is titled
+(code changes)**, a claude started in `ai/octopilot` for changing octopilot itself
+(`octopilot-code`; it may still change anything in the dotfiles, with paths
+relative to the repo root such as `../../...`). In OCTOPILOT, the dashboard pane is titled
 `dashboard`.
 
 `open` starts the orchestrator as a fresh claude in `OCTOPILOT_ORCH_CWD`
@@ -86,7 +87,7 @@ terminals run in herdr-core) as one space with three tabs:
 |---|---|
 | **OCTOPILOT** | the `octopilot-kitchen` mod, a pane 300 px tall, on the left, over the `octopilot-chat` mod (the prompter as a chat, its input at the bottom); on the right the `octopilot-dashboard` mod (the table below), full height (`props`: `dir`, `state_dir`; its pane is named by `pane.rename`, the mod reads no name) |
 | **engine** | the orchestrator (`octopilot`, `/octopilot:messenger`), the prompter (`octopilot-prompter`) and `dashboard.sh --headless` (`octopilot-headless`), each an hc terminal. Parked after building: they keep running with no pane, so the tab goes away (see below) |
-| **Octopilot (code changes)** | the code agent's own claude (`octopilot-code`, a claude in the dotfiles root, an hc terminal that is never parked) |
+| **Octopilot (code changes)** | the code agent's own claude (`octopilot-code`, a claude started in `ai/octopilot`, an hc terminal that is never parked) |
 
 The engine is hidden on purpose. After building, `open-gui.sh` parks its three
 terminals (`herdr-app do terminal.park`): the pane goes, the process keeps

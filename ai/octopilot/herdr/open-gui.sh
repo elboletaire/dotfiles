@@ -31,7 +31,7 @@ KITCHEN_PX=300                         # the kitchen's height above the chat
 MAIN_TAB="OCTOPILOT"
 ENGINE_TAB="engine"
 CODE_TAB="Octopilot (code changes)"
-CODE_CWD="$(cd "$DIR/../.." && pwd -P)"   # the checkout this octopilot lives in
+CODE_CWD="$DIR"                        # the octopilot dir: its AGENTS.md is the code agent's guide
 
 TERMINALS=0
 CLOSE_LAUNCHER=0
@@ -356,7 +356,7 @@ add_kitchen() {
   record_label "$orch" octopilot.kitchen "$main:$kitchen"
 }
 
-# The code agent's claude in a tab of its own, named CODE_TAB, in the dotfiles root.
+# The code agent's claude in a tab of its own, named CODE_TAB, started in ai/octopilot.
 # Prints its terminal.
 start_code_tab() {
   local session created term
@@ -452,7 +452,7 @@ add_code_tab() {
   drop_side_panel "$code" "$t" "$(cut -f3 <<<"$located")"
 }
 
-# The --terminals code tab: a terminal tab with its claude in the dotfiles root,
+# The --terminals code tab: a terminal tab with its claude started in ai/octopilot,
 # unless this checkout's code agent runs already (another checkout's is left alone).
 add_code_terminal_tab() {
   local created

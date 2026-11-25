@@ -4,8 +4,8 @@
 #
 # Tab "OCTOPILOT": on the left the orchestrator's messenger pane (small,
 # on top) and the user's prompter pane below it, the dashboard on the right.
-# Tab "Octopilot (code changes)": a claude in the dotfiles, for changing
-# octopilot itself.
+# Tab "Octopilot (code changes)": a claude started in this octopilot dir (ai/octopilot),
+# for changing octopilot itself. It may still change anything in the dotfiles.
 #
 # Nothing is ever typed into the prompter: agent reports and dashboard
 # commands go to the orchestrator's inbox, and the prompter queues the user's
@@ -20,7 +20,7 @@ MESSENGER_RATIO=0.35                   # the messenger pane's share: room for th
 MAIN_TAB="OCTOPILOT"
 CODE_TAB="Octopilot (code changes)"
 CODE_AGENT="octopilot-code"            # scan.py's CODE_AGENT
-CODE_CWD="$(cd "$DIR/../.." && pwd)"   # the dotfiles checkout
+CODE_CWD="$(cd "$DIR" && pwd)"         # the octopilot dir: its AGENTS.md is the code agent's guide
 
 # Split the orchestrator's pane down and start the prompter in the new pane.
 add_prompter() {
