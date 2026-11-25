@@ -680,12 +680,13 @@ _link_moll_herdr_app() {
     return 0
   fi
   if [[ -z "$host" && -f "$config" ]]; then
-    host=$(head -n 1 "$config")
+    # First line, without CR, comment or surrounding spaces.
+    host=$(sed -n '1{s/\r$//;s/#.*//;s/^[[:space:]]*//;s/[[:space:]]*$//;p;}' "$config")
   fi
   [[ -n "$host" ]] || return 0
   # Runs the bundle only when the fetch worked, as _run_remote_installer does.
   tmp="$(mktemp)" || return 0
-  if ssh -n -o BatchMode=yes -o ConnectTimeout=5 "$host" \
+  if ssh -n -o BatchMode=yes -o ConnectTimeout=5 -- "$host" \
     'bash docker/moll/herdr-app/install.sh --bundle >/dev/null && cat docker/moll/herdr-app/bundle.sh' > "$tmp"; then
     sh "$tmp" || echo "WARNING: Moll's herdr-app bundle failed (see above)" >&2
   else
