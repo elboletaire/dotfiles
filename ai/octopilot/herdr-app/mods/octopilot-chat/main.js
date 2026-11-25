@@ -1,8 +1,6 @@
-// The prompter as a chat: its Claude Code session's messages, a composer that types
-// into it, and the answers to a prompt it is waiting on. Reads `scan.sh chat --json`,
-// writes through `chat-send` and `chat-keys`. Props (tests): `dir` (a stub scan.sh
-// folder), `fixture` (a chat --json file read instead of scan.sh).
-
+// The prompter as a chat: its session's messages, a composer that types into it,
+// and the answers to a prompt it waits on. Reads `scan.sh chat --json`, writes through
+// `chat-send` and `chat-keys`. Props for tests: `dir` (scan.sh folder), `fixture` (chat JSON file).
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, ScrollHandle, TextareaState, Textarea, TextView } from "gpui-base";
 import { exec, readTextFile, run, props, shared, home, window, theme, nextCommand, checking } from "herdr";
@@ -20,6 +18,11 @@ const CHIPS = [
 // Polls: a second while the prompter works or waits on you, three seconds otherwise.
 const LIVE_MS = 1000;
 const IDLE_MS = 3000;
+// A pending bubble the transcript never confirms is dropped after this, once idle.
+const PENDING_MS = 15000;
+// After an answer, the buttons stay off until the prompt changes, or this long.
+const ANSWER_MS = 5000;
+const MAX_MESSAGES = 200;
 // How close to the end still counts as "at the bottom", in px.
 const BOTTOM_SLACK = 8;
 
@@ -52,13 +55,18 @@ export default class Chat extends View {
     this.hasText = false;
     this.focused = false;
     this.confirming = false;
+    this.answering = false;
+    this.answeredMsg = null;
+    this.answeredAt = 0;
+    this.needFull = false;
     this.terminal = null;
     this.status = null;
     this.blocked = null;
     this.error = null;
     this.notice = null;
     this.messages = [];
-    this.seen = new Set();
+    this.index = new Map();
+    this.rev = 0;
     this.pending = [];
     this.expanded = new Set();
     this.unseen = 0;
@@ -92,7 +100,20 @@ export default class Chat extends View {
   }
 
   tick(cx) {
-    if (this.reading || window()?.visible === false) return;
+    if (window()?.visible === false) return;
+    if (this.answering && Date.now() - this.answeredAt > ANSWER_MS) {
+      this.answering = false;
+      cx.notify();
+    }
+    if (this.pending.length && !this.live()) {
+      const cut = Date.now() - PENDING_MS;
+      const kept = this.pending.filter((p) => Date.parse(p.at) > cut);
+      if (kept.length !== this.pending.length) {
+        this.pending = kept;
+        cx.notify();
+      }
+    }
+    if (this.reading) return;
     if (Date.now() - this.last < (this.live() ? LIVE_MS : IDLE_MS)) return;
     cx.spawn(async (cx) => this.sync(cx, false));
   }
@@ -109,16 +130,23 @@ export default class Chat extends View {
     return JSON.parse(r.stdout);
   }
 
-  // Reads what the transcript added since the last message we have (all of it on a full read).
+  fingerprint() {
+    return JSON.stringify([this.status, this.blocked, this.terminal, this.error, this.notice, this.confirming,
+      this.answering, this.unseen, this.messages.length, this.pending.length, this.rev]);
+  }
+
+  // Reads the messages after the newest one we have; a full read takes the newest 100.
   async sync(cx, full) {
     if (this.reading) return;
     this.reading = true;
-    const before = JSON.stringify([this.status, this.blocked, this.terminal, this.error, this.messages.length, this.pending.length]);
+    const before = this.fingerprint();
+    const wantFull = full || (this.needFull && !this.live());
     try {
       const last = this.messages[this.messages.length - 1]?.id;
-      const args = full || !last ? ["--limit", "100"] : ["--after", last];
-      this.absorb(await this.chat(args), full);
+      const args = wantFull || !last ? ["--limit", "100"] : ["--after", last];
+      this.absorb(await this.chat(args), wantFull);
       this.error = null;
+      if (wantFull && !this.live()) this.needFull = false;
     } catch (e) {
       this.error = String(e?.message ?? e);
       this.status = "offline";
@@ -126,33 +154,51 @@ export default class Chat extends View {
       this.reading = false;
       this.last = Date.now();
     }
-    if (before !== JSON.stringify([this.status, this.blocked, this.terminal, this.error, this.messages.length, this.pending.length])) cx.notify();
+    if (before !== this.fingerprint()) cx.notify();
   }
 
   absorb(data, full) {
     this.terminal = data?.terminal ?? null;
     this.status = data?.status ?? "offline";
     this.blocked = data?.blocked ?? null;
-    if (full) {
+    if (this.answering && (!this.blocked || this.blocked.msg !== this.answeredMsg)) this.answering = false;
+    if (full || data?.reset) {
       this.messages = [];
-      this.seen = new Set();
+      this.index = new Map();
+      this.pending = [];
     }
-    const fresh = (data?.messages ?? []).filter((m) => !this.seen.has(m.id));
-    if (!fresh.length) return;
     const atBottom = this.atBottom();
-    for (const m of fresh) {
-      this.seen.add(m.id);
-      // The transcript's copy of a message we sent replaces our pending bubble.
+    let added = 0;
+    for (const m of data?.messages ?? []) {
+      const i = this.index.get(m.id);
+      if (i !== undefined) {
+        // A turn still in progress keeps its id while its text grows.
+        const old = this.messages[i];
+        if (old.text !== m.text || JSON.stringify(old.tools) !== JSON.stringify(m.tools)) {
+          this.messages[i] = m;
+          this.rev += 1;
+        }
+        continue;
+      }
+      this.index.set(m.id, this.messages.length);
+      this.messages.push(m);
+      added += 1;
+      // The transcript's copy of our message replaces the pending bubble: same text, or a later user message.
       if (m.role !== "user") continue;
-      const i = this.pending.findIndex((p) => p.text.trim() === m.text.trim());
-      if (i >= 0) this.pending.splice(i, 1);
+      const at = Date.parse(m.at);
+      this.pending = this.pending.filter((p) => p.text !== m.text.trim() && !(at >= Date.parse(p.at)));
     }
-    this.messages.push(...fresh);
+    if (this.messages.length > MAX_MESSAGES) {
+      this.messages.splice(0, this.messages.length - MAX_MESSAGES);
+      this.index = new Map(this.messages.map((m, i) => [m.id, i]));
+    }
+    if (!added) return;
+    this.rev += 1;
     if (atBottom) {
       this.scrollEnd = true;
       this.unseen = 0;
     } else {
-      this.unseen += fresh.length;
+      this.unseen += added;
     }
   }
 
@@ -163,16 +209,23 @@ export default class Chat extends View {
     return o.y + v.height >= c.height - BOTTOM_SLACK;
   }
 
-  // Runs a scan.sh action; returns the message to show, or null when it worked.
+  // Runs a scan.sh action: { code, error }. In fixture mode nothing is sent.
   async say(args) {
+    if (props()?.fixture) return { code: -1, error: "Fixture mode: nothing was sent." };
     try {
       const r = await exec(scanPath(), args, { timeout: 20000 });
-      if (r.code === 0) return null;
-      if (r.code === 4) return "The prompter is waiting on a prompt. Answer it first.";
-      return r.stderr.trim() || `scan.sh exited ${r.code}`;
+      return { code: r.code, error: r.stderr.trim() };
     } catch (e) {
-      return String(e?.message ?? e);
+      return { code: -1, error: String(e?.message ?? e) };
     }
+  }
+
+  // What a chat-send or clear exit means, as a notice; null when it went through.
+  sendNotice(r) {
+    if (r.code === 0) return null;
+    if (r.code === 4) return "The prompter is waiting on a prompt. Answer it first.";
+    if (r.code === 3) return "The prompter isn't running.";
+    return r.error || `scan.sh exited ${r.code}`;
   }
 
   async send(cx) {
@@ -189,7 +242,7 @@ export default class Chat extends View {
     this.scrollEnd = true;
     this.notice = null;
     cx.notify();
-    const err = await this.say(["chat-send", text]);
+    const err = this.sendNotice(await this.say(["chat-send", text]));
     if (err) {
       this.pending = this.pending.filter((p) => p !== bubble);
       if (!this.input.value()) this.input.set_value(text);
@@ -201,13 +254,28 @@ export default class Chat extends View {
   }
 
   async answer(cx, keys) {
-    this.notice = await this.say(["chat-keys", ...keys]);
+    if (this.answering || !this.blocked) return;
+    this.answering = true;
+    this.answeredMsg = this.blocked.msg;
+    this.answeredAt = Date.now();
+    this.notice = null;
+    cx.notify();
+    const r = await this.say(["chat-keys", ...keys]);
+    // Exit 4: the prompt is no longer waiting, so it was answered already.
+    if (r.code === 4) this.answering = false;
+    else if (r.code !== 0) {
+      this.answering = false;
+      this.notice = r.error || `scan.sh exited ${r.code}`;
+    }
     await this.sync(cx, false);
+    cx.notify();
   }
 
   async clear(cx) {
     this.confirming = false;
-    this.notice = await this.say(["chat-send", "/clear"]);
+    this.needFull = true;
+    this.notice = this.sendNotice(await this.say(["chat-send", "/clear"]));
+    cx.notify();
     await this.sync(cx, true);
   }
 
@@ -231,7 +299,7 @@ export default class Chat extends View {
     cx.notify();
   }
 
-  button(t, id, label, onClick, primary = false) {
+  button(t, id, label, onClick, primary = false, disabled = false) {
     return h_flex()
       .id(id)
       .h(26)
@@ -243,9 +311,8 @@ export default class Chat extends View {
       .bg(primary ? t.solid : t.raised)
       .text_size(12)
       .text_color(primary ? t.solid_foreground : t.foreground)
-      .cursor_pointer()
-      .hover((s) => s.opacity(0.88))
-      .on_click(onClick)
+      .when(disabled, (el) => el.opacity(0.45))
+      .when(!disabled, (el) => el.cursor_pointer().hover((s) => s.opacity(0.88)).on_click(onClick))
       .child(label);
   }
 
@@ -301,6 +368,9 @@ export default class Chat extends View {
     const b = this.blocked;
     const quick = b.kind === "permission" || b.kind === "question";
     const title = b.kind === "question" ? "Question" : b.kind === "auth" ? "Sign in" : "Permission";
+    const answers = b.kind === "question"
+      ? [["Option 1", ["1"], true], ["Option 2", ["2"]], ["Cancel (esc)", ["esc"]]]
+      : [["Allow (1)", ["1"], true], ["Allow always (2)", ["2"]], ["Deny (esc)", ["esc"]]];
     return v_flex()
       .flex_none()
       .mx(14)
@@ -316,10 +386,11 @@ export default class Chat extends View {
       .when(quick, (el) => el.child(h_flex()
         .gap(6)
         .flex_wrap()
-        .child(this.button(t, "chat-allow", "Allow (1)", (_e, cx) => cx.spawn(async (cx) => this.answer(cx, ["1"])), true))
-        .child(this.button(t, "chat-allow-always", "Allow always (2)", (_e, cx) => cx.spawn(async (cx) => this.answer(cx, ["2"]))))
-        .child(this.button(t, "chat-deny", "Deny (esc)", (_e, cx) => cx.spawn(async (cx) => this.answer(cx, ["esc"]))))))
-      .child(h_flex().child(div().flex_1()).child(this.ghost(t, "chat-open", "Open terminal", () => run("terminal.peek", { terminal: this.terminal }))));
+        .children(answers.map(([label, keys, primary], i) => this.button(t, `chat-answer-${i}`, label,
+          (_e, cx) => cx.spawn(async (cx) => this.answer(cx, keys)), primary, this.answering)))))
+      .when(Boolean(this.terminal), (el) => el.child(h_flex()
+        .child(div().flex_1())
+        .child(this.ghost(t, "chat-open", "Open terminal", () => run("terminal.peek", { terminal: this.terminal })))));
   }
 
   // Tool calls of one message: the first one, "+n" for the rest, all of them when expanded.
@@ -406,8 +477,9 @@ export default class Chat extends View {
       .overflow_y_scrollbar()
       .track_scroll(this.scroll)
       .on_scroll_wheel((_e, cx) => cx.timer.after(60, (cx) => {
+        const was = this.unseen;
         if (this.atBottom()) this.unseen = 0;
-        cx.notify();
+        if (was > 0 && this.unseen === 0) cx.notify();
       }))
       .children(items);
   }
