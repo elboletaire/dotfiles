@@ -76,7 +76,7 @@ does not ask again.
 ### Changes to octopilot itself
 
 The "Octopilot (code changes)" tab runs the agent `octopilot-code`,
-in the dotfiles, for changing octopilot: its scan, dashboard, skills,
+started in `ai/octopilot`, for changing octopilot: its scan, dashboard, skills,
 prompts and kitchen. When the user reports an octopilot bug or asks for a
 change or fix to octopilot, that is where it goes. Queue it without asking:
 
