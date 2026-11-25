@@ -1,0 +1,9 @@
+{
+  "agent": "hc:t7",
+  "terminal": "t7",
+  "status": "working",
+  "paused": false,
+  "text": "**api#401** is ready for you: PR open, CI green, review clean.\n\nStill on the pan: `web#405` and `sdk#19` are cooking, **web#398** burnt (tests red on main) and `app#230` is out of review rounds.",
+  "at": "2026-11-25T10:05:00Z",
+  "seq": 4
+}
