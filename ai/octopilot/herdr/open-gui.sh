@@ -132,17 +132,9 @@ find_agent() {
   done
 }
 
-# The orchestrator: this checkout's, or on the live checkout one from before
-# octopilot.dir existed (unlabelled), which is only ever reused, never killed.
-find_orch() {
-  local t d
-  t=$(find_agent "$ORCH_AGENT")
-  if [ -n "$t" ] || [ "$DIR" != "$LIVE_DIR" ]; then echo "$t"; return 0; fi
-  for t in $("$HC" ls --json --label "octopilot.agent=$ORCH_AGENT" | jq -r '.terminals[].address'); do
-    d=$("$HC" get "$t" --json | jq -r '.labels["octopilot.dir"] // empty')
-    if [ -z "$d" ]; then echo "$t"; return 0; fi
-  done
-}
+# The orchestrator is this checkout's only; an unlabelled one is never adopted
+# (it hits the "another octopilot" refusal instead).
+find_orch() { find_agent "$ORCH_AGENT"; }
 
 # Ends this checkout's terminals of an agent that are not running its program (a
 # shell herdr kept after claude exited, a dead headless), so it starts again.
