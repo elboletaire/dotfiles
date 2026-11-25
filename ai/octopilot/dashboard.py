@@ -880,17 +880,28 @@ def focus_agent(backend, name):
     return scan.herdr(["agent", "focus", name], timeout=10)[0] == 0
 
 
+def peek_hc(terminal):
+    """Peek at an hc terminal over its tab (herdr-app's terminal.peek), which
+    works on a parked one: agent.focus needs a pane -> bool."""
+    return scan.app_do("terminal.peek", ["--terminal", terminal], timeout=10)[0] == 0
+
+
 def open_prompter(model):
     """The prompter when there is one (that is where the user types), else the
     orchestrator itself. The prompter is looked up only in the dashboard's own
     backend; the orchestrator wherever its address points."""
     own = scan.HC if scan.OCTOPILOT_BACKEND == "hc" else scan.HERDR
-    if focus_agent(own, scan.PROMPTER_AGENT):
+    if own is scan.HC:
+        # Peek, not agent.focus: the engine terminals are parked (no pane).
+        prompter = scan.agent_address(scan.PROMPTER_AGENT)
+        if prompter and peek_hc(prompter):
+            return Result(True, "")
+    elif focus_agent(own, scan.PROMPTER_AGENT):
         return Result(True, "")
     _, hdr = model.build()
     backend, target = scan.split_address(hdr["orch"][0])
     if backend is scan.HC:
-        ok = focus_hc(pane=target)
+        ok = peek_hc(target)
     else:
         ok = scan.herdr(["agent", "focus", target], timeout=10)[0] == 0
     return Result(ok, "" if ok else f"no agent named {target}")
