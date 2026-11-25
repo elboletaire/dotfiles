@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # Installs Octopilot's herdr-app parts: each mod folder in herdr-app/mods is
-# symlinked into the app's mods (so edits here take effect), and a key opens
-# the Octopilot space (herdr/open-gui.sh) in a new tab. Idempotent.
+# symlinked into the app's mods (edits here take effect at once), and
+# programs.json gets an Octopilot entry, which the launcher mod runs.
 #
-#   install.sh [--dir <octopilot dir>] [--dry-run] [--uninstall]
+#   install.sh [--dir <octopilot dir>] [--key] [--dry-run] [--uninstall]
 #
-# --dir       the octopilot checkout the links point into (default: this one)
+# --dir       the octopilot checkout the links and the entry point into (default: this one)
+# --key       also bind ctrl-alt-o in keys.json (not on by default: see README)
 # --dry-run   print what would change, change nothing
-# --uninstall remove the mod links and the key, when they are ours
+# --uninstall remove the mod links, the program entry and the key, when they are ours
 #
 # HERDR_APP_HOME picks another app home, as herdr-app does.
 set -euo pipefail
@@ -17,13 +18,15 @@ APP_HOME="${HERDR_APP_HOME:-$HOME/.config/herdr-app}"
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 DRY=0
 UNINSTALL=0
+WITH_KEY=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --dir) DIR="$(cd "${2:?--dir needs a folder}" && pwd -P)"; shift ;;
+    --key) WITH_KEY=1 ;;
     --dry-run) DRY=1 ;;
     --uninstall) UNINSTALL=1 ;;
-    -h|--help) echo "usage: install.sh [--dir <octopilot dir>] [--dry-run] [--uninstall]"; exit 0 ;;
+    -h|--help) echo "usage: install.sh [--dir <octopilot dir>] [--key] [--dry-run] [--uninstall]"; exit 0 ;;
     *) echo "install.sh: unknown argument $1" >&2; exit 2 ;;
   esac
   shift
@@ -31,10 +34,54 @@ done
 
 MODS_SRC="$DIR/herdr-app/mods"
 MODS_DST="$APP_HOME/mods"
+PROGRAMS="$APP_HOME/programs.json"
 KEYS="$APP_HOME/keys.json"
-# What the key runs: the launcher, as herdr-app's terminal.open takes it.
-BINDING="$(jq -nc --arg script "$DIR/herdr/open-gui.sh" \
-  '{command: "terminal.open", args: {argv: ["bash", $script], place: "tab"}}')"
+LAUNCHER="$DIR/herdr/open-gui.sh"
+
+# What we wrote, recognised by shape, so a checkout that moved updates it.
+# Both are jq predicates on one value.
+OURS_PROGRAM='type == "object" and ((.run // []) | length == 3 and .[0] == "bash"
+  and (.[1] | type == "string" and endswith("/herdr/open-gui.sh")) and .[2] == "--close-launcher")'
+OURS_BINDING='type == "object" and .command == "terminal.open" and
+  ((.args.argv // []) | length >= 2 and .[0] == "bash"
+  and (.[1] | type == "string" and endswith("/herdr/open-gui.sh")))'
+
+# A herdr-app JSON file's content, or an empty object when it does not exist yet.
+read_json() {
+  if [ -f "$1" ]; then cat "$1"; else echo '{}'; fi
+}
+
+# The value at a jq path in a file (null when absent), failing when the file is
+# not valid JSON: herdr-app would reject it too.
+value_at() {
+  read_json "$1" | jq -c "$2" || {
+    echo "install.sh: $1 is not valid JSON; left as it is" >&2
+    return 1
+  }
+}
+
+# Rewrites a herdr-app JSON file with a jq filter, keeping a backup of the old
+# one, then checks the <name>.error herdr-app writes when it rejects the file.
+edit_json() {
+  local file=$1 filter=$2 backup="" tmp errfile
+  shift 2
+  errfile="${file%.json}.error"
+  tmp="$file.tmp.$$"
+  if [ -f "$file" ]; then
+    backup="$file.bak-octopilot.$(date +%Y%m%d%H%M%S)"
+    cp -p "$file" "$backup"
+  fi
+  read_json "$file" | jq "$@" "$filter" > "$tmp"
+  mv "$tmp" "$file"
+  echo "wrote $file${backup:+ (backup: $backup)}"
+  # The app reloads within a second or two.
+  sleep 2
+  if [ -n "$backup" ] && [ -f "$errfile" ] && [ "$errfile" -nt "$backup" ]; then
+    echo "install.sh: herdr-app rejected $file:" >&2
+    cat "$errfile" >&2
+    return 1
+  fi
+}
 
 # The mod folders this checkout ships, one path per line.
 mod_folders() {
@@ -89,54 +136,56 @@ unlink_mods() {
   done
 }
 
-# Rewrites keys.json with a jq filter, after keeping a backup of it.
-edit_keys() {
-  local backup tmp
-  backup="$KEYS.bak-octopilot.$(date +%Y%m%d%H%M%S)"
-  tmp="$KEYS.tmp.$$"
-  cp -p "$KEYS" "$backup"
-  jq "$@" "$KEYS" > "$tmp"
-  mv "$tmp" "$KEYS"
-  echo "rewrote $KEYS (backup: $backup)"
-  # The app reloads keys.json within a second; a rejected file leaves keys.error.
-  sleep 2
-  if [ -f "$APP_HOME/keys.error" ] && [ "$APP_HOME/keys.error" -nt "$backup" ]; then
-    echo "install.sh: herdr-app rejected keys.json:" >&2
-    cat "$APP_HOME/keys.error" >&2
-    return 1
+# programs.json's octopilot entry: what the launcher mod's palette entry and
+# the menus start. Other entries stay as they are.
+set_program() {
+  local current entry
+  current="$(value_at "$PROGRAMS" '.programs.octopilot // null')" || return 1
+  if [ "$UNINSTALL" -eq 1 ]; then
+    if [ "$(jq -n --argjson v "$current" "\$v | select($OURS_PROGRAM) | true")" != "true" ]; then
+      return 0
+    fi
+    if [ "$DRY" -eq 1 ]; then echo "would remove the octopilot program"; return 0; fi
+    edit_json "$PROGRAMS" 'del(.programs.octopilot)'
+    return
   fi
-}
-
-# The key: bound when free, left alone when it is bound to something else.
-set_key() {
-  local current
-  if [ ! -f "$KEYS" ]; then
-    # A keys file of our own would replace every default shortcut: wait for the
-    # app to write its own.
-    echo "install.sh: no $KEYS yet (open herdr-app once); key $KEY not bound" >&2
+  entry="$(jq -nc --arg s "$LAUNCHER" '{name: "Octopilot", run: ["bash", $s, "--close-launcher"]}')"
+  if [ "$current" = "$entry" ]; then return 0; fi
+  if [ "$current" != "null" ] && [ "$(jq -n --argjson v "$current" "\$v | select($OURS_PROGRAM) | true")" != "true" ]; then
+    echo "install.sh: programs.json has its own octopilot entry; left as it is" >&2
     return 0
   fi
-  current="$(jq -c --arg k "$KEY" '.global[$k] // null' "$KEYS")"
+  if [ "$DRY" -eq 1 ]; then echo "would set the octopilot program to $entry"; return 0; fi
+  edit_json "$PROGRAMS" '.programs.octopilot = $e' --argjson e "$entry"
+}
+
+# The ctrl-alt-o binding, only with --key; removed by --uninstall when ours.
+set_key() {
+  local current binding
+  if [ "$UNINSTALL" -eq 0 ] && [ "$WITH_KEY" -eq 0 ]; then return 0; fi
+  current="$(value_at "$KEYS" ".global[\"$KEY\"] // null")" || return 1
   if [ "$UNINSTALL" -eq 1 ]; then
-    if [ "$current" != "$BINDING" ]; then
+    if [ "$(jq -n --argjson v "$current" "\$v | select($OURS_BINDING) | true")" != "true" ]; then
       return 0
     fi
     if [ "$DRY" -eq 1 ]; then echo "would unbind $KEY"; return 0; fi
-    edit_keys --arg k "$KEY" 'del(.global[$k])'
+    edit_json "$KEYS" 'del(.global[$k])' --arg k "$KEY"
     return
   fi
-  if [ "$current" = "$BINDING" ]; then
+  if [ ! -f "$KEYS" ]; then
+    # A keys file of our own would replace every default shortcut.
+    echo "install.sh: no $KEYS yet (open herdr-app once); key $KEY not bound" >&2
     return 0
   fi
-  if [ "$current" != "null" ]; then
+  binding="$(jq -nc --arg s "$LAUNCHER" \
+    '{command: "terminal.open", args: {argv: ["bash", $s], place: "tab"}}')"
+  if [ "$current" = "$binding" ]; then return 0; fi
+  if [ "$current" != "null" ] && [ "$(jq -n --argjson v "$current" "\$v | select($OURS_BINDING) | true")" != "true" ]; then
     echo "install.sh: $KEY is bound to $current in $KEYS; left as it is" >&2
     return 0
   fi
-  if [ "$DRY" -eq 1 ]; then
-    echo "would bind $KEY to $BINDING in $KEYS"
-    return 0
-  fi
-  edit_keys --arg k "$KEY" --argjson b "$BINDING" '.global[$k] = $b'
+  if [ "$DRY" -eq 1 ]; then echo "would bind $KEY to $binding"; return 0; fi
+  edit_json "$KEYS" '.global[$k] = $b' --arg k "$KEY" --argjson b "$binding"
 }
 
 if ! command -v jq >/dev/null; then
@@ -149,4 +198,5 @@ if [ "$UNINSTALL" -eq 1 ]; then
 else
   link_mods
 fi
+set_program
 set_key

@@ -100,20 +100,27 @@ conversation, and `scan.sh chat-send <text>` / `chat-keys <keys>` type into the
 prompter. Under the TUI backend, or with nothing running, they report
 `"status": "offline"`.
 
-**Key and install.** `herdr-app/install.sh` links each `herdr-app/mods/<name>`
-into `~/.config/herdr-app/mods/` (a real file or folder there is refused, never
-replaced) and binds `ctrl-alt-o` in `keys.json` to open `herdr/open-gui.sh` in a
-new tab. It backs `keys.json` up first, leaves a key bound to something else
-alone, and waits for `keys.error` after writing. `scripts/install.sh` runs it
-when `herdr-app` is installed. Options: `--dir <octopilot dir>` (link the mods
-of another checkout, a worktree for instance), `--dry-run`, `--uninstall`.
-`HERDR_APP_HOME` picks another app home, as herdr-app does. Once `keys.json`
-is edited, herdr-app stops adding its new default shortcuts to it on upgrade;
-those then need adding by hand.
+**Launch and install.** `herdr-app/install.sh` links each
+`herdr-app/mods/<name>` into `~/.config/herdr-app/mods/` (a real file or folder
+there is refused, never replaced), and adds an `octopilot` entry to
+`programs.json` that runs `herdr/open-gui.sh --close-launcher`. The
+`octopilot-launcher` mod's palette entry, "Open Octopilot" (ctrl-shift-p), runs
+the same thing in a new tab, which closes again once the space is up. The
+palette entry starts the checkout at `~/.dotfiles`; `--dir` points only the
+links and the program entry at another checkout. `scripts/install.sh` runs the
+installer when `herdr-app` is installed. It does not bind a key: pass `--key`
+to bind `ctrl-alt-o` in `keys.json` as well (backed up first, a key bound to
+something else is left alone). Other options: `--dry-run`, `--uninstall`
+(removes what is ours, recognised by shape). `HERDR_APP_HOME` picks another app
+home, as herdr-app does. A `keys.json` you edit stops getting herdr-app's new
+default shortcuts on upgrade, which is why the key is opt-in. A rejected
+`programs.json` or `keys.json` leaves a `.error` file, which the installer reports.
 
 **Fallback.** `open-gui.sh --terminals` builds the TUI-style layout instead:
 one OCTOPILOT tab with the messenger, the curses dashboard and the prompter as
-terminal panes, plus the code-changes tab.
+terminal panes, plus the code-changes tab. On a space that already has the GUI
+layout it refuses, and a rerun on a space with the curses dashboard of that
+layout refuses too, so two dashboard loops never run.
 
 To test it next to a live TUI octopilot, run it from a worktree with a scratch
 state dir. Without `OCTOPILOT_STATE_DIR` it refuses, so a worktree never

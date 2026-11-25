@@ -16,7 +16,8 @@ actions. `$DIR` is the octopilot code dir (`props().dir`, else
 | `octopilot-chat` mod | pane in the Octopilot tab | the prompter as a chat over its hc terminal |
 | `octopilot-octopus` mod | floating window (`openOverlay` kind window, key `octopilot-octopus`, keep) | the messenger: what the orchestrator last said + kitchen log |
 | `herdr/open-gui.sh` | launcher | builds the space, starts terminals with `--session-id`, opens the mods |
-| `herdr-app/install.sh` | installer | symlinks mods into `~/.config/herdr-app/mods/`, adds the key binding |
+| `octopilot-launcher` mod | palette entry "Open Octopilot" (no view) | runs `herdr/open-gui.sh --close-launcher` in a new tab |
+| `herdr-app/install.sh` | installer | symlinks mods into `~/.config/herdr-app/mods/`, adds the `octopilot` program to `programs.json`; `--key` also binds ctrl-alt-o |
 
 ## view.json (written atomically by `dashboard.sh --headless`, on change and at least every 5 s)
 
@@ -86,12 +87,28 @@ Focus/peek/shell on hc rows may be done by the mod directly with `run()` using `
 
 Both agents are started by open-gui.sh with `claude --session-id <uuid>` and labelled
 `octopilot.session=<uuid>`; the transcript is `~/.claude/projects/*/<uuid>.jsonl`.
+A `/clear` starts a new transcript and leaves the label stale: when the labelled
+file is gone, the newest transcript of the terminal's folder that is no older
+than the terminal is used (no SessionStart hook; the plugin's hooks are takoyaki
+modules). The chat reports the session it read, so the mod sees the change.
 
 - `scan.sh speech --json` → `{"agent": "hc:t7", "terminal": "t7", "status": "working|blocked|idle|done|offline",
   "paused": false, "text": "<last orchestrator assistant message, markdown>", "at": "<ISO>", "seq": 41}`
-  (seq changes whenever text changes).
-- `scan.sh chat --json [--after <id>] [--limit 50]` → `{"terminal": "t8", "status": "…", "blocked": {"kind": "permission|question|auth", "msg": "…"} | null,
-  "messages": [{"id": "<transcript uuid>", "role": "user|assistant", "text": "markdown", "at": "<ISO>", "tools": ["Bash: $A status"]}]}`
-  (user messages only those typed by a person, assistant text blocks joined; tool calls summarised in `tools`).
-- `scan.sh chat-send <text…>` → types it into the prompter (`hc send`), `{"ok": true}`; exit 4 if blocked.
-- `scan.sh chat-keys <keys…>` → `hc keys` to the prompter (answering permission prompts: `1`, `2`, `esc`).
+  (`seq` is a CRC-32 of the message id and text: it changes whenever the text does).
+- `scan.sh chat --json [--after <id>] [--limit 50]` → `{"terminal": "t8", "session": "<uuid>", "status": "…",
+  "blocked": {"kind": "permission|question|auth", "msg": "…"} | null, "reset": false,
+  "messages": [{"id": "<transcript uuid>", "role": "user|assistant", "text": "markdown", "at": "<ISO>", "tools": ["Bash: $A status"]}]}`.
+  Messages are what a person typed (user), and assistant turns: text blocks joined, tool calls in `tools`.
+  Harness entries (tool results, meta, command output, notifications, compaction summaries) are not messages;
+  `<hc …>…</hc>` is shown unwrapped; an image alone reads `[image]`.
+  - Without `--after`: the newest `--limit` messages.
+  - With `--after <id>`: the anchor message first, then up to `limit` newer ones, so the mod updates by id.
+    The anchor is included even when nothing follows it (an assistant turn still being written keeps its id).
+  - An anchor that is not in the transcript (a new session after `/clear`): the newest `limit`, with `"reset": true`.
+  - Only the last 5 MB of a transcript is parsed; an older anchor is found by streaming the file.
+- `scan.sh chat-send <text…>` → types it into the prompter (`hc send … -- <text>`), `{"ok": true}`.
+  Exit 4 (`{"ok": false, "error": "agent_blocked"}`) when the prompter is blocked on a prompt; exit 3 when none runs.
+- `scan.sh chat-keys <keys…>` → `hc keys` to the prompter, only while it is blocked (answering permission prompts:
+  `1`, `2`, `esc`). Exit 4 `{"ok": false, "error": "prompter is not blocked"}` otherwise; exit 3 when none runs.
+- `--json` is accepted; the output is always JSON. Under the TUI backend, or with nothing running, speech and chat
+  report `"status": "offline"` and no text or messages.
