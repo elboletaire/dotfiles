@@ -302,7 +302,7 @@ reset_global_apm
   install_rtk() { :; }
   symlink_ai() { :; }
   merge_claude_settings() { :; }
-  migrate_octopilot_state() { :; }
+  install_modules() { :; }
   link_herdr_config() { :; }
   link_herdr_plugin() { :; }
   link_herdr_app() { :; }
@@ -496,7 +496,7 @@ echo "herdr \$*" >> "$TESTDIR/herdr.log"
 case "\$1 \$2" in
   "plugin list")
     if [ -s "$HERDR_STATE" ]; then
-      printf '{"result":{"plugins":[{"plugin_id":"elboletaire.octopilot","plugin_root":"%s"}]}}' "\$(cat "$HERDR_STATE")"
+      printf '{"result":{"plugins":[{"plugin_id":"elboletaire.arxiu","plugin_root":"%s"}]}}' "\$(cat "$HERDR_STATE")"
     else
       printf '{"result":{"plugins":[]}}'
     fi ;;
@@ -507,7 +507,7 @@ case "\$1 \$2" in
 esac
 MOCK
 chmod +x "$MOCK_HERDR"
-want="$DOTFILES/ai/octopilot/herdr"
+want="$DOTFILES/ai/arxiu/herdr"
 
 touch "$TESTDIR/herdr-down"
 : > "$TESTDIR/herdr.log"
@@ -521,76 +521,145 @@ rm -f "$TESTDIR/herdr-down"
 
 : > "$TESTDIR/herdr.log"
 link_herdr_plugin >/dev/null
-if grep -q "^herdr plugin link $DOTFILES/ai/octopilot/herdr$" "$TESTDIR/herdr.log" &&
-   grep -q "^herdr plugin link $DOTFILES/ai/arxiu/herdr$" "$TESTDIR/herdr.log" &&
-   grep -q "^herdr plugin link $DOTFILES/ai/taller/herdr$" "$TESTDIR/herdr.log"; then
-  pass "links the octopilot, arxiu and taller plugins"
+if grep -q "^herdr plugin link $DOTFILES/ai/arxiu/herdr$" "$TESTDIR/herdr.log" &&
+   grep -q "^herdr plugin link $DOTFILES/ai/taller/herdr$" "$TESTDIR/herdr.log" &&
+   ! grep -q "plugin link.*octopilot" "$TESTDIR/herdr.log"; then
+  pass "links the arxiu and taller plugins, not octopilot's"
 else
-  fail "did not link all three plugins: $(grep 'plugin link' "$TESTDIR/herdr.log" | tr '\n' ';')"
+  fail "wrong herdr plugin links: $(grep 'plugin link' "$TESTDIR/herdr.log" | tr '\n' ';')"
 fi
 
 : > "$HERDR_STATE"
 : > "$TESTDIR/herdr.log"
-_link_herdr_plugin elboletaire.octopilot "$want" >/dev/null
+_link_herdr_plugin elboletaire.arxiu "$want" >/dev/null
 [ "$(cat "$HERDR_STATE")" = "$want" ] && pass "links the plugin when absent" \
   || fail "plugin not linked to $want"
 
 : > "$TESTDIR/herdr.log"
-_link_herdr_plugin elboletaire.octopilot "$want" >/dev/null
+_link_herdr_plugin elboletaire.arxiu "$want" >/dev/null
 if grep -q "plugin link\|plugin unlink" "$TESTDIR/herdr.log"; then
   fail "re-ran link/unlink although already linked to the right root"
 else
   pass "leaves an already-correct link alone"
 fi
 
-echo "/somewhere/.worktrees/feat-herdr/ai/octopilot/herdr" > "$HERDR_STATE"
+echo "/somewhere/.worktrees/feat-herdr/ai/arxiu/herdr" > "$HERDR_STATE"
 : > "$TESTDIR/herdr.log"
-_link_herdr_plugin elboletaire.octopilot "$want" >/dev/null
-if grep -q "plugin unlink elboletaire.octopilot" "$TESTDIR/herdr.log" &&
+_link_herdr_plugin elboletaire.arxiu "$want" >/dev/null
+if grep -q "plugin unlink elboletaire.arxiu" "$TESTDIR/herdr.log" &&
    [ "$(cat "$HERDR_STATE")" = "$want" ]; then
   pass "relinks a plugin that points at another checkout"
 else
   fail "did not relink from a stale root"
 fi
 
-cat > "$MOCK_HERDR" <<MOCK
-#!/bin/bash
-echo "herdr \$*" >> "$TESTDIR/herdr.log"
-case "\$1 \$2" in
-  "plugin list") printf '{"result":{"plugins":[{"plugin_id":"elboletaire.autopilot","plugin_root":"/old/ai/autopilot/herdr"}]}}' ;;
-  "status server") echo "Status: running" ;;
-esac
-MOCK
-: > "$TESTDIR/herdr.log"
-link_herdr_plugin >/dev/null
-if grep -q "^herdr plugin unlink elboletaire.autopilot$" "$TESTDIR/herdr.log"; then
-  pass "unlinks the plugin's pre-Octopilot id"
-else
-  fail "left elboletaire.autopilot linked"
-fi
 rm -f "$MOCK_HERDR"
 
 echo ""
-echo "=== Test 24b: migrate_octopilot_state carries PR Autopilot's state over once ==="
-STATE_ROOT="$FAKE_HOME/.local/state"
-mkdir -p "$STATE_ROOT/pr-autopilot"
-printf '{\n  "orch": "herdr:autopilot",\n  "paused": true\n}\n' > "$STATE_ROOT/pr-autopilot/state.json"
-XDG_STATE_HOME="$STATE_ROOT" migrate_octopilot_state >/dev/null
-if [ ! -e "$STATE_ROOT/pr-autopilot" ] &&
-   grep -q '"orch": "herdr:octopilot"' "$STATE_ROOT/octopilot/state.json"; then
-  pass "moves the state dir and renames the recorded orchestrator"
+echo "=== Test 24b: install_module clones, fast-forwards and runs a module's install.sh ==="
+export GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.invalid
+export GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.invalid
+MOD="$TESTDIR/module"
+MOD_REMOTE="$MOD/remote.git"
+MOD_WORK="$MOD/work"
+MOD_DIR="$MOD/checkout"
+MOD_RUNS="$MOD/runs.log"
+rm -rf "$MOD"
+mkdir -p "$MOD_WORK"
+git init -q --bare -b main "$MOD_REMOTE"
+git init -q -b main "$MOD_WORK"
+printf '#!/bin/bash\necho ran >> "%s"\n' "$MOD_RUNS" > "$MOD_WORK/install.sh"
+chmod +x "$MOD_WORK/install.sh"
+# Commits a new version and pushes it to the bare remote.
+publish() {
+  echo "$1" > "$MOD_WORK/version"
+  git -C "$MOD_WORK" add -A
+  git -C "$MOD_WORK" commit -q -m "$1"
+  git -C "$MOD_WORK" push -q "$MOD_REMOTE" main
+}
+runs() { wc -l < "$MOD_RUNS" 2>/dev/null | tr -d ' ' || true; }
+publish v1
+MODULES=("octopilot|$MOD_REMOTE|$MOD_DIR")
+
+out=$(install_modules 2>&1) && rc=0 || rc=$?
+if [ "$rc" -eq 0 ] && [ -d "$MOD_DIR/.git" ] && [ "$(runs)" = 1 ] && [[ "$out" == *"Cloning octopilot"* ]]; then
+  pass "clones a missing module and runs its install.sh"
 else
-  fail "state not migrated: $(ls "$STATE_ROOT")"
+  fail "fresh clone: rc=$rc $out"
 fi
 
-mkdir -p "$STATE_ROOT/pr-autopilot"
-XDG_STATE_HOME="$STATE_ROOT" migrate_octopilot_state >/dev/null
-if [ -d "$STATE_ROOT/pr-autopilot" ] && [ -f "$STATE_ROOT/octopilot/state.json" ]; then
-  pass "leaves both alone once the octopilot state exists"
+publish v2
+: > "$MOD_RUNS"
+out=$(install_modules update 2>&1) && rc=0 || rc=$?
+if [ "$rc" -eq 0 ] && [ "$(git -C "$MOD_DIR" log -1 --format=%s)" = v2 ] && [ "$(runs)" = 1 ]; then
+  pass "update fast-forwards a clean checkout and runs its install.sh"
 else
-  fail "touched an existing octopilot state dir"
+  fail "update did not fast-forward: rc=$rc $out"
 fi
-rm -rf "$STATE_ROOT/pr-autopilot" "$STATE_ROOT/octopilot"
+
+publish v3
+echo local >> "$MOD_DIR/version"
+out=$(install_modules update 2>&1) && rc=0 || rc=$?
+if [ "$rc" -eq 0 ] && [[ "$out" == *"uncommitted changes"* ]] && [ "$(git -C "$MOD_DIR" log -1 --format=%s)" = v2 ] && grep -q local "$MOD_DIR/version"; then
+  pass "update leaves a dirty checkout alone"
+else
+  fail "dirty checkout was touched: rc=$rc $out"
+fi
+git -C "$MOD_DIR" checkout -q -- version
+
+git -C "$MOD_DIR" checkout -q -b topic
+out=$(install_modules update 2>&1) && rc=0 || rc=$?
+if [ "$rc" -eq 0 ] && [[ "$out" == *"not on its default branch"* ]] && [ "$(git -C "$MOD_DIR" symbolic-ref --short HEAD)" = topic ]; then
+  pass "update leaves a checkout on another branch alone"
+else
+  fail "other-branch checkout was touched: rc=$rc $out"
+fi
+git -C "$MOD_DIR" checkout -q main
+
+git -C "$MOD_DIR" remote set-url origin "$MOD/gone.git"
+out=$(install_modules update 2>&1) && rc=0 || rc=$?
+git -C "$MOD_DIR" remote set-url origin "$MOD_REMOTE"
+if [ "$rc" -eq 0 ] && [[ "$out" == *"could not fast-forward"* ]] && [ "$(git -C "$MOD_DIR" log -1 --format=%s)" = v2 ]; then
+  pass "update keeps the checkout when the remote is unreachable"
+else
+  fail "unreachable remote was not tolerated: rc=$rc $out"
+fi
+
+FAIL_DIR="$MOD/failing"
+mkdir -p "$FAIL_DIR"
+printf '#!/bin/bash\nexit 3\n' > "$FAIL_DIR/install.sh"
+chmod +x "$FAIL_DIR/install.sh"
+out=$(install_module failing "$MOD_REMOTE" "$FAIL_DIR" 2>&1) && rc=0 || rc=$?
+if [ "$rc" -eq 0 ] && [[ "$out" == *"install.sh failed"* ]]; then
+  pass "a failing module install.sh warns and returns 0"
+else
+  fail "failing install.sh aborted: rc=$rc $out"
+fi
+
+PLAIN_DIR="$MOD/plain"
+mkdir -p "$PLAIN_DIR"
+out=$(install_module plain "$MOD_REMOTE" "$PLAIN_DIR" 2>&1) && rc=0 || rc=$?
+if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
+  pass "a module without install.sh is skipped quietly"
+else
+  fail "missing install.sh was not quiet: rc=$rc $out"
+fi
+
+out=$(install_module gone "$MOD/nope.git" "$MOD/gone" 2>&1) && rc=0 || rc=$?
+if [ "$rc" -eq 0 ] && [[ "$out" == *"could not clone"* ]] && [ ! -e "$MOD/gone" ]; then
+  pass "a failed clone warns and returns 0"
+else
+  fail "failed clone aborted: rc=$rc $out"
+fi
+
+out=$(install_module new "$MOD_REMOTE" "$MOD/never" relink 2>&1) && rc=0 || rc=$?
+if [ "$rc" -eq 0 ] && [ ! -e "$MOD/never" ]; then
+  pass "relink mode never clones a missing module"
+else
+  fail "relink cloned a module: rc=$rc $out"
+fi
+unset GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
+rm -rf "$MOD"
 
 echo ""
 echo "=== Test 25: install_herdr installs, upgrades and wires only missing integrations ==="
@@ -1242,12 +1311,13 @@ out=$(
   install_herdr() { echo "install_herdr"; }
   install_herdr_app() { echo "install_herdr_app"; }
   link_herdr_config() { echo "link_herdr_config"; }
+  install_modules() { echo "install_modules"; }
   link_herdr_plugin() { echo "link_herdr_plugin"; }
   link_herdr_app() { echo "link_herdr_app"; }
   do_herdr
 )
-if ! grep -q "install_herdr_app" <<<"$out" && grep -q "link_herdr_app" <<<"$out"; then
-  pass "herdr repair skips the herdr-app install and still links its pieces"
+if ! grep -q "install_herdr_app" <<<"$out" && grep -q "install_modules" <<<"$out" && grep -q "link_herdr_app" <<<"$out"; then
+  pass "herdr repair skips the herdr-app install and still runs the modules and links"
 else
   fail "herdr repair installed herdr-app: $out"
 fi

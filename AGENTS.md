@@ -1,8 +1,8 @@
 # Dotfiles: agent guide
 
 Personal dotfiles: shell, vim, git, terminal, and the AI tooling under `ai/`.
-Coding agents working in this repo read this file. Octopilot's own guide is
-`ai/octopilot/AGENTS.md`.
+Coding agents working in this repo read this file. Octopilot lives in its own
+repo, see [Per-project docs](#per-project-docs).
 
 ## Machines
 
@@ -43,8 +43,6 @@ AI (`ai/`):
 - `pi/`: global Pi instructions (`AGENTS.md`), subagents in `agents/`.
 - `prompts/`: slash-command prompts, shared by Pi and Claude.
 - `hooks/`: `gh-hygiene.py`, a tool hook, with its regression suite.
-- `octopilot/`: the Octopilot orchestrator and its herdr front ends. See
-  `ai/octopilot/AGENTS.md`.
 - `arxiu/`: the Arxiu research library and its Claude plugin. See
   `ai/arxiu/README.md`.
 - `taller/`: the Taller board and its Claude plugin. See `ai/taller/README.md`.
@@ -73,7 +71,9 @@ Nothing is copied: `scripts/install.sh` creates symlinks.
 - `merge_claude_settings`: merges `ai/claude/settings.json` into
   `~/.claude/settings.json`, keeping keys other tools wrote. It sets
   `CLAUDE_CODE_PLUGIN_DIRS`, which loads the Claude plugins of
-  `ai/octopilot/plugin`, `ai/arxiu/bibliotecaria` and `ai/taller/plugin`.
+  `~/src/octopilot/plugin` (Octopilot's repo, see
+  [External modules](#external-modules)), `ai/arxiu/bibliotecaria` and
+  `ai/taller/plugin`.
 
 ## Commands
 
@@ -81,8 +81,8 @@ Nothing is copied: `scripts/install.sh` creates symlinks.
 
 | Command | What it does |
 |---|---|
-| `install` | Full setup of a new machine: system packages, nvm, Claude Code and Pi, APM, herdr with herdr-app and herdr-core, uv, submodules, symlinks, AI config, herdr links, login shell, vim plugins. Files it replaces go to `~/old_dotfiles`. |
-| `update` | Refreshes the same pieces without system packages or submodule ref bumps. Reinstalls herdr-app only when its version changed. |
+| `install` | Full setup of a new machine: system packages, nvm, Claude Code and Pi, APM, herdr with herdr-app and herdr-core, uv, submodules, symlinks, AI config, herdr links, external modules, login shell, vim plugins. Files it replaces go to `~/old_dotfiles`. |
+| `update` | Refreshes the same pieces without system packages or submodule ref bumps, and fast-forwards the external modules. Reinstalls herdr-app only when its version changed. |
 | `ai` | Refreshes only the AI stack: agents, herdr, rtk, skills, AI links, settings, herdr links. |
 | `ai-config` | Relinks prompts, instructions, agents and the locked skills. Installs no agents or tooling and makes no backups, except the legacy cleanup below. |
 | `skills-bump` | Moves every skill to the latest commit of its branch (`apm update -g`), copies `ai/apm.yml` and `ai/apm.lock.yaml` back and shows `git diff --stat -- ai/`. The only command that changes skill versions; `install`, `update`, `ai` and `ai-config` install the locked commits. |
@@ -96,24 +96,37 @@ Nothing is copied: `scripts/install.sh` creates symlinks.
 Octopilot's agents, in two front ends:
 
 - **TUI**: `config/herdr/config.toml` is the tracked herdr config (keys, sidebar,
-  notifications). Three herdr plugins are linked with `herdr plugin link` by
-  `install.sh`: `elboletaire.octopilot` (`ai/octopilot/herdr`),
-  `elboletaire.arxiu` (`ai/arxiu/herdr`) and `elboletaire.taller`
-  (`ai/taller/herdr`).
-- **GUI**: `herdr-app` runs the terminals in herdr-core (`hc`). Octopilot's native
-  mods live in `ai/octopilot/herdr-app/mods/`. `ai/octopilot/herdr-app/install.sh`
-  links them into `~/.config/herdr-app/mods/` and is run by `install.sh` when
-  `herdr-app` is installed.
+  notifications). Two herdr plugins are linked with `herdr plugin link` by
+  `install.sh`: `elboletaire.arxiu` (`ai/arxiu/herdr`) and `elboletaire.taller`
+  (`ai/taller/herdr`). Octopilot's plugin (`elboletaire.octopilot`) is linked by
+  its own `install.sh`, see [External modules](#external-modules).
+- **GUI**: `herdr-app` runs the terminals in herdr-core (`hc`). Octopilot's
+  mods are installed by its own `install.sh` too.
 
 ## Per-project docs
 
 Each `ai/<project>/` has its own guide. Read it before changing that project, and
 keep project detail there rather than in this file:
 
-- `ai/octopilot/AGENTS.md`: Octopilot code changes. Also `ai/octopilot/herdr/README.md`
-  (the TUI layout) and `ai/octopilot/herdr-app/CONTRACT.md` (the GUI contract).
+- Octopilot is its own repo, `git@github.com:elboletaire/octopilot.git`, cloned to
+  `${OCTOPILOT_DIR:-~/src/octopilot}`. Its `AGENTS.md` covers code changes, its
+  `herdr/README.md` the TUI layout and its `herdr-app/CONTRACT.md` the GUI contract.
 - `ai/arxiu/README.md`
 - `ai/taller/README.md`
+
+## External modules
+
+Some tools live in their own repos. `MODULES` in `scripts/install.sh` lists them
+as `name|git-url|dir`, and `install_modules` handles each one:
+
+- **Clone**: when `dir` is missing, it is cloned from `git-url` (`install`, `herdr`).
+- **Update**: `update` fast-forwards a clean checkout on its default branch. A dirty
+  tree, another branch, or an offline or diverged remote is left alone with a note.
+- **Run**: its `install.sh`, when executable, runs last (`install`, `update`,
+  `herdr`, `ai`). `ai-config` runs it only when the module is already cloned.
+
+A failure warns and the install carries on. Octopilot is the only entry; add
+arxiu or taller there when they move out.
 
 ## Conventions
 
@@ -131,8 +144,9 @@ keep project detail there rather than in this file:
 
 ## Adding machine-specific dashboards and tools
 
-Put a tool that only one machine needs under `ai/<name>/`, as `octopilot`,
-`arxiu` and `taller` are. Make it optional: `scripts/install.sh` should set it
-up only when its command exists (`command -v`) or an opt-in env var or marker is
-set, and skip it quietly otherwise. Document it in `ai/<name>/AGENTS.md` and
-link that file from this one.
+Put a tool that only one machine needs under `ai/<name>/`, as `arxiu` and
+`taller` are, or in its own repo, listed in `MODULES` (see
+[External modules](#external-modules)). Make it optional: `scripts/install.sh`
+should set it up only when its command exists (`command -v`) or an opt-in env var
+or marker is set, and skip it quietly otherwise. Document it in `ai/<name>/AGENTS.md`
+and link that file from this one.
