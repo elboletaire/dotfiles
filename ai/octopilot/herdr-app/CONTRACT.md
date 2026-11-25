@@ -14,10 +14,10 @@ actions. `$DIR` is the octopilot code dir (`props().dir`, else
 | headless dashboard | `dashboard.sh --headless` in an hc terminal ("engine" tab) | runs every dashboard loop (GitHub refresh, doorbell, notifications, desktop notify, sidebar tokens) and writes `$STATE_DIR/view.json` |
 | `octopilot-dashboard` mod | pane in the Octopilot tab | renders view.json, keyboard + mouse, sends actions |
 | `octopilot-chat` mod | pane in the Octopilot tab | the prompter as a chat over its hc terminal |
-| `octopilot-octopus` mod | floating window (`openOverlay` kind window, key `octopilot-octopus`, keep) | the messenger: what the orchestrator last said + kitchen log |
+| `octopilot-kitchen` mod | floating block in the `octopilot` layout (the right-hand corner of every tab) | the takoyaki kitchen chef: reads view.json `pan` and `kitchen`, and `scan.sh speech` for the orchestrator's last message. The dashboard's "kitchen" button toggles the layout |
 | `herdr/open-gui.sh` | launcher | builds the space, starts terminals with `--session-id`, opens the mods |
 | `octopilot-launcher` mod | palette entry "Open Octopilot" (no view) | runs `herdr/open-gui.sh --close-launcher` in a new tab |
-| `herdr-app/install.sh` | installer | symlinks mods into `~/.config/herdr-app/mods/`, adds the `octopilot` program to `programs.json`, writes `layouts/octopilot.json` (`main.json` + a floating `octopilot-kitchen` block, which open-gui.sh switches to); `--key` also binds ctrl-alt-o |
+| `herdr-app/install.sh` | installer | symlinks mods into `~/.config/herdr-app/mods/`, adds the `octopilot` program to `programs.json`, writes `layouts/octopilot.json` (`main.json` + a floating `octopilot-kitchen` block with the `dir` and `state_dir` props, which open-gui.sh switches to); `--key` also binds ctrl-alt-o |
 
 ## view.json (written atomically by `dashboard.sh --headless`, on change and at least every 5 s)
 
@@ -86,6 +86,7 @@ Entry:
   "kind": "WORKING", "section": "running", "title": "…", "draft": false, "url": "https://…",
   "checks": "pass|fail|pending|none", "agent": "running|waiting|idle|stopped|error|null",
   "rounds": 1, "max_rounds": 3, "quiet_s": 600, "stalled": false, "needs": false, "why": "ready to merge",
+  "driver": "agent|orchestrator|null",              // who drives the item; rounds is 0 (not null) for agent
   "note": "…", "pick_kind": "issue|review only|adopt PR|your PR",
   "session": "sp…|w…|null", "backend": "hc|herdr|null", "pane": "t7|null", "path": "/…|null",
   "branch": "…", "pr": 12, "stack": 1, "open": true, "parked": false, "tracked": true,

@@ -88,13 +88,15 @@ terminals run in herdr-core) as one space with three tabs:
 | **Octopilot (code changes)** | a claude for changing octopilot itself |
 
 The headless dashboard runs the loops and writes `view.json`; the mods only
-render it and send actions. The octopus window (the orchestrator's last
-message and the kitchen log) is the `octopilot-octopus` mod, opened by the
-dashboard, not by the launcher.
+render it and send actions. The kitchen is the `octopilot-kitchen` mod, a
+floating block of the `octopilot` layout (the dashboard's kitchen button toggles
+that layout).
 
 Each claude starts with `claude --session-id <uuid>` and is labelled
-`octopilot.session=<uuid>`, which names its transcript
-(`~/.claude/projects/*/<uuid>.jsonl`). `scan.sh speech --json` reads the
+`octopilot.session=<uuid>`. Its transcript (`~/.claude/projects/*/<uuid>.jsonl`)
+is found from the claude in the terminal's foreground, through its
+`~/.claude/sessions/<pid>.json` (which follows `/clear`); the label is only the
+fallback when no claude runs there. `scan.sh speech --json` reads the
 orchestrator's last message, `scan.sh chat --json [--after <id>]` the prompter's
 conversation, and `scan.sh chat-send <text>` / `chat-keys <keys>` type into the
 prompter. Under the TUI backend, or with nothing running, they report

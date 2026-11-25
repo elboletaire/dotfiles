@@ -27,16 +27,16 @@
       "title": "🟡 Running",
       "entries": [
         {
-          "key": "vocdoni/vocdoni-app#452",
-          "label": "vocdoni-app#452",
+          "key": "acme/widgets#452",
+          "label": "widgets#452",
           "kind": "WORKING",
           "section": "running",
           "title": "feat: sort proposals by deadline",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/452",
+          "url": "https://github.com/acme/widgets/pull/452",
           "checks": "pending",
           "agent": "running",
-          "rounds": null,
+          "rounds": 0,
           "max_rounds": 3,
           "quiet_s": 340,
           "stalled": false,
@@ -47,7 +47,7 @@
           "session": "w41",
           "backend": "herdr",
           "pane": "t7",
-          "path": "/home/dev/src/vocdoni-app/.worktrees/feat/sort-deadline",
+          "path": "/home/user/src/acme/widgets/.worktrees/feat/sort-deadline",
           "branch": "feat/sort-deadline",
           "pr": 452,
           "stack": 1,
@@ -83,18 +83,19 @@
               "id": "remove",
               "key": "Delete",
               "label": "remove",
-              "confirm": "⚠ its agent is working -- remove vocdoni-app#452? (workspace and worktree deleted, untracked)"
+              "confirm": "⚠ its agent is working -- remove widgets#452? (workspace and worktree deleted, untracked)"
             }
-          ]
+          ],
+          "driver": "agent"
         },
         {
-          "key": "vocdoni/vocdoni-sdk#1190",
-          "label": "vocdoni-sdk#1190 +2",
+          "key": "acme/gizmo-sdk#1190",
+          "label": "gizmo-sdk#1190 +2",
           "kind": "WORKING",
           "section": "running",
           "title": "Census3 token holders: pagination",
           "draft": true,
-          "url": "https://github.com/vocdoni/vocdoni-sdk/pull/1190",
+          "url": "https://github.com/acme/gizmo-sdk/pull/1190",
           "checks": "none",
           "agent": "running",
           "rounds": 1,
@@ -108,7 +109,7 @@
           "session": "w52",
           "backend": "hc",
           "pane": "t12",
-          "path": "/home/dev/src/vocdoni-sdk/.worktrees/feat/census3-pages",
+          "path": "/home/user/src/acme/gizmo-sdk/.worktrees/feat/census3-pages",
           "branch": "feat/census3-pages",
           "pr": 1190,
           "stack": 3,
@@ -134,7 +135,8 @@
               "label": "detach",
               "confirm": null
             }
-          ]
+          ],
+          "driver": "agent"
         }
       ]
     },
@@ -143,13 +145,13 @@
       "title": "⏭ Next tick",
       "entries": [
         {
-          "key": "vocdoni/vocdoni-app#447",
-          "label": "vocdoni-app#447",
+          "key": "acme/widgets#447",
+          "label": "widgets#447",
           "kind": "MERGED",
           "section": "orch",
           "title": "chore: drop the legacy poll",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/447",
+          "url": "https://github.com/acme/widgets/pull/447",
           "checks": "pass",
           "agent": null,
           "rounds": null,
@@ -163,7 +165,7 @@
           "session": "w38",
           "backend": "herdr",
           "pane": "t3",
-          "path": "/home/dev/src/vocdoni-app/.worktrees/work",
+          "path": "/home/user/src/acme/widgets/.worktrees/work",
           "branch": "feat/447",
           "pr": 447,
           "stack": 1,
@@ -183,16 +185,17 @@
               "label": "browser",
               "confirm": null
             }
-          ]
+          ],
+          "driver": "orchestrator"
         },
         {
-          "key": "vocdoni/vocdoni-sdk#1186",
-          "label": "vocdoni-sdk#1186",
+          "key": "acme/gizmo-sdk#1186",
+          "label": "gizmo-sdk#1186",
           "kind": "REVIEW",
           "section": "orch",
           "title": "fix: retry the relayer on 502",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-sdk/pull/1186",
+          "url": "https://github.com/acme/gizmo-sdk/pull/1186",
           "checks": "pass",
           "agent": "idle",
           "rounds": 2,
@@ -206,7 +209,7 @@
           "session": "hc-9",
           "backend": "hc",
           "pane": "t9",
-          "path": "/home/dev/src/vocdoni-sdk/.worktrees/work",
+          "path": "/home/user/src/acme/gizmo-sdk/.worktrees/work",
           "branch": "feat/1186",
           "pr": 1186,
           "stack": 1,
@@ -232,7 +235,8 @@
               "label": "detach",
               "confirm": null
             }
-          ]
+          ],
+          "driver": "orchestrator"
         }
       ]
     },
@@ -241,13 +245,13 @@
       "title": "🔴 Needs you",
       "entries": [
         {
-          "key": "vocdoni/vocdoni-app#438",
-          "label": "vocdoni-app#438",
+          "key": "acme/widgets#438",
+          "label": "widgets#438",
           "kind": "READY",
           "section": "needs",
           "title": "fix: receipts for failed votes",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/438",
+          "url": "https://github.com/acme/widgets/pull/438",
           "checks": "pass",
           "agent": "idle",
           "rounds": 2,
@@ -261,7 +265,7 @@
           "session": "w29",
           "backend": "herdr",
           "pane": "t4",
-          "path": "/home/dev/src/vocdoni-app/.worktrees/work",
+          "path": "/home/user/src/acme/widgets/.worktrees/work",
           "branch": "feat/438",
           "pr": 438,
           "stack": 1,
@@ -305,16 +309,17 @@
               "label": "remove",
               "confirm": null
             }
-          ]
+          ],
+          "driver": "agent"
         },
         {
-          "key": "vocdoni/vocdoni-app#401",
-          "label": "vocdoni-app#401",
+          "key": "acme/widgets#401",
+          "label": "widgets#401",
           "kind": "CAPPED",
           "section": "needs",
           "title": "refactor: census snapshot cache",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/401",
+          "url": "https://github.com/acme/widgets/pull/401",
           "checks": "fail",
           "agent": "idle",
           "rounds": 3,
@@ -328,7 +333,7 @@
           "session": "w22",
           "backend": "herdr",
           "pane": "t6",
-          "path": "/home/dev/src/vocdoni-app/.worktrees/work",
+          "path": "/home/user/src/acme/widgets/.worktrees/work",
           "branch": "feat/401",
           "pr": 401,
           "stack": 1,
@@ -352,7 +357,7 @@
               "id": "grant",
               "key": "R",
               "label": "another round",
-              "confirm": "press R again to grant vocdoni-app#401 another 3 review rounds"
+              "confirm": "press R again to grant widgets#401 another 3 review rounds"
             },
             {
               "id": "park",
@@ -366,16 +371,17 @@
               "label": "remove",
               "confirm": null
             }
-          ]
+          ],
+          "driver": "agent"
         },
         {
-          "key": "vocdoni/vocdoni-sdk#1183",
-          "label": "vocdoni-sdk#1183",
+          "key": "acme/gizmo-sdk#1183",
+          "label": "gizmo-sdk#1183",
           "kind": "STALLED",
           "section": "needs",
           "title": "docs: ballot modes table",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-sdk/pull/1183",
+          "url": "https://github.com/acme/gizmo-sdk/pull/1183",
           "checks": "fail",
           "agent": "waiting",
           "rounds": 1,
@@ -389,7 +395,7 @@
           "session": "hc-4",
           "backend": "hc",
           "pane": "t11",
-          "path": "/home/dev/src/vocdoni-sdk/.worktrees/work",
+          "path": "/home/user/src/acme/gizmo-sdk/.worktrees/work",
           "branch": "feat/1183",
           "pr": 1183,
           "stack": 1,
@@ -433,16 +439,17 @@
               "label": "remove",
               "confirm": null
             }
-          ]
+          ],
+          "driver": "agent"
         },
         {
-          "key": "vocdoni/vocdoni-sdk#1172",
-          "label": "vocdoni-sdk#1172",
+          "key": "acme/gizmo-sdk#1172",
+          "label": "gizmo-sdk#1172",
           "kind": "PUSHED",
           "section": "needs",
           "title": "feat: wallet signer adapter",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-sdk/pull/1172",
+          "url": "https://github.com/acme/gizmo-sdk/pull/1172",
           "checks": "pass",
           "agent": "idle",
           "rounds": 1,
@@ -456,7 +463,7 @@
           "session": "w17",
           "backend": "herdr",
           "pane": "t2",
-          "path": "/home/dev/src/vocdoni-sdk/.worktrees/work",
+          "path": "/home/user/src/acme/gizmo-sdk/.worktrees/work",
           "branch": "feat/1172",
           "pr": 1172,
           "stack": 1,
@@ -474,7 +481,7 @@
               "id": "ack",
               "key": "x",
               "label": "ack",
-              "confirm": "press x again to ack the new commits on vocdoni-sdk#1172"
+              "confirm": "press x again to ack the new commits on gizmo-sdk#1172"
             },
             {
               "id": "peek",
@@ -500,7 +507,8 @@
               "label": "remove",
               "confirm": null
             }
-          ]
+          ],
+          "driver": "agent"
         }
       ]
     },
@@ -509,16 +517,16 @@
       "title": "💤 Done",
       "entries": [
         {
-          "key": "vocdoni/vocdoni-app#430",
-          "label": "vocdoni-app#430",
+          "key": "acme/widgets#430",
+          "label": "widgets#430",
           "kind": "DONE",
           "section": "done",
           "title": "docs: census quickstart",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/430",
+          "url": "https://github.com/acme/widgets/pull/430",
           "checks": "pass",
           "agent": null,
-          "rounds": null,
+          "rounds": 0,
           "max_rounds": 3,
           "quiet_s": null,
           "stalled": false,
@@ -529,7 +537,7 @@
           "session": "w12",
           "backend": "herdr",
           "pane": "t1",
-          "path": "/home/dev/src/vocdoni-app/.worktrees/work",
+          "path": "/home/user/src/acme/widgets/.worktrees/work",
           "branch": "feat/430",
           "pr": 430,
           "stack": 1,
@@ -567,19 +575,20 @@
               "label": "remove",
               "confirm": null
             }
-          ]
+          ],
+          "driver": "agent"
         },
         {
-          "key": "vocdoni/vocdoni-app#420",
-          "label": "vocdoni-app#420",
+          "key": "acme/widgets#420",
+          "label": "widgets#420",
           "kind": "DONE",
           "section": "done",
           "title": "chore: bump the lockfile",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/420",
+          "url": "https://github.com/acme/widgets/pull/420",
           "checks": "pass",
           "agent": null,
-          "rounds": null,
+          "rounds": 0,
           "max_rounds": 3,
           "quiet_s": null,
           "stalled": false,
@@ -604,16 +613,17 @@
               "label": "browser",
               "confirm": null
             }
-          ]
+          ],
+          "driver": "agent"
         },
         {
-          "key": "vocdoni/vocdoni-sdk#1160",
-          "label": "vocdoni-sdk#1160",
+          "key": "acme/gizmo-sdk#1160",
+          "label": "gizmo-sdk#1160",
           "kind": "GONE",
           "section": "done",
           "title": "fix: typo in the README",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-sdk/pull/1160",
+          "url": "https://github.com/acme/gizmo-sdk/pull/1160",
           "checks": "none",
           "agent": null,
           "rounds": null,
@@ -641,19 +651,20 @@
               "label": "browser",
               "confirm": null
             }
-          ]
+          ],
+          "driver": null
         },
         {
-          "key": "vocdoni/vocdoni-sdk#1150",
-          "label": "vocdoni-sdk#1150",
+          "key": "acme/gizmo-sdk#1150",
+          "label": "gizmo-sdk#1150",
           "kind": "DONE",
           "section": "done",
           "title": "test: snapshot the census encoder",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-sdk/pull/1150",
+          "url": "https://github.com/acme/gizmo-sdk/pull/1150",
           "checks": "pass",
           "agent": null,
-          "rounds": null,
+          "rounds": 0,
           "max_rounds": 3,
           "quiet_s": null,
           "stalled": false,
@@ -678,7 +689,8 @@
               "label": "browser",
               "confirm": null
             }
-          ]
+          ],
+          "driver": "agent"
         }
       ],
       "hidden": 3
@@ -686,16 +698,16 @@
   ],
   "pick": [
     {
-      "repo": "vocdoni/vocdoni-app",
+      "repo": "acme/widgets",
       "entries": [
         {
-          "key": "vocdoni/vocdoni-app!457",
-          "label": "vocdoni-app!457",
+          "key": "acme/widgets!457",
+          "label": "widgets!457",
           "kind": "PROPOSE",
           "section": "pick",
           "title": "Batch the vote receipts",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/issues/457",
+          "url": "https://github.com/acme/widgets/issues/457",
           "checks": "none",
           "agent": null,
           "rounds": null,
@@ -721,13 +733,13 @@
               "id": "go",
               "key": "g",
               "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app!457' to the orchestrator"
+              "confirm": "press g again to send 'go acme/widgets!457' to the orchestrator"
             },
             {
               "id": "no",
               "key": "n",
               "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app!457' to the orchestrator"
+              "confirm": "press n again to send 'no acme/widgets!457' to the orchestrator"
             },
             {
               "id": "browser",
@@ -736,16 +748,17 @@
               "confirm": null
             }
           ],
-          "index": 1
+          "index": 1,
+          "driver": null
         },
         {
-          "key": "vocdoni/vocdoni-app#463",
-          "label": "vocdoni-app#463",
+          "key": "acme/widgets#463",
+          "label": "widgets#463",
           "kind": "PROPOSE",
           "section": "pick",
           "title": "Review: relayer retry backoff",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/463",
+          "url": "https://github.com/acme/widgets/pull/463",
           "checks": "none",
           "agent": null,
           "rounds": null,
@@ -786,16 +799,17 @@
               "confirm": null
             }
           ],
-          "index": 2
+          "index": 2,
+          "driver": null
         },
         {
-          "key": "vocdoni/vocdoni-app#466",
-          "label": "vocdoni-app#466",
+          "key": "acme/widgets#466",
+          "label": "widgets#466",
           "kind": "PROPOSE",
           "section": "pick",
           "title": "Adopt the stale dark-mode tokens PR",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/466",
+          "url": "https://github.com/acme/widgets/pull/466",
           "checks": "none",
           "agent": null,
           "rounds": null,
@@ -836,21 +850,22 @@
               "confirm": null
             }
           ],
-          "index": 3
+          "index": 3,
+          "driver": null
         }
       ]
     },
     {
-      "repo": "vocdoni/vocdoni-sdk",
+      "repo": "acme/gizmo-sdk",
       "entries": [
         {
-          "key": "vocdoni/vocdoni-sdk!1196",
-          "label": "vocdoni-sdk!1196",
+          "key": "acme/gizmo-sdk!1196",
+          "label": "gizmo-sdk!1196",
           "kind": "PROPOSE",
           "section": "pick",
           "title": "Add a CSP auth example",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-sdk/issues/1196",
+          "url": "https://github.com/acme/gizmo-sdk/issues/1196",
           "checks": "none",
           "agent": null,
           "rounds": null,
@@ -891,16 +906,17 @@
               "confirm": null
             }
           ],
-          "index": 4
+          "index": 4,
+          "driver": null
         },
         {
-          "key": "vocdoni/vocdoni-sdk#1199",
-          "label": "vocdoni-sdk#1199",
+          "key": "acme/gizmo-sdk#1199",
+          "label": "gizmo-sdk#1199",
           "kind": "PROPOSE",
           "section": "pick",
           "title": "Your PR: ballot encoding edge cases",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-sdk/pull/1199",
+          "url": "https://github.com/acme/gizmo-sdk/pull/1199",
           "checks": "none",
           "agent": null,
           "rounds": null,
@@ -941,21 +957,22 @@
               "confirm": null
             }
           ],
-          "index": 5
+          "index": 5,
+          "driver": null
         }
       ]
     },
     {
-      "repo": "vocdoni/vocdoni-contributing",
+      "repo": "acme/handbook",
       "entries": [
         {
-          "key": "vocdoni/vocdoni-contributing#22",
-          "label": "vocdoni-contributing#22",
+          "key": "acme/handbook#22",
+          "label": "handbook#22",
           "kind": "PROPOSE",
           "section": "pick",
           "title": "Review: plugin install through APM",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-contributing/pull/22",
+          "url": "https://github.com/acme/handbook/pull/22",
           "checks": "none",
           "agent": null,
           "rounds": null,
@@ -996,7 +1013,8 @@
               "confirm": null
             }
           ],
-          "index": 6
+          "index": 6,
+          "driver": null
         }
       ]
     }
@@ -1004,58 +1022,73 @@
   "notes": [
     {
       "kind": "UNCLONED",
-      "key": "vocdoni/vocdoni-contributing#22"
+      "key": "acme/handbook#22"
     },
     {
       "kind": "STALE",
-      "key": "vocdoni/vocdoni-app#401"
+      "key": "acme/widgets#401"
     }
   ],
   "activity": [
     {
       "at": 1795615590.3828876,
       "kind": "report",
-      "key": "vocdoni/vocdoni-app#438",
+      "key": "acme/widgets#438",
       "detail": "ready: tests pass"
     },
     {
       "at": 1795615515.3828876,
       "kind": "spawn",
-      "key": "vocdoni/vocdoni-sdk#1190",
+      "key": "acme/gizmo-sdk#1190",
       "detail": "agent started"
     },
     {
       "at": 1795615370.3828876,
       "kind": "sent",
-      "key": "vocdoni/vocdoni-app#401",
+      "key": "acme/widgets#401",
       "detail": "re-review requested"
     },
     {
       "at": 1795615000.3828876,
       "kind": "cleanup",
-      "key": "vocdoni/vocdoni-app#447",
+      "key": "acme/widgets#447",
       "detail": "workspace removed, rebase fan-out"
     },
     {
       "at": 1795614310.3828876,
       "kind": "report",
-      "key": "vocdoni/vocdoni-sdk#1183",
+      "key": "acme/gizmo-sdk#1183",
       "detail": "stalled: no report for 35m"
     },
     {
       "at": 1795613610.3828876,
       "kind": "capped",
-      "key": "vocdoni/vocdoni-app#401",
+      "key": "acme/widgets#401",
       "detail": "out of review rounds (3/3)"
     }
   ],
   "kitchen": [
     {
-      "at": 1795615310.3828876,
+      "at": 1795615520.3828876,
       "kind": "report",
       "mood": "happy",
-      "text": "ready vocdoni-app#438: tests pass",
-      "good": true
+      "text": "ready widgets#438: tests pass",
+      "good": true,
+      "key": "acme/widgets#438",
+      "ms": 4000,
+      "tone": "good",
+      "burst": "sparkle"
+    },
+    {
+      "at": 1795615580.3828876,
+      "kind": "stall",
+      "mood": "worried",
+      "text": "no word from gizmo-sdk#1183 for 35 min",
+      "good": false,
+      "key": "acme/gizmo-sdk#1183",
+      "ms": 3000,
+      "tone": "bad",
+      "burst": "smoke"
     }
   ],
   "global_actions": [
@@ -1094,5 +1127,75 @@
       "label": "done",
       "confirm": null
     }
-  ]
+  ],
+  "pan": {
+    "holes": 6,
+    "paused": false,
+    "busy": true,
+    "balls": [
+      {
+        "key": "acme/widgets#452",
+        "label": "widgets#452",
+        "state": "cooking",
+        "heat": 0.6,
+        "focus": true
+      },
+      {
+        "key": "acme/gizmo-sdk#1190",
+        "label": "gizmo-sdk#1190",
+        "state": "cooking",
+        "heat": 0.3,
+        "focus": false
+      },
+      {
+        "key": "acme/widgets#447",
+        "label": "widgets#447",
+        "state": "ready",
+        "heat": 1.0,
+        "focus": false
+      },
+      {
+        "key": "acme/gizmo-sdk#1186",
+        "label": "gizmo-sdk#1186",
+        "state": "raw",
+        "heat": 0.1,
+        "focus": false
+      },
+      {
+        "key": "acme/widgets#438",
+        "label": "widgets#438",
+        "state": "ready",
+        "heat": 1.0,
+        "focus": false
+      },
+      {
+        "key": "acme/widgets#401",
+        "label": "widgets#401",
+        "state": "capped",
+        "heat": 0.97,
+        "focus": false
+      }
+    ],
+    "shelf": [
+      {
+        "key": "acme/widgets#430",
+        "label": "widgets#430"
+      },
+      {
+        "key": "acme/widgets#420",
+        "label": "widgets#420"
+      },
+      {
+        "key": "acme/gizmo-sdk#1150",
+        "label": "gizmo-sdk#1150"
+      }
+    ],
+    "shelf_total": 3,
+    "chef": {
+      "mood": "happy",
+      "since": 1795615610.3828876,
+      "ms": 4000,
+      "resting": "busy"
+    }
+  }
 }

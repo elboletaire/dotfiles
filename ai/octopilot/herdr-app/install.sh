@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Installs Octopilot's herdr-app parts: each mod folder in herdr-app/mods is
 # symlinked into the app's mods (edits here take effect at once), programs.json
-# gets an Octopilot entry, which the launcher mod runs, and layouts/octopilot.json
-# is written: your layouts/main.json plus the octopilot-kitchen corner.
+# gets an Octopilot entry (what the menus start), and layouts/octopilot.json is
+# written: your layouts/main.json plus the octopilot-kitchen corner. The launcher
+# mod's palette entry runs its own hard-coded path, not this entry.
 #
 #   install.sh [--dir <octopilot dir>] [--key] [--dry-run] [--uninstall]
 #
@@ -40,6 +41,8 @@ KEYS="$APP_HOME/keys.json"
 LAYOUTS="$APP_HOME/layouts"
 LAYOUT_FILE="$LAYOUTS/octopilot.json"
 LAUNCHER="$DIR/herdr/open-gui.sh"
+# config.sh's STATE_DIR, which open-gui.sh passes to the mods as state_dir.
+STATE_DIR="${OCTOPILOT_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/octopilot}"
 
 # What we wrote, recognised by shape, so a checkout that moved updates it.
 # Both are jq predicates on one value.
@@ -51,7 +54,11 @@ OURS_BINDING='type == "object" and .command == "terminal.open" and
 
 # Our layout, recognised by its kitchen block.
 OURS_LAYOUT='type == "object" and ((.floating // []) | any(.id == "octopilot-kitchen"))'
-KITCHEN='{"id": "octopilot-kitchen", "content": {"mod": "octopilot-kitchen"}, "edge": "right", "align": "end"}'
+# The kitchen block, with the props open-gui.sh gives its mods (dir and state_dir).
+kitchen_block() {
+  jq -nc --arg d "$DIR" --arg s "$STATE_DIR" \
+    '{id: "octopilot-kitchen", content: {mod: "octopilot-kitchen", props: {dir: $d, state_dir: $s}}, edge: "right", align: "end"}'
+}
 
 # A herdr-app JSON file's content, or an empty object when it does not exist yet.
 read_json() {
@@ -197,7 +204,7 @@ set_layout() {
     return 0
   fi
   version="$(herdr-app --version 2>/dev/null | awk '{print $NF; exit}')" || true
-  out="$(jq -c --argjson k "$KITCHEN" --arg v "${version:-0}" \
+  out="$(jq -c --argjson k "$(kitchen_block)" --arg v "${version:-0}" \
     '. + {cloned_from: {name: "main", version: $v}, floating: ((.floating // []) | map(select(.id != "octopilot-kitchen")) + [$k])}' \
     "$main")" || {
     echo "install.sh: $main is not valid JSON; no octopilot layout" >&2
@@ -246,7 +253,7 @@ set_key() {
     return 0
   fi
   binding="$(jq -nc --arg s "$LAUNCHER" \
-    '{command: "terminal.open", args: {argv: ["bash", $s], place: "tab"}}')"
+    '{command: "terminal.open", args: {argv: ["bash", $s, "--close-launcher"], place: "tab"}}')"
   if [ "$current" = "$binding" ]; then return 0; fi
   if [ "$current" != "null" ] && [ "$(jq -n --argjson v "$current" "\$v | select($OURS_BINDING) | true")" != "true" ]; then
     echo "install.sh: $KEY is bound to $current in $KEYS; left as it is" >&2

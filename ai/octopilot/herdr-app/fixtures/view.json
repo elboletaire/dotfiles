@@ -1,13 +1,13 @@
 {
   "v": 1,
-  "generated_at": 1795617207.7228274,
+  "generated_at": 1795617207.7,
   "header": {
-    "needs": 2,
-    "running": 4,
-    "pick": 66,
-    "active": 2,
+    "needs": 3,
+    "running": 6,
+    "pick": 18,
+    "active": 4,
     "max_active": 8,
-    "untracked": 0,
+    "untracked": 1,
     "github": {
       "state": "ok",
       "age_s": 5,
@@ -27,13 +27,13 @@
       "title": "🟡 Running",
       "entries": [
         {
-          "key": "vocdoni/vocdoni-app#2022",
-          "label": "vocdoni-app#2022 +8",
+          "key": "acme/widgets#2022",
+          "label": "widgets#2022 +8",
           "kind": "STALLED",
           "section": "running",
-          "title": "refactor(theme): prepare the theme for the Fil retheme",
+          "title": "Refactor theme tokens for the new palette",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/2022",
+          "url": "https://github.com/acme/widgets/pull/2022",
           "checks": "pass",
           "agent": "running",
           "rounds": 1,
@@ -47,8 +47,8 @@
           "session": "w8X",
           "backend": "herdr",
           "pane": "w8X:p1",
-          "path": "/home/elboletaire/src/vocdoni/ui-scaffold/.worktrees/refactor-theme-fil-prep",
-          "branch": "refactor/theme-fil-prep",
+          "path": "/home/user/src/acme/widgets/.worktrees/refactor-theme-tokens",
+          "branch": "refactor/theme-tokens",
           "pr": 2022,
           "stack": 9,
           "open": true,
@@ -77,38 +77,39 @@
               "id": "detach",
               "key": "z",
               "label": "detach",
-              "confirm": "press z again to detach vocdoni/vocdoni-app#2022 (worktree kept, untracked)"
+              "confirm": "press z again to detach acme/widgets#2022 (worktree kept, untracked)"
             },
             {
               "id": "park",
               "key": "d",
               "label": "done",
-              "confirm": "press d again to move vocdoni/vocdoni-app#2022 to Done (session kept, slot freed)"
+              "confirm": "press d again to move acme/widgets#2022 to Done (session kept, slot freed)"
             },
             {
               "id": "remove",
               "key": "Delete",
               "label": "remove",
-              "confirm": "press del again to remove vocdoni/vocdoni-app#2022 (workspace and worktree deleted, untracked)"
+              "confirm": "press del again to remove acme/widgets#2022 (workspace and worktree deleted, untracked)"
             }
-          ]
+          ],
+          "driver": "agent"
         },
         {
-          "key": "vocdoni/argos-code#3",
-          "label": "argos-code#3",
+          "key": "acme/argos#3",
+          "label": "argos#3",
           "kind": "NEW",
           "section": "running",
-          "title": "chore/relicense-lgpl-89",
+          "title": "chore: relicense the tooling",
           "draft": false,
-          "url": null,
+          "url": "https://github.com/acme/argos/pull/3",
           "checks": null,
           "agent": null,
-          "rounds": 2,
+          "rounds": 0,
           "max_rounds": 3,
           "quiet_s": 617,
           "stalled": false,
           "needs": false,
-          "why": null,
+          "why": "spawned, waiting for the next GitHub refresh",
           "note": "spawned, waiting for the next GitHub refresh",
           "pick_kind": "your PR",
           "session": null,
@@ -132,43 +133,44 @@
               "id": "detach",
               "key": "z",
               "label": "detach",
-              "confirm": "press z again to detach vocdoni/argos-code#3 (worktree kept, untracked)"
+              "confirm": "press z again to detach acme/argos#3 (worktree kept, untracked)"
             },
             {
               "id": "park",
               "key": "d",
               "label": "done",
-              "confirm": "press d again to move vocdoni/argos-code#3 to Done (session kept, slot freed)"
+              "confirm": "press d again to move acme/argos#3 to Done (session kept, slot freed)"
             },
             {
               "id": "remove",
               "key": "Delete",
               "label": "remove",
-              "confirm": "press del again to remove vocdoni/argos-code#3 (worktree kept, untracked)"
+              "confirm": "press del again to remove acme/argos#3 (workspace and worktree deleted, untracked)"
             }
-          ]
+          ],
+          "driver": "agent"
         },
         {
-          "key": "vocdoni/davinci-sdk#14",
-          "label": "davinci-sdk#14",
-          "kind": "NEW",
+          "key": "acme/gizmo-sdk#14",
+          "label": "gizmo-sdk#14",
+          "kind": "STALLED",
           "section": "running",
-          "title": "chore/relicense-lgpl-89",
+          "title": "chore: relicense the tooling",
           "draft": false,
-          "url": null,
+          "url": "https://github.com/acme/gizmo-sdk/pull/14",
           "checks": null,
           "agent": null,
           "rounds": 2,
           "max_rounds": 3,
-          "quiet_s": 617,
-          "stalled": false,
+          "quiet_s": 2100,
+          "stalled": true,
           "needs": false,
-          "why": null,
-          "note": "spawned, waiting for the next GitHub refresh",
+          "why": "STALLED",
+          "note": "no word for 35 min",
           "pick_kind": "your PR",
-          "session": "sp-stall",
-          "backend": null,
-          "pane": null,
+          "session": "sp-3f1a",
+          "backend": "hc",
+          "pane": "t12",
           "path": null,
           "branch": "chore/relicense-lgpl-89",
           "pr": 14,
@@ -184,6 +186,12 @@
               "confirm": null
             },
             {
+              "id": "shell",
+              "key": "t",
+              "label": "shell",
+              "confirm": null
+            },
+            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -193,30 +201,31 @@
               "id": "detach",
               "key": "z",
               "label": "detach",
-              "confirm": "press z again to detach vocdoni/davinci-sdk#14 (worktree kept, untracked)"
+              "confirm": "press z again to detach acme/gizmo-sdk#14 (worktree kept, untracked)"
             },
             {
               "id": "park",
               "key": "d",
               "label": "done",
-              "confirm": "press d again to move vocdoni/davinci-sdk#14 to Done (session kept, slot freed)"
+              "confirm": "press d again to move acme/gizmo-sdk#14 to Done (session kept, slot freed)"
             },
             {
               "id": "remove",
               "key": "Delete",
               "label": "remove",
-              "confirm": "press del again to remove vocdoni/davinci-sdk#14 (workspace and worktree deleted, untracked)"
+              "confirm": "press del again to remove acme/gizmo-sdk#14 (workspace and worktree deleted, untracked)"
             }
-          ]
+          ],
+          "driver": "orchestrator"
         },
         {
-          "key": "vocdoni/explorer-ng#45",
-          "label": "explorer-ng#45",
+          "key": "acme/explorer#45",
+          "label": "explorer#45",
           "kind": "NEW",
           "section": "running",
-          "title": "chore/relicense-lgpl-89",
+          "title": "chore: relicense the tooling",
           "draft": false,
-          "url": null,
+          "url": "https://github.com/acme/explorer/pull/45",
           "checks": null,
           "agent": null,
           "rounds": 2,
@@ -224,12 +233,12 @@
           "quiet_s": 617,
           "stalled": false,
           "needs": false,
-          "why": null,
+          "why": "spawned, waiting for the next GitHub refresh",
           "note": "spawned, waiting for the next GitHub refresh",
           "pick_kind": "your PR",
-          "session": "sp-burnt",
-          "backend": null,
-          "pane": null,
+          "session": "sp-7b20",
+          "backend": "hc",
+          "pane": "t13",
           "path": null,
           "branch": "chore/relicense-lgpl-89",
           "pr": 45,
@@ -245,6 +254,12 @@
               "confirm": null
             },
             {
+              "id": "shell",
+              "key": "t",
+              "label": "shell",
+              "confirm": null
+            },
+            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -254,41 +269,179 @@
               "id": "detach",
               "key": "z",
               "label": "detach",
-              "confirm": "press z again to detach vocdoni/explorer-ng#45 (worktree kept, untracked)"
+              "confirm": "press z again to detach acme/explorer#45 (worktree kept, untracked)"
             },
             {
               "id": "park",
               "key": "d",
               "label": "done",
-              "confirm": "press d again to move vocdoni/explorer-ng#45 to Done (session kept, slot freed)"
+              "confirm": "press d again to move acme/explorer#45 to Done (session kept, slot freed)"
             },
             {
               "id": "remove",
               "key": "Delete",
               "label": "remove",
-              "confirm": "press del again to remove vocdoni/explorer-ng#45 (workspace and worktree deleted, untracked)"
+              "confirm": "press del again to remove acme/explorer#45 (workspace and worktree deleted, untracked)"
             }
-          ]
+          ],
+          "driver": "orchestrator"
         }
       ]
     },
     {
       "id": "orch",
       "title": "⏭ Next tick",
-      "entries": []
+      "entries": [
+        {
+          "key": "acme/widgets#2018",
+          "label": "widgets#2018",
+          "kind": "MERGED",
+          "section": "orch",
+          "title": "Drop the legacy poll widget",
+          "draft": false,
+          "url": "https://github.com/acme/widgets/pull/2018",
+          "checks": "pass",
+          "agent": null,
+          "rounds": 1,
+          "max_rounds": 3,
+          "quiet_s": 2400,
+          "stalled": false,
+          "needs": false,
+          "why": "merged, clean up next tick",
+          "note": "merged",
+          "pick_kind": "your PR",
+          "session": "w9A",
+          "backend": "herdr",
+          "pane": "w9A:p1",
+          "path": "/home/user/src/acme/widgets/.worktrees/chore-drop-poll",
+          "branch": "chore/drop-poll",
+          "pr": 2018,
+          "stack": 0,
+          "open": true,
+          "parked": false,
+          "tracked": true,
+          "actions": [
+            {
+              "id": "focus",
+              "key": "Enter",
+              "label": "open",
+              "confirm": null
+            },
+            {
+              "id": "shell",
+              "key": "t",
+              "label": "shell",
+              "confirm": null
+            },
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            },
+            {
+              "id": "detach",
+              "key": "z",
+              "label": "detach",
+              "confirm": "press z again to detach acme/widgets#2018 (worktree kept, untracked)"
+            },
+            {
+              "id": "park",
+              "key": "d",
+              "label": "done",
+              "confirm": "press d again to move acme/widgets#2018 to Done (session kept, slot freed)"
+            },
+            {
+              "id": "remove",
+              "key": "Delete",
+              "label": "remove",
+              "confirm": "press del again to remove acme/widgets#2018 (workspace and worktree deleted, untracked)"
+            }
+          ],
+          "driver": "orchestrator"
+        },
+        {
+          "key": "acme/site#286",
+          "label": "site#286",
+          "kind": "REVIEW",
+          "section": "orch",
+          "title": "chore(deps): update the analytics client",
+          "draft": false,
+          "url": "https://github.com/acme/site/pull/286",
+          "checks": "pending",
+          "agent": "idle",
+          "rounds": 2,
+          "max_rounds": 3,
+          "quiet_s": 900,
+          "stalled": false,
+          "needs": false,
+          "why": "review round due",
+          "note": "review round due",
+          "pick_kind": "adopt PR",
+          "session": "sp-c1d4",
+          "backend": "hc",
+          "pane": "t15",
+          "path": null,
+          "branch": "chore/analytics-client",
+          "pr": 286,
+          "stack": 0,
+          "open": true,
+          "parked": false,
+          "tracked": true,
+          "actions": [
+            {
+              "id": "focus",
+              "key": "Enter",
+              "label": "open",
+              "confirm": null
+            },
+            {
+              "id": "shell",
+              "key": "t",
+              "label": "shell",
+              "confirm": null
+            },
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            },
+            {
+              "id": "detach",
+              "key": "z",
+              "label": "detach",
+              "confirm": "press z again to detach acme/site#286 (worktree kept, untracked)"
+            },
+            {
+              "id": "park",
+              "key": "d",
+              "label": "done",
+              "confirm": "press d again to move acme/site#286 to Done (session kept, slot freed)"
+            },
+            {
+              "id": "remove",
+              "key": "Delete",
+              "label": "remove",
+              "confirm": "press del again to remove acme/site#286 (workspace and worktree deleted, untracked)"
+            }
+          ],
+          "driver": "orchestrator"
+        }
+      ]
     },
     {
       "id": "needs",
       "title": "🔴 Needs you",
       "entries": [
         {
-          "key": "vocdoni/dvote-protobuf#90",
-          "label": "dvote-protobuf#90",
+          "key": "acme/ledger#90",
+          "label": "ledger#90",
           "kind": "READY",
           "section": "needs",
           "title": "chore: relicense to LGPL-3.0-or-later",
           "draft": false,
-          "url": "https://github.com/vocdoni/dvote-protobuf/pull/90",
+          "url": "https://github.com/acme/ledger/pull/90",
           "checks": "pass",
           "agent": "idle",
           "rounds": 2,
@@ -296,13 +449,13 @@
           "quiet_s": 2765,
           "stalled": false,
           "needs": true,
-          "why": "READY",
-          "note": "ready: PR #90 relicenses to LGPL-3.0-or-later (COPYING + COPYING.LESSER), CI green, review clean\nReviewed against mas...",
+          "why": "ready to merge",
+          "note": "ready: relicense done (COPYING files), CI green, review clean",
           "pick_kind": "your PR",
           "session": "w8Z",
           "backend": "herdr",
           "pane": "w8Z:p1",
-          "path": "/home/elboletaire/src/vocdoni/dvote-protobuf/.worktrees/chore-relicense-lgpl-89",
+          "path": "/home/user/src/acme/ledger/.worktrees/chore-relicense-lgpl-89",
           "branch": "chore/relicense-lgpl-89",
           "pr": 90,
           "stack": 0,
@@ -332,45 +485,46 @@
               "id": "detach",
               "key": "z",
               "label": "detach",
-              "confirm": "press z again to detach vocdoni/dvote-protobuf#90 (worktree kept, untracked)"
+              "confirm": "press z again to detach acme/ledger#90 (worktree kept, untracked)"
             },
             {
               "id": "park",
               "key": "d",
               "label": "done",
-              "confirm": "press d again to move vocdoni/dvote-protobuf#90 to Done (session kept, slot freed)"
+              "confirm": "press d again to move acme/ledger#90 to Done (session kept, slot freed)"
             },
             {
               "id": "remove",
               "key": "Delete",
               "label": "remove",
-              "confirm": "press del again to remove vocdoni/dvote-protobuf#90 (workspace and worktree deleted, untracked)"
+              "confirm": "press del again to remove acme/ledger#90 (workspace and worktree deleted, untracked)"
             }
-          ]
+          ],
+          "driver": "agent"
         },
         {
-          "key": "vocdoni/oauth#7",
-          "label": "oauth#7",
+          "key": "acme/auth#7",
+          "label": "auth#7",
           "kind": "CAPPED",
           "section": "needs",
           "title": "Add OAuth scopes",
           "draft": false,
-          "url": "https://github.com/vocdoni/oauth/pull/7",
+          "url": "https://github.com/acme/auth/pull/7",
           "checks": "fail",
           "agent": null,
-          "rounds": 2,
+          "rounds": 3,
           "max_rounds": 3,
           "quiet_s": 617,
           "stalled": false,
           "needs": true,
-          "why": "CAPPED",
+          "why": "out of review rounds",
           "note": "waiting for CI",
           "pick_kind": "your PR",
-          "session": "sp-capped",
-          "backend": null,
-          "pane": null,
+          "session": "sp-6c2e",
+          "backend": "hc",
+          "pane": "t9",
           "path": null,
-          "branch": "chore/relicense-lgpl-89",
+          "branch": "feat/oauth-scopes",
           "pr": 7,
           "stack": 0,
           "open": false,
@@ -384,6 +538,12 @@
               "confirm": null
             },
             {
+              "id": "shell",
+              "key": "t",
+              "label": "shell",
+              "confirm": null
+            },
+            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -393,60 +553,55 @@
               "id": "grant",
               "key": "R",
               "label": "another round",
-              "confirm": "press R again to grant vocdoni/oauth#7 another 3 review rounds"
+              "confirm": "press R again to grant acme/auth#7 another 3 review rounds"
             },
             {
               "id": "detach",
               "key": "z",
               "label": "detach",
-              "confirm": "press z again to detach vocdoni/oauth#7 (worktree kept, untracked)"
+              "confirm": "press z again to detach acme/auth#7 (worktree kept, untracked)"
             },
             {
               "id": "park",
               "key": "d",
               "label": "done",
-              "confirm": "press d again to move vocdoni/oauth#7 to Done (session kept, slot freed)"
+              "confirm": "press d again to move acme/auth#7 to Done (session kept, slot freed)"
             },
             {
               "id": "remove",
               "key": "Delete",
               "label": "remove",
-              "confirm": "press del again to remove vocdoni/oauth#7 (workspace and worktree deleted, untracked)"
+              "confirm": "press del again to remove acme/auth#7 (workspace and worktree deleted, untracked)"
             }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "done",
-      "title": "💤 Done",
-      "entries": [
+          ],
+          "driver": "agent"
+        },
         {
-          "key": "vocdoni/saas-backend#737",
-          "label": "saas-backend#737",
-          "kind": "DONE",
-          "section": "done",
-          "title": "fix(csp): reuse a pending OTP code on a repeated auth request",
+          "key": "acme/gizmo-client#1172",
+          "label": "gizmo-client#1172",
+          "kind": "PUSHED",
+          "section": "needs",
+          "title": "feat: wallet signer adapter",
           "draft": false,
-          "url": "https://github.com/vocdoni/saas-backend/pull/737",
+          "url": "https://github.com/acme/gizmo-client/pull/1172",
           "checks": "pass",
-          "agent": null,
-          "rounds": 2,
+          "agent": "idle",
+          "rounds": 1,
           "max_rounds": 3,
-          "quiet_s": 617,
+          "quiet_s": 5400,
           "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "not yours to merge",
+          "needs": true,
+          "why": "new commits since the last review",
+          "note": "new commits: re-review or ack",
           "pick_kind": "your PR",
-          "session": "sp-done1",
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": "chore/relicense-lgpl-89",
-          "pr": 737,
+          "session": "w7K",
+          "backend": "herdr",
+          "pane": "w7K:p2",
+          "path": "/home/user/src/acme/gizmo-client/.worktrees/feat-wallet-signer",
+          "branch": "feat/wallet-signer",
+          "pr": 1172,
           "stack": 0,
-          "open": false,
+          "open": true,
           "parked": false,
           "tracked": true,
           "actions": [
@@ -457,57 +612,82 @@
               "confirm": null
             },
             {
+              "id": "shell",
+              "key": "t",
+              "label": "shell",
+              "confirm": null
+            },
+            {
               "id": "browser",
               "key": "o",
               "label": "browser",
               "confirm": null
             },
             {
+              "id": "rereview",
+              "key": "e",
+              "label": "re-review",
+              "confirm": "press e again to queue a re-review of acme/gizmo-client#1172"
+            },
+            {
+              "id": "ack",
+              "key": "x",
+              "label": "ack",
+              "confirm": "press x again to acknowledge the new commits on acme/gizmo-client#1172"
+            },
+            {
               "id": "detach",
               "key": "z",
               "label": "detach",
-              "confirm": "press z again to detach vocdoni/saas-backend#737 (worktree kept, untracked)"
+              "confirm": "press z again to detach acme/gizmo-client#1172 (worktree kept, untracked)"
             },
             {
               "id": "park",
               "key": "d",
               "label": "done",
-              "confirm": "press d again to move vocdoni/saas-backend#737 to Done (session kept, slot freed)"
+              "confirm": "press d again to move acme/gizmo-client#1172 to Done (session kept, slot freed)"
             },
             {
               "id": "remove",
               "key": "Delete",
               "label": "remove",
-              "confirm": "press del again to remove vocdoni/saas-backend#737 (workspace and worktree deleted, untracked)"
+              "confirm": "press del again to remove acme/gizmo-client#1172 (workspace and worktree deleted, untracked)"
             }
-          ]
-        },
+          ],
+          "driver": "agent"
+        }
+      ]
+    },
+    {
+      "id": "done",
+      "title": "💤 Done",
+      "entries": [
         {
-          "key": "vocdoni/saas-backend#872",
-          "label": "saas-backend#872",
+          "key": "acme/billing#737",
+          "label": "billing#737",
           "kind": "DONE",
           "section": "done",
-          "title": "feat(api): announce and enforce a scheduled maintenance window",
+          "title": "fix(csp): reuse a pending code on a repeated request",
           "draft": false,
-          "url": "https://github.com/vocdoni/saas-backend/pull/872",
+          "url": "https://github.com/acme/billing/pull/737",
           "checks": "pass",
-          "agent": "idle",
-          "rounds": 1,
+          "agent": null,
+          "rounds": 2,
           "max_rounds": 3,
-          "quiet_s": 12195,
+          "quiet_s": 617,
           "stalled": false,
           "needs": false,
-          "why": null,
-          "note": "waiting on re-request",
-          "pick_kind": "review only",
-          "session": "w8W",
-          "backend": "herdr",
-          "pane": "w8W:p1",
-          "path": "/home/elboletaire/src/vocdoni/saas-backend/.worktrees/feat-maintenance-mode",
-          "branch": "feat/maintenance-mode",
-          "pr": 872,
+          "why": "not yours to merge",
+          "note": "not yours to merge",
+          "pick_kind": "your PR",
+          "session": "sp-d1e9",
+          "backend": "hc",
+          "pane": "t20",
+          "path": null,
+          "branch": "fix/reuse-code",
+          "pr": 737,
           "stack": 0,
-          "open": true,
+          "open": false,
           "parked": false,
           "tracked": true,
           "actions": [
@@ -533,30 +713,99 @@
               "id": "detach",
               "key": "z",
               "label": "detach",
-              "confirm": "press z again to detach vocdoni/saas-backend#872 (worktree kept, untracked)"
+              "confirm": "press z again to detach acme/billing#737 (worktree kept, untracked)"
             },
             {
               "id": "park",
               "key": "d",
               "label": "done",
-              "confirm": "press d again to move vocdoni/saas-backend#872 to Done (session kept, slot freed)"
+              "confirm": "press d again to move acme/billing#737 to Done (session kept, slot freed)"
             },
             {
               "id": "remove",
               "key": "Delete",
               "label": "remove",
-              "confirm": "press del again to remove vocdoni/saas-backend#872 (workspace and worktree deleted, untracked)"
+              "confirm": "press del again to remove acme/billing#737 (workspace and worktree deleted, untracked)"
             }
-          ]
+          ],
+          "driver": "agent"
         },
         {
-          "key": "vocdoni/vocdoni-app#2024",
-          "label": "vocdoni-app#2024",
+          "key": "acme/billing#872",
+          "label": "billing#872",
           "kind": "DONE",
           "section": "done",
-          "title": "feat(csp): sign voters in with an official digital certificate",
+          "title": "feat(api): announce a scheduled maintenance window",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/2024",
+          "url": "https://github.com/acme/billing/pull/872",
+          "checks": "pass",
+          "agent": "idle",
+          "rounds": 1,
+          "max_rounds": 3,
+          "quiet_s": 12195,
+          "stalled": false,
+          "needs": false,
+          "why": "waiting on re-request",
+          "note": "waiting on re-request",
+          "pick_kind": "review only",
+          "session": "w8W",
+          "backend": "herdr",
+          "pane": "w8W:p1",
+          "path": "/home/user/src/acme/billing/.worktrees/feat-maintenance-mode",
+          "branch": "feat/maintenance-mode",
+          "pr": 872,
+          "stack": 0,
+          "open": true,
+          "parked": true,
+          "tracked": true,
+          "actions": [
+            {
+              "id": "focus",
+              "key": "Enter",
+              "label": "open",
+              "confirm": null
+            },
+            {
+              "id": "shell",
+              "key": "t",
+              "label": "shell",
+              "confirm": null
+            },
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            },
+            {
+              "id": "detach",
+              "key": "z",
+              "label": "detach",
+              "confirm": "press z again to detach acme/billing#872 (worktree kept, untracked)"
+            },
+            {
+              "id": "park",
+              "key": "d",
+              "label": "back",
+              "confirm": "press d again to move acme/billing#872 back to the board"
+            },
+            {
+              "id": "remove",
+              "key": "Delete",
+              "label": "remove",
+              "confirm": "press del again to remove acme/billing#872 (workspace and worktree deleted, untracked)"
+            }
+          ],
+          "driver": "agent"
+        },
+        {
+          "key": "acme/widgets#2024",
+          "label": "widgets#2024",
+          "kind": "DONE",
+          "section": "done",
+          "title": "feat(csp): sign voters in with a certificate",
+          "draft": false,
+          "url": "https://github.com/acme/widgets/pull/2024",
           "checks": "pass",
           "agent": null,
           "rounds": 2,
@@ -564,14 +813,14 @@
           "quiet_s": 617,
           "stalled": false,
           "needs": false,
-          "why": null,
+          "why": "not yours to merge",
           "note": "not yours to merge",
           "pick_kind": "your PR",
-          "session": "sp-done2",
-          "backend": null,
-          "pane": null,
+          "session": "sp-d2a7",
+          "backend": "hc",
+          "pane": "t21",
           "path": null,
-          "branch": "chore/relicense-lgpl-89",
+          "branch": "feat/cert-signin",
           "pr": 2024,
           "stack": 0,
           "open": false,
@@ -585,6 +834,12 @@
               "confirm": null
             },
             {
+              "id": "shell",
+              "key": "t",
+              "label": "shell",
+              "confirm": null
+            },
+            {
               "id": "browser",
               "key": "o",
               "label": "browser",
@@ -594,38 +849,95 @@
               "id": "detach",
               "key": "z",
               "label": "detach",
-              "confirm": "press z again to detach vocdoni/vocdoni-app#2024 (worktree kept, untracked)"
+              "confirm": "press z again to detach acme/widgets#2024 (worktree kept, untracked)"
             },
             {
               "id": "park",
               "key": "d",
               "label": "done",
-              "confirm": "press d again to move vocdoni/vocdoni-app#2024 to Done (session kept, slot freed)"
+              "confirm": "press d again to move acme/widgets#2024 to Done (session kept, slot freed)"
             },
             {
               "id": "remove",
               "key": "Delete",
               "label": "remove",
-              "confirm": "press del again to remove vocdoni/vocdoni-app#2024 (workspace and worktree deleted, untracked)"
+              "confirm": "press del again to remove acme/widgets#2024 (workspace and worktree deleted, untracked)"
             }
-          ]
+          ],
+          "driver": "agent"
+        },
+        {
+          "key": "acme/gizmo-client#1160",
+          "label": "gizmo-client#1160",
+          "kind": "GONE",
+          "section": "done",
+          "title": "fix: typo in the README",
+          "draft": false,
+          "url": "https://github.com/acme/gizmo-client/pull/1160",
+          "checks": null,
+          "agent": null,
+          "rounds": null,
+          "max_rounds": 3,
+          "quiet_s": null,
+          "stalled": false,
+          "needs": false,
+          "why": "merged and gone",
+          "note": "",
+          "pick_kind": "your PR",
+          "session": null,
+          "backend": null,
+          "pane": null,
+          "path": null,
+          "branch": "fix/readme-typo",
+          "pr": 1160,
+          "stack": 0,
+          "open": false,
+          "parked": false,
+          "tracked": true,
+          "actions": [
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            },
+            {
+              "id": "detach",
+              "key": "z",
+              "label": "detach",
+              "confirm": "press z again to detach acme/gizmo-client#1160 (worktree kept, untracked)"
+            },
+            {
+              "id": "park",
+              "key": "d",
+              "label": "done",
+              "confirm": "press d again to move acme/gizmo-client#1160 to Done (session kept, slot freed)"
+            },
+            {
+              "id": "remove",
+              "key": "Delete",
+              "label": "remove",
+              "confirm": "press del again to remove acme/gizmo-client#1160 (workspace and worktree deleted, untracked)"
+            }
+          ],
+          "driver": null
         }
       ],
-      "hidden": 2
+      "hidden": 3
     }
   ],
   "pick": [
     {
-      "repo": "vocdoni/davinci-ui",
+      "repo": "acme/gizmo-ui",
       "entries": [
         {
-          "key": "vocdoni/davinci-ui#53",
-          "label": "davinci-ui#53",
+          "key": "acme/gizmo-ui!12",
+          "label": "gizmo-ui#12",
           "kind": "PROPOSE",
           "section": "pick",
-          "title": "build(manifest): build farcaster manifest dynamically",
+          "title": "Show the tokens page under the new theme",
           "draft": false,
-          "url": "https://github.com/vocdoni/davinci-ui/pull/53",
+          "url": "https://github.com/acme/gizmo-ui/issues/12",
           "checks": null,
           "agent": null,
           "rounds": null,
@@ -635,13 +947,13 @@
           "needs": false,
           "why": null,
           "note": "",
-          "pick_kind": "your PR",
+          "pick_kind": "issue",
           "session": null,
           "backend": null,
           "pane": null,
           "path": null,
           "branch": null,
-          "pr": 53,
+          "pr": null,
           "stack": 0,
           "open": false,
           "parked": false,
@@ -657,30 +969,31 @@
               "id": "go",
               "key": "g",
               "label": "go",
-              "confirm": "press g again to send 'go vocdoni/davinci-ui#53' to the orchestrator"
+              "confirm": "press g again to send 'go acme/gizmo-ui!12' to the orchestrator"
             },
             {
               "id": "no",
               "key": "n",
               "label": "no",
-              "confirm": "press n again to send 'no vocdoni/davinci-ui#53' to the orchestrator"
+              "confirm": "press n again to send 'no acme/gizmo-ui!12' to the orchestrator"
             }
           ],
+          "driver": null,
           "index": 1
         }
       ]
     },
     {
-      "repo": "vocdoni/explorer-ng",
+      "repo": "acme/explorer",
       "entries": [
         {
-          "key": "vocdoni/explorer-ng#47",
-          "label": "explorer-ng#47",
+          "key": "acme/explorer#47",
+          "label": "explorer#47",
           "kind": "PROPOSE",
           "section": "pick",
-          "title": "fix: keep the .pdf filename on the proof download",
+          "title": "Keep the .pdf filename on the proof download",
           "draft": false,
-          "url": "https://github.com/vocdoni/explorer-ng/pull/47",
+          "url": "https://github.com/acme/explorer/pull/47",
           "checks": null,
           "agent": null,
           "rounds": null,
@@ -712,30 +1025,31 @@
               "id": "go",
               "key": "g",
               "label": "go",
-              "confirm": "press g again to send 'go vocdoni/explorer-ng#47' to the orchestrator"
+              "confirm": "press g again to send 'go acme/explorer#47' to the orchestrator"
             },
             {
               "id": "no",
               "key": "n",
               "label": "no",
-              "confirm": "press n again to send 'no vocdoni/explorer-ng#47' to the orchestrator"
+              "confirm": "press n again to send 'no acme/explorer#47' to the orchestrator"
             }
           ],
+          "driver": null,
           "index": 2
         }
       ]
     },
     {
-      "repo": "vocdoni/skills",
+      "repo": "acme/skills",
       "entries": [
         {
-          "key": "vocdoni/skills#60",
+          "key": "acme/skills#60",
           "label": "skills#60",
           "kind": "PROPOSE",
           "section": "pick",
-          "title": "feat(vocdoni-stripe)!: replace stripe-subscription with stripe-environments",
-          "draft": false,
-          "url": "https://github.com/vocdoni/skills/pull/60",
+          "title": "Replace the subscription skill with a new one",
+          "draft": true,
+          "url": "https://github.com/acme/skills/pull/60",
           "checks": null,
           "agent": null,
           "rounds": null,
@@ -767,30 +1081,31 @@
               "id": "go",
               "key": "g",
               "label": "go",
-              "confirm": "press g again to send 'go vocdoni/skills#60' to the orchestrator"
+              "confirm": "press g again to send 'go acme/skills#60' to the orchestrator"
             },
             {
               "id": "no",
               "key": "n",
               "label": "no",
-              "confirm": "press n again to send 'no vocdoni/skills#60' to the orchestrator"
+              "confirm": "press n again to send 'no acme/skills#60' to the orchestrator"
             }
           ],
+          "driver": null,
           "index": 3
         }
       ]
     },
     {
-      "repo": "vocdoni/vocdoni-app",
+      "repo": "acme/widgets",
       "entries": [
         {
-          "key": "vocdoni/vocdoni-app!1742",
-          "label": "vocdoni-app!1742",
+          "key": "acme/widgets!1742",
+          "label": "widgets#1742",
           "kind": "PROPOSE",
           "section": "pick",
-          "title": "Archive pages: map legacy elections onto the shared process view instead of a bespoke design",
+          "title": "Map legacy elections onto the shared process view",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/issues/1742",
+          "url": "https://github.com/acme/widgets/issues/1742",
           "checks": null,
           "agent": null,
           "rounds": null,
@@ -822,25 +1137,26 @@
               "id": "go",
               "key": "g",
               "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app!1742' to the orchestrator"
+              "confirm": "press g again to send 'go acme/widgets!1742' to the orchestrator"
             },
             {
               "id": "no",
               "key": "n",
               "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app!1742' to the orchestrator"
+              "confirm": "press n again to send 'no acme/widgets!1742' to the orchestrator"
             }
           ],
+          "driver": null,
           "index": 4
         },
         {
-          "key": "vocdoni/vocdoni-app!1767",
-          "label": "vocdoni-app!1767",
+          "key": "acme/widgets!1797",
+          "label": "widgets#1797",
           "kind": "PROPOSE",
           "section": "pick",
-          "title": "EPIC: Implement the new pricing system to Vocdoni App + new SMS provider",
+          "title": "Review url mismatch in the sign-in page",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/issues/1767",
+          "url": "https://github.com/acme/widgets/issues/1797",
           "checks": null,
           "agent": null,
           "rounds": null,
@@ -872,525 +1188,26 @@
               "id": "go",
               "key": "g",
               "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app!1767' to the orchestrator"
+              "confirm": "press g again to send 'go acme/widgets!1797' to the orchestrator"
             },
             {
               "id": "no",
               "key": "n",
               "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app!1767' to the orchestrator"
+              "confirm": "press n again to send 'no acme/widgets!1797' to the orchestrator"
             }
           ],
+          "driver": null,
           "index": 5
         },
         {
-          "key": "vocdoni/vocdoni-app!1775",
-          "label": "vocdoni-app!1775",
+          "key": "acme/widgets#1832",
+          "label": "widgets#1832",
           "kind": "PROPOSE",
           "section": "pick",
-          "title": "Manually-ended processes still show their configured end date in the countdown, summary and process list",
+          "title": "feat(analytics): track the admin journey",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/issues/1775",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "issue",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": null,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app!1775' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app!1775' to the orchestrator"
-            }
-          ],
-          "index": 6
-        },
-        {
-          "key": "vocdoni/vocdoni-app!1776",
-          "label": "vocdoni-app!1776",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "\"Created by\" card is silently hidden (and org page shows a hex address) when the name is only in meta.name",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/issues/1776",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "issue",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": null,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app!1776' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app!1776' to the orchestrator"
-            }
-          ],
-          "index": 7
-        },
-        {
-          "key": "vocdoni/vocdoni-app!1797",
-          "label": "vocdoni-app!1797",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "Review url change missmatch in signin page",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/issues/1797",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "issue",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": null,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app!1797' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app!1797' to the orchestrator"
-            }
-          ],
-          "index": 8
-        },
-        {
-          "key": "vocdoni/vocdoni-app!1825",
-          "label": "vocdoni-app!1825",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "Member import garbles accented names from Excel CSV files",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/issues/1825",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "issue",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": null,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app!1825' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app!1825' to the orchestrator"
-            }
-          ],
-          "index": 9
-        },
-        {
-          "key": "vocdoni/vocdoni-app!1870",
-          "label": "vocdoni-app!1870",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "Enabling anonymous voting after a census has been configured resets that census configuration",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/issues/1870",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "issue",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": null,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app!1870' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app!1870' to the orchestrator"
-            }
-          ],
-          "index": 10
-        },
-        {
-          "key": "vocdoni/vocdoni-app!1901",
-          "label": "vocdoni-app!1901",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "Add a password column with a ✅ / ❌ in the memberbase table",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/issues/1901",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "issue",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": null,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app!1901' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app!1901' to the orchestrator"
-            }
-          ],
-          "index": 11
-        },
-        {
-          "key": "vocdoni/vocdoni-app!1916",
-          "label": "vocdoni-app!1916",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "Integrator dashboard: show the current environment and link to the other one",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/issues/1916",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "issue",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": null,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app!1916' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app!1916' to the orchestrator"
-            }
-          ],
-          "index": 12
-        },
-        {
-          "key": "vocdoni/vocdoni-app!1970",
-          "label": "vocdoni-app!1970",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "Allow extending the end date of a published process",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/issues/1970",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "issue",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": null,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app!1970' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app!1970' to the orchestrator"
-            }
-          ],
-          "index": 13
-        },
-        {
-          "key": "vocdoni/vocdoni-app!1994",
-          "label": "vocdoni-app!1994",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "EPIC: make the app load and navigate fast",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/issues/1994",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "issue",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": null,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app!1994' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app!1994' to the orchestrator"
-            }
-          ],
-          "index": 14
-        },
-        {
-          "key": "vocdoni/vocdoni-app!2021",
-          "label": "vocdoni-app!2021",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "EPIC: Fil theme, preparation and application",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/issues/2021",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "issue",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": null,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app!2021' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app!2021' to the orchestrator"
-            }
-          ],
-          "index": 15
-        },
-        {
-          "key": "vocdoni/vocdoni-app#1832",
-          "label": "vocdoni-app#1832",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "feat(analytics): track the admin journey (drafts, create form, imports, post-publish)",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/1832",
+          "url": "https://github.com/acme/widgets/pull/1832",
           "checks": null,
           "agent": null,
           "rounds": null,
@@ -1422,525 +1239,26 @@
               "id": "go",
               "key": "g",
               "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app#1832' to the orchestrator"
+              "confirm": "press g again to send 'go acme/widgets#1832' to the orchestrator"
             },
             {
               "id": "no",
               "key": "n",
               "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app#1832' to the orchestrator"
+              "confirm": "press n again to send 'no acme/widgets#1832' to the orchestrator"
             }
           ],
-          "index": 16
+          "driver": null,
+          "index": 6
         },
         {
-          "key": "vocdoni/vocdoni-app#1862",
-          "label": "vocdoni-app#1862",
+          "key": "acme/widgets#2058",
+          "label": "widgets#2058",
           "kind": "PROPOSE",
           "section": "pick",
-          "title": "feat(memberbase): Members page with People, import and bulk actions (1/3)",
+          "title": "feat(auth): add the new testimonials",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/1862",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 1862,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app#1862' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app#1862' to the orchestrator"
-            }
-          ],
-          "index": 17
-        },
-        {
-          "key": "vocdoni/vocdoni-app#1863",
-          "label": "vocdoni-app#1863",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "feat(memberbase): Censuses tab and a census of its own for each vote (2/3)",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/1863",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 1863,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app#1863' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app#1863' to the orchestrator"
-            }
-          ],
-          "index": 18
-        },
-        {
-          "key": "vocdoni/vocdoni-app#1864",
-          "label": "vocdoni-app#1864",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "feat(memberbase): Activity tab and plain-language census pages (3/3)",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/1864",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 1864,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app#1864' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app#1864' to the orchestrator"
-            }
-          ],
-          "index": 19
-        },
-        {
-          "key": "vocdoni/vocdoni-app#1869",
-          "label": "vocdoni-app#1869",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "fix(csp): show how long to wait before asking for another code",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/1869",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 1869,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app#1869' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app#1869' to the orchestrator"
-            }
-          ],
-          "index": 20
-        },
-        {
-          "key": "vocdoni/vocdoni-app#1871",
-          "label": "vocdoni-app#1871",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "feat(report): audit election metadata changes in the voting report",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/1871",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 1871,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app#1871' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app#1871' to the orchestrator"
-            }
-          ],
-          "index": 21
-        },
-        {
-          "key": "vocdoni/vocdoni-app#1872",
-          "label": "vocdoni-app#1872",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "feat(process): verify ballot content in the browser and handle stale ballots",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/1872",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 1872,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app#1872' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app#1872' to the orchestrator"
-            }
-          ],
-          "index": 22
-        },
-        {
-          "key": "vocdoni/vocdoni-app#2014",
-          "label": "vocdoni-app#2014",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "fix(legacy): list organization elections via GET /elections?organizationId=&page=",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/2014",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 2014,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app#2014' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app#2014' to the orchestrator"
-            }
-          ],
-          "index": 23
-        },
-        {
-          "key": "vocdoni/vocdoni-app#2015",
-          "label": "vocdoni-app#2015",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "fix(legacy): list organization elections via GET /elections?organizationId=&page= (stage backport)",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/2015",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 2015,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app#2015' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app#2015' to the orchestrator"
-            }
-          ],
-          "index": 24
-        },
-        {
-          "key": "vocdoni/vocdoni-app#2016",
-          "label": "vocdoni-app#2016",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "fix(legacy): list organization elections via GET /elections?organizationId=&page= (main backport)",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/2016",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 2016,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app#2016' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app#2016' to the orchestrator"
-            }
-          ],
-          "index": 25
-        },
-        {
-          "key": "vocdoni/vocdoni-app#2026",
-          "label": "vocdoni-app#2026",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "chore(deps-dev): bump satori from 0.18.3 to 0.33.5",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/2026",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 2026,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app#2026' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app#2026' to the orchestrator"
-            }
-          ],
-          "index": 26
-        },
-        {
-          "key": "vocdoni/vocdoni-app#2058",
-          "label": "vocdoni-app#2058",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "feat(auth): add Foodcoop BCN and AFA Collserola testimonials to the login",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/2058",
+          "url": "https://github.com/acme/widgets/pull/2058",
           "checks": null,
           "agent": null,
           "rounds": null,
@@ -1972,175 +1290,26 @@
               "id": "go",
               "key": "g",
               "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app#2058' to the orchestrator"
+              "confirm": "press g again to send 'go acme/widgets#2058' to the orchestrator"
             },
             {
               "id": "no",
               "key": "n",
               "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app#2058' to the orchestrator"
+              "confirm": "press n again to send 'no acme/widgets#2058' to the orchestrator"
             }
           ],
-          "index": 27
+          "driver": null,
+          "index": 7
         },
         {
-          "key": "vocdoni/vocdoni-app#2061",
-          "label": "vocdoni-app#2061",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "chore(deps): update posthog-js to 1.454.1",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/2061",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 2061,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app#2061' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app#2061' to the orchestrator"
-            }
-          ],
-          "index": 28
-        },
-        {
-          "key": "vocdoni/vocdoni-app#2063",
-          "label": "vocdoni-app#2063",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "chore(build): upload source maps to PostHog",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/2063",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 2063,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app#2063' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app#2063' to the orchestrator"
-            }
-          ],
-          "index": 29
-        },
-        {
-          "key": "vocdoni/vocdoni-app#2067",
-          "label": "vocdoni-app#2067",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "chore(deps): bump i18next from 25.8.13 to 26.3.4",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/2067",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 2067,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app#2067' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app#2067' to the orchestrator"
-            }
-          ],
-          "index": 30
-        },
-        {
-          "key": "vocdoni/vocdoni-app#2072",
-          "label": "vocdoni-app#2072",
+          "key": "acme/widgets#2072",
+          "label": "widgets#2072",
           "kind": "PROPOSE",
           "section": "pick",
           "title": "fix(members): keep the import progress bar below its max",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/2072",
+          "url": "https://github.com/acme/widgets/pull/2072",
           "checks": null,
           "agent": null,
           "rounds": null,
@@ -2172,80 +1341,31 @@
               "id": "go",
               "key": "g",
               "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app#2072' to the orchestrator"
+              "confirm": "press g again to send 'go acme/widgets#2072' to the orchestrator"
             },
             {
               "id": "no",
               "key": "n",
               "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app#2072' to the orchestrator"
+              "confirm": "press n again to send 'no acme/widgets#2072' to the orchestrator"
             }
           ],
-          "index": 31
-        },
-        {
-          "key": "vocdoni/vocdoni-app#2074",
-          "label": "vocdoni-app#2074",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "fix(app): reload once when a page's code is gone after a deploy",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/2074",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 2074,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-app#2074' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-app#2074' to the orchestrator"
-            }
-          ],
-          "index": 32
+          "driver": null,
+          "index": 8
         }
       ]
     },
     {
-      "repo": "vocdoni/vocdoni-integrator-sdk",
+      "repo": "acme/gizmo-sdk",
       "entries": [
         {
-          "key": "vocdoni/vocdoni-integrator-sdk!66",
-          "label": "vocdoni-integrator-sdk!66",
+          "key": "acme/gizmo-sdk!66",
+          "label": "gizmo-sdk#66",
           "kind": "PROPOSE",
           "section": "pick",
-          "title": "ElectionResults placeholder says the process 'ends at' a past date",
+          "title": "The results placeholder names the wrong end date",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-integrator-sdk/issues/66",
+          "url": "https://github.com/acme/gizmo-sdk/issues/66",
           "checks": null,
           "agent": null,
           "rounds": null,
@@ -2277,225 +1397,26 @@
               "id": "go",
               "key": "g",
               "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-integrator-sdk!66' to the orchestrator"
+              "confirm": "press g again to send 'go acme/gizmo-sdk!66' to the orchestrator"
             },
             {
               "id": "no",
               "key": "n",
               "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk!66' to the orchestrator"
+              "confirm": "press n again to send 'no acme/gizmo-sdk!66' to the orchestrator"
             }
           ],
-          "index": 33
+          "driver": null,
+          "index": 9
         },
         {
-          "key": "vocdoni/vocdoni-integrator-sdk!67",
-          "label": "vocdoni-integrator-sdk!67",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "ElectionSchedule showRemaining ignores the end for CANCELED / PROCESS_UNKNOWN",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-integrator-sdk/issues/67",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "issue",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": null,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-integrator-sdk!67' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk!67' to the orchestrator"
-            }
-          ],
-          "index": 34
-        },
-        {
-          "key": "vocdoni/vocdoni-integrator-sdk!68",
-          "label": "vocdoni-integrator-sdk!68",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "A cancelled secret question keeps the results placeholder up forever",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-integrator-sdk/issues/68",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "issue",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": null,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-integrator-sdk!68' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk!68' to the orchestrator"
-            }
-          ],
-          "index": 35
-        },
-        {
-          "key": "vocdoni/vocdoni-integrator-sdk!73",
-          "label": "vocdoni-integrator-sdk!73",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "api-client: wrap the remaining process census, vote verify and pagination endpoints",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-integrator-sdk/issues/73",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "issue",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": null,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-integrator-sdk!73' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk!73' to the orchestrator"
-            }
-          ],
-          "index": 36
-        },
-        {
-          "key": "vocdoni/vocdoni-integrator-sdk!76",
-          "label": "vocdoni-integrator-sdk!76",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "api-client: model initialStatus, updatedAt, missingData, legacy, defaultLang and member sorting",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-integrator-sdk/issues/76",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "issue",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": null,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-integrator-sdk!76' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk!76' to the orchestrator"
-            }
-          ],
-          "index": 37
-        },
-        {
-          "key": "vocdoni/vocdoni-integrator-sdk!85",
-          "label": "vocdoni-integrator-sdk!85",
+          "key": "acme/gizmo-sdk!85",
+          "label": "gizmo-sdk#85",
           "kind": "PROPOSE",
           "section": "pick",
           "title": "Sign-vote flow hardening",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-integrator-sdk/issues/85",
+          "url": "https://github.com/acme/gizmo-sdk/issues/85",
           "checks": null,
           "agent": null,
           "rounds": null,
@@ -2527,475 +1448,26 @@
               "id": "go",
               "key": "g",
               "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-integrator-sdk!85' to the orchestrator"
+              "confirm": "press g again to send 'go acme/gizmo-sdk!85' to the orchestrator"
             },
             {
               "id": "no",
               "key": "n",
               "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk!85' to the orchestrator"
+              "confirm": "press n again to send 'no acme/gizmo-sdk!85' to the orchestrator"
             }
           ],
-          "index": 38
+          "driver": null,
+          "index": 10
         },
         {
-          "key": "vocdoni/vocdoni-integrator-sdk#126",
-          "label": "vocdoni-integrator-sdk#126",
+          "key": "acme/gizmo-sdk#93",
+          "label": "gizmo-sdk#93",
           "kind": "PROPOSE",
           "section": "pick",
-          "title": "chore(release): version packages",
+          "title": "feat(api-voting): per-election proofs with weight certificates",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-integrator-sdk/pull/126",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 126,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-integrator-sdk#126' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk#126' to the orchestrator"
-            }
-          ],
-          "index": 39
-        },
-        {
-          "key": "vocdoni/vocdoni-integrator-sdk#128",
-          "label": "vocdoni-integrator-sdk#128",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "fix(react-components): CSP OTP resend cooldown UX",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-integrator-sdk/pull/128",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 128,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-integrator-sdk#128' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk#128' to the orchestrator"
-            }
-          ],
-          "index": 40
-        },
-        {
-          "key": "vocdoni/vocdoni-integrator-sdk#130",
-          "label": "vocdoni-integrator-sdk#130",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "feat(ballot): refuse ballots below the protocol minimums before encoding",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-integrator-sdk/pull/130",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 130,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-integrator-sdk#130' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk#130' to the orchestrator"
-            }
-          ],
-          "index": 41
-        },
-        {
-          "key": "vocdoni/vocdoni-integrator-sdk#132",
-          "label": "vocdoni-integrator-sdk#132",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "test(integration): expect plaintext over-max ballots to be rejected at submission",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-integrator-sdk/pull/132",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 132,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-integrator-sdk#132' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk#132' to the orchestrator"
-            }
-          ],
-          "index": 42
-        },
-        {
-          "key": "vocdoni/vocdoni-integrator-sdk#79",
-          "label": "vocdoni-integrator-sdk#79",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "feat(api-voting): attest election metadata hash on votes",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-integrator-sdk/pull/79",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 79,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-integrator-sdk#79' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk#79' to the orchestrator"
-            }
-          ],
-          "index": 43
-        },
-        {
-          "key": "vocdoni/vocdoni-integrator-sdk#80",
-          "label": "vocdoni-integrator-sdk#80",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "feat(api-client): read and edit process metadata",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-integrator-sdk/pull/80",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 80,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-integrator-sdk#80' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk#80' to the orchestrator"
-            }
-          ],
-          "index": 44
-        },
-        {
-          "key": "vocdoni/vocdoni-integrator-sdk#82",
-          "label": "vocdoni-integrator-sdk#82",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "feat(react-components): resolve media URLs through the components context",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-integrator-sdk/pull/82",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 82,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-integrator-sdk#82' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk#82' to the orchestrator"
-            }
-          ],
-          "index": 45
-        },
-        {
-          "key": "vocdoni/vocdoni-integrator-sdk#83",
-          "label": "vocdoni-integrator-sdk#83",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "feat(metadata-verify): shared election metadata verification",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-integrator-sdk/pull/83",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 83,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-integrator-sdk#83' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk#83' to the orchestrator"
-            }
-          ],
-          "index": 46
-        },
-        {
-          "key": "vocdoni/vocdoni-integrator-sdk#84",
-          "label": "vocdoni-integrator-sdk#84",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "chore: integration of #79 #80 #82 #83 against dvote-protobuf#86 [do not merge]",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-integrator-sdk/pull/84",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 84,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-integrator-sdk#84' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk#84' to the orchestrator"
-            }
-          ],
-          "index": 47
-        },
-        {
-          "key": "vocdoni/vocdoni-integrator-sdk#93",
-          "label": "vocdoni-integrator-sdk#93",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "feat(api-voting): per-election csp proofs with weight certificates",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-integrator-sdk/pull/93",
+          "url": "https://github.com/acme/gizmo-sdk/pull/93",
           "checks": null,
           "agent": null,
           "rounds": null,
@@ -3027,30 +1499,82 @@
               "id": "go",
               "key": "g",
               "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-integrator-sdk#93' to the orchestrator"
+              "confirm": "press g again to send 'go acme/gizmo-sdk#93' to the orchestrator"
             },
             {
               "id": "no",
               "key": "n",
               "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-integrator-sdk#93' to the orchestrator"
+              "confirm": "press n again to send 'no acme/gizmo-sdk#93' to the orchestrator"
             }
           ],
-          "index": 48
+          "driver": null,
+          "index": 11
+        },
+        {
+          "key": "acme/gizmo-sdk#132",
+          "label": "gizmo-sdk#132",
+          "kind": "PROPOSE",
+          "section": "pick",
+          "title": "test(integration): expect over-max ballots to be rejected",
+          "draft": false,
+          "url": "https://github.com/acme/gizmo-sdk/pull/132",
+          "checks": null,
+          "agent": null,
+          "rounds": null,
+          "max_rounds": 3,
+          "quiet_s": null,
+          "stalled": false,
+          "needs": false,
+          "why": null,
+          "note": "",
+          "pick_kind": "review only",
+          "session": null,
+          "backend": null,
+          "pane": null,
+          "path": null,
+          "branch": null,
+          "pr": 132,
+          "stack": 0,
+          "open": false,
+          "parked": false,
+          "tracked": false,
+          "actions": [
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            },
+            {
+              "id": "go",
+              "key": "g",
+              "label": "go",
+              "confirm": "press g again to send 'go acme/gizmo-sdk#132' to the orchestrator"
+            },
+            {
+              "id": "no",
+              "key": "n",
+              "label": "no",
+              "confirm": "press n again to send 'no acme/gizmo-sdk#132' to the orchestrator"
+            }
+          ],
+          "driver": null,
+          "index": 12
         }
       ]
     },
     {
-      "repo": "vocdoni/vocdoni-node",
+      "repo": "acme/node",
       "entries": [
         {
-          "key": "vocdoni/vocdoni-node!1496",
-          "label": "vocdoni-node!1496",
+          "key": "acme/node!1496",
+          "label": "node#1496",
           "kind": "PROPOSE",
           "section": "pick",
-          "title": "Organization http metadata not being read",
+          "title": "Organization http metadata is not read",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-node/issues/1496",
+          "url": "https://github.com/acme/node/issues/1496",
           "checks": null,
           "agent": null,
           "rounds": null,
@@ -3082,30 +1606,31 @@
               "id": "go",
               "key": "g",
               "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-node!1496' to the orchestrator"
+              "confirm": "press g again to send 'go acme/node!1496' to the orchestrator"
             },
             {
               "id": "no",
               "key": "n",
               "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-node!1496' to the orchestrator"
+              "confirm": "press n again to send 'no acme/node!1496' to the orchestrator"
             }
           ],
-          "index": 49
+          "driver": null,
+          "index": 13
         }
       ]
     },
     {
-      "repo": "vocdoni/vocdoni-sdk",
+      "repo": "acme/gizmo-client",
       "entries": [
         {
-          "key": "vocdoni/vocdoni-sdk#460",
-          "label": "vocdoni-sdk#460",
+          "key": "acme/gizmo-client#460",
+          "label": "gizmo-client#460",
           "kind": "PROPOSE",
           "section": "pick",
-          "title": "feat!: remove anonymous voting, WalletAPI and Census3 (vochain-sequencer target)",
+          "title": "feat!: remove the anonymous voting helpers",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-sdk/pull/460",
+          "url": "https://github.com/acme/gizmo-client/pull/460",
           "checks": null,
           "agent": null,
           "rounds": null,
@@ -3137,30 +1662,31 @@
               "id": "go",
               "key": "g",
               "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni-sdk#460' to the orchestrator"
+              "confirm": "press g again to send 'go acme/gizmo-client#460' to the orchestrator"
             },
             {
               "id": "no",
               "key": "n",
               "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni-sdk#460' to the orchestrator"
+              "confirm": "press n again to send 'no acme/gizmo-client#460' to the orchestrator"
             }
           ],
-          "index": 50
+          "driver": null,
+          "index": 14
         }
       ]
     },
     {
-      "repo": "vocdoni/vocdoni.io",
+      "repo": "acme/site",
       "entries": [
         {
-          "key": "vocdoni/vocdoni.io!132",
-          "label": "vocdoni.io!132",
+          "key": "acme/site!132",
+          "label": "site#132",
           "kind": "PROPOSE",
           "section": "pick",
           "title": "Create vertical subdomains per language",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni.io/issues/132",
+          "url": "https://github.com/acme/site/issues/132",
           "checks": null,
           "agent": null,
           "rounds": null,
@@ -3192,275 +1718,26 @@
               "id": "go",
               "key": "g",
               "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni.io!132' to the orchestrator"
+              "confirm": "press g again to send 'go acme/site!132' to the orchestrator"
             },
             {
               "id": "no",
               "key": "n",
               "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni.io!132' to the orchestrator"
+              "confirm": "press n again to send 'no acme/site!132' to the orchestrator"
             }
           ],
-          "index": 51
+          "driver": null,
+          "index": 15
         },
         {
-          "key": "vocdoni/vocdoni.io!210",
-          "label": "vocdoni.io!210",
+          "key": "acme/site#232",
+          "label": "site#232",
           "kind": "PROPOSE",
           "section": "pick",
-          "title": "Trailing-slash duplicates: canonical, hreflang and sitemap point to URLs that 301-redirect",
+          "title": "docs: editable process metadata",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni.io/issues/210",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "issue",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": null,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni.io!210' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni.io!210' to the orchestrator"
-            }
-          ],
-          "index": 52
-        },
-        {
-          "key": "vocdoni/vocdoni.io!213",
-          "label": "vocdoni.io!213",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "Add visible app CTAs to learn guides, blog posts and case studies",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni.io/issues/213",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "issue",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": null,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni.io!213' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni.io!213' to the orchestrator"
-            }
-          ],
-          "index": 53
-        },
-        {
-          "key": "vocdoni/vocdoni.io!214",
-          "label": "vocdoni.io!214",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "feat(analytics): route PostHog ingestion through a managed reverse proxy",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni.io/issues/214",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "issue",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": null,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni.io!214' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni.io!214' to the orchestrator"
-            }
-          ],
-          "index": 54
-        },
-        {
-          "key": "vocdoni/vocdoni.io!280",
-          "label": "vocdoni.io!280",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "docs(developers): document the CspAuth voter login UI from @vocdoni/react-components",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni.io/issues/280",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "issue",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": null,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni.io!280' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni.io!280' to the orchestrator"
-            }
-          ],
-          "index": 55
-        },
-        {
-          "key": "vocdoni/vocdoni.io!281",
-          "label": "vocdoni.io!281",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "docs(developers): integrator SDK network helpers, typed CSP errors and explorer links (integrator-sdk#114)",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni.io/issues/281",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "issue",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": null,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni.io!281' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni.io!281' to the orchestrator"
-            }
-          ],
-          "index": 56
-        },
-        {
-          "key": "vocdoni/vocdoni.io#232",
-          "label": "vocdoni.io#232",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "docs: editable process metadata and metadata hash verification",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni.io/pull/232",
+          "url": "https://github.com/acme/site/pull/232",
           "checks": null,
           "agent": null,
           "rounds": null,
@@ -3492,125 +1769,26 @@
               "id": "go",
               "key": "g",
               "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni.io#232' to the orchestrator"
+              "confirm": "press g again to send 'go acme/site#232' to the orchestrator"
             },
             {
               "id": "no",
               "key": "n",
               "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni.io#232' to the orchestrator"
+              "confirm": "press n again to send 'no acme/site#232' to the orchestrator"
             }
           ],
-          "index": 57
+          "driver": null,
+          "index": 16
         },
         {
-          "key": "vocdoni/vocdoni.io#233",
-          "label": "vocdoni.io#233",
+          "key": "acme/site#279",
+          "label": "site#279",
           "kind": "PROPOSE",
           "section": "pick",
-          "title": "docs(census): CSP-only census and blind-signature anonymity",
+          "title": "feat(testimonials): add a testimonial",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni.io/pull/233",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 233,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni.io#233' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni.io#233' to the orchestrator"
-            }
-          ],
-          "index": 58
-        },
-        {
-          "key": "vocdoni/vocdoni.io#251",
-          "label": "vocdoni.io#251",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "feat(about-us): add the Vocdoni Association page",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni.io/pull/251",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 251,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni.io#251' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni.io#251' to the orchestrator"
-            }
-          ],
-          "index": 59
-        },
-        {
-          "key": "vocdoni/vocdoni.io#279",
-          "label": "vocdoni.io#279",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "feat(testimonials): add AFA Collserola testimonial",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni.io/pull/279",
+          "url": "https://github.com/acme/site/pull/279",
           "checks": null,
           "agent": null,
           "rounds": null,
@@ -3642,175 +1820,26 @@
               "id": "go",
               "key": "g",
               "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni.io#279' to the orchestrator"
+              "confirm": "press g again to send 'go acme/site#279' to the orchestrator"
             },
             {
               "id": "no",
               "key": "n",
               "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni.io#279' to the orchestrator"
+              "confirm": "press n again to send 'no acme/site#279' to the orchestrator"
             }
           ],
-          "index": 60
+          "driver": null,
+          "index": 17
         },
         {
-          "key": "vocdoni/vocdoni.io#282",
-          "label": "vocdoni.io#282",
+          "key": "acme/site#287",
+          "label": "site#287",
           "kind": "PROPOSE",
           "section": "pick",
-          "title": "fix(seo): emit the trailing-slash url form and redirect the bare root by language",
+          "title": "chore(deps): update the analytics client",
           "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni.io/pull/282",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 282,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni.io#282' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni.io#282' to the orchestrator"
-            }
-          ],
-          "index": 61
-        },
-        {
-          "key": "vocdoni/vocdoni.io#283",
-          "label": "vocdoni.io#283",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "feat(pricing): render the published price list in the prerendered page",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni.io/pull/283",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 283,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni.io#283' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni.io#283' to the orchestrator"
-            }
-          ],
-          "index": 62
-        },
-        {
-          "key": "vocdoni/vocdoni.io#284",
-          "label": "vocdoni.io#284",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "fix(faq): render closed faq answers into the html",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni.io/pull/284",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 284,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni.io#284' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni.io#284' to the orchestrator"
-            }
-          ],
-          "index": 63
-        },
-        {
-          "key": "vocdoni/vocdoni.io#286",
-          "label": "vocdoni.io#286",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "chore(deps): update posthog-js to 1.454.1",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni.io/pull/286",
+          "url": "https://github.com/acme/site/pull/287",
           "checks": null,
           "agent": null,
           "rounds": null,
@@ -3821,56 +1850,6 @@
           "why": null,
           "note": "",
           "pick_kind": "adopt PR",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 286,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni.io#286' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni.io#286' to the orchestrator"
-            }
-          ],
-          "index": 64
-        },
-        {
-          "key": "vocdoni/vocdoni.io#287",
-          "label": "vocdoni.io#287",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "chore(deps): bump i18next from 25.10.10 to 26.3.4",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni.io/pull/287",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
           "session": null,
           "backend": null,
           "pane": null,
@@ -3892,66 +1871,17 @@
               "id": "go",
               "key": "g",
               "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni.io#287' to the orchestrator"
+              "confirm": "press g again to send 'go acme/site#287' to the orchestrator"
             },
             {
               "id": "no",
               "key": "n",
               "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni.io#287' to the orchestrator"
+              "confirm": "press n again to send 'no acme/site#287' to the orchestrator"
             }
           ],
-          "index": 65
-        },
-        {
-          "key": "vocdoni/vocdoni.io#89",
-          "label": "vocdoni.io#89",
-          "kind": "PROPOSE",
-          "section": "pick",
-          "title": "feat(app): add Vocdoni App changelog page (/app/changelog)",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni.io/pull/89",
-          "checks": null,
-          "agent": null,
-          "rounds": null,
-          "max_rounds": 3,
-          "quiet_s": null,
-          "stalled": false,
-          "needs": false,
-          "why": null,
-          "note": "",
-          "pick_kind": "review only",
-          "session": null,
-          "backend": null,
-          "pane": null,
-          "path": null,
-          "branch": null,
-          "pr": 89,
-          "stack": 0,
-          "open": false,
-          "parked": false,
-          "tracked": false,
-          "actions": [
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "go",
-              "key": "g",
-              "label": "go",
-              "confirm": "press g again to send 'go vocdoni/vocdoni.io#89' to the orchestrator"
-            },
-            {
-              "id": "no",
-              "key": "n",
-              "label": "no",
-              "confirm": "press n again to send 'no vocdoni/vocdoni.io#89' to the orchestrator"
-            }
-          ],
-          "index": 66
+          "driver": null,
+          "index": 18
         }
       ]
     }
@@ -3959,266 +1889,274 @@
   "notes": [
     {
       "kind": "UNCLONED",
-      "key": "elboletaire/manga-downloader#467"
+      "key": "user/notes-app#467"
+    },
+    {
+      "kind": "STALE",
+      "key": "acme/widgets#401"
+    },
+    {
+      "kind": "UNKNOWN",
+      "key": "acme/gizmo-ui#12"
     }
   ],
   "activity": [
     {
-      "at": 1795617206,
+      "at": 1795617206.0,
       "kind": "feedback",
-      "key": "vocdoni-app#2022",
+      "key": "widgets#2022",
       "detail": ""
     },
     {
-      "at": 1795616655,
+      "at": 1795616655.0,
       "kind": "report",
-      "key": "vocdoni-app#2022",
+      "key": "widgets#2022",
       "detail": "ready PR open, CI green"
     },
     {
-      "at": 1795614442,
+      "at": 1795614442.0,
       "kind": "report",
-      "key": "dvote-protobuf!89",
-      "detail": "ready PR #90 relicenses to LGPL-3.0-or-later (COPYING + COPYING.LESSER), CI green, review clean\nReviewed against mast..."
+      "key": "ledger#90",
+      "detail": "ready: relicense done, CI green, review clean\nReviewed against main; nothing left open."
     },
     {
-      "at": 1795614271,
+      "at": 1795614271.0,
       "kind": "review-base",
-      "key": "dvote-protobuf!89",
+      "key": "ledger#90",
       "detail": ""
     },
     {
-      "at": 1795614265,
+      "at": 1795614265.0,
       "kind": "round",
-      "key": "dvote-protobuf!89",
+      "key": "ledger#90",
       "detail": "2"
     },
     {
-      "at": 1795614229,
+      "at": 1795614229.0,
       "kind": "heartbeat",
-      "key": "dvote-protobuf!89",
+      "key": "ledger#90",
       "detail": "waiting for CI"
     }
   ],
   "kitchen": [
     {
-      "at": 1795609749,
+      "at": 1795609749.0,
       "kind": "tick",
       "mood": "flip",
       "text": "tick · 0 cooking",
       "good": false,
-      "tone": "info",
       "key": null,
       "ms": 2500,
+      "tone": "info",
       "burst": "steam"
     },
     {
-      "at": 1795611067,
+      "at": 1795611067.0,
       "kind": "request",
       "mood": "surprised",
-      "text": "asked: go vocdoni/vocdoni-app#2022 (stack: 2022:refactor/theme-fil-prep 2023:feat/fil-theme 2032:feat/fil-dark 2031:f...",
+      "text": "asked: go acme/widgets#2022 (stack of 9)",
       "good": false,
-      "tone": "info",
       "key": null,
       "ms": 2000,
+      "tone": "info",
       "burst": "bang"
     },
     {
-      "at": 1795611090,
+      "at": 1795611090.0,
       "kind": "spawn",
       "mood": "pour",
-      "text": "new order vocdoni-app#2022 Fil Theme Stack",
+      "text": "new order widgets#2022 Refactor Theme Tokens",
       "good": true,
-      "tone": "good",
-      "key": "vocdoni/vocdoni-app#2022",
+      "key": "acme/widgets#2022",
       "ms": 2500,
+      "tone": "good",
       "burst": "batter"
     },
     {
-      "at": 1795611095,
+      "at": 1795611095.0,
       "kind": "sent",
       "mood": "flip",
-      "text": "→ vocdoni-app#2022 You own a stack of PRs in vocdoni/vocdoni-app, base `develop`. Bottom to top, ea",
+      "text": "→ widgets#2022 You own a stack of PRs in acme/widgets, base `develop`.",
       "good": false,
-      "tone": "info",
-      "key": "vocdoni/vocdoni-app#2022",
+      "key": "acme/widgets#2022",
       "ms": 1500,
+      "tone": "info",
       "burst": null
     },
     {
-      "at": 1795611116,
+      "at": 1795611116.0,
       "kind": "round",
       "mood": "flip",
-      "text": "review round vocdoni-app#2022",
+      "text": "review round widgets#2022",
       "good": false,
-      "tone": "info",
-      "key": "vocdoni/vocdoni-app#2022",
+      "key": "acme/widgets#2022",
       "ms": 2000,
+      "tone": "info",
       "burst": null
     },
     {
-      "at": 1795611126,
+      "at": 1795611126.0,
       "kind": "review-base",
       "mood": "idle",
-      "text": "review-base vocdoni-app#2022",
+      "text": "review-base widgets#2022",
       "good": false,
-      "tone": "info",
       "key": null,
       "ms": 0,
+      "tone": "info",
       "burst": null
     },
     {
-      "at": 1795612930,
+      "at": 1795612930.0,
       "kind": "tick",
       "mood": "flip",
       "text": "tick · 1 cooking",
       "good": false,
-      "tone": "info",
       "key": null,
       "ms": 2500,
+      "tone": "info",
       "burst": "steam"
     },
     {
-      "at": 1795613394,
+      "at": 1795613394.0,
       "kind": "request",
       "mood": "surprised",
-      "text": "asked: go vocdoni/dvote-protobuf!89",
+      "text": "asked: go ledger#90",
       "good": false,
-      "tone": "info",
       "key": null,
       "ms": 2000,
+      "tone": "info",
       "burst": "bang"
     },
     {
-      "at": 1795613407,
-      "kind": "tick",
-      "mood": "flip",
-      "text": "tick · 1 cooking",
-      "good": false,
-      "tone": "info",
-      "key": null,
-      "ms": 2500,
-      "burst": "steam"
-    },
-    {
-      "at": 1795613423,
+      "at": 1795613423.0,
       "kind": "spawn",
       "mood": "pour",
-      "text": "new order dvote-protobuf!89 Relicense Lgpl",
+      "text": "new order ledger#90 Relicense LGPL",
       "good": true,
-      "tone": "good",
-      "key": "vocdoni/dvote-protobuf!89",
+      "key": "acme/ledger#90",
       "ms": 2500,
+      "tone": "good",
       "burst": "batter"
     },
     {
-      "at": 1795613428,
+      "at": 1795613428.0,
       "kind": "sent",
       "mood": "flip",
-      "text": "→ dvote-protobuf!89 You are working on vocdoni/dvote-protobuf issue #89, on branch `chore/relicense-",
+      "text": "→ ledger#90 You are working on acme/ledger issue #89 on a relicense branch.",
       "good": false,
-      "tone": "info",
-      "key": "vocdoni/dvote-protobuf!89",
+      "key": "acme/ledger#90",
       "ms": 1500,
+      "tone": "info",
       "burst": null
     },
     {
-      "at": 1795613922,
+      "at": 1795613922.0,
       "kind": "round",
       "mood": "flip",
-      "text": "review round dvote-protobuf!89",
+      "text": "review round ledger#90",
       "good": false,
-      "tone": "info",
-      "key": "vocdoni/dvote-protobuf!89",
+      "key": "acme/ledger#90",
       "ms": 2000,
+      "tone": "info",
       "burst": null
     },
     {
-      "at": 1795613930,
+      "at": 1795613930.0,
       "kind": "review-base",
       "mood": "idle",
-      "text": "review-base dvote-protobuf!89",
+      "text": "review-base ledger#90",
       "good": false,
-      "tone": "info",
       "key": null,
       "ms": 0,
+      "tone": "info",
       "burst": null
     },
     {
-      "at": 1795614265,
+      "at": 1795614265.0,
       "kind": "round",
       "mood": "flip",
-      "text": "review round dvote-protobuf!89",
+      "text": "review round ledger#90",
       "good": false,
-      "tone": "info",
-      "key": "vocdoni/dvote-protobuf!89",
+      "key": "acme/ledger#90",
       "ms": 2000,
+      "tone": "info",
       "burst": null
     },
     {
-      "at": 1795614271,
+      "at": 1795614271.0,
       "kind": "review-base",
       "mood": "idle",
-      "text": "review-base dvote-protobuf!89",
+      "text": "review-base ledger#90",
       "good": false,
-      "tone": "info",
       "key": null,
       "ms": 0,
+      "tone": "info",
       "burst": null
     },
     {
-      "at": 1795614442,
+      "at": 1795614442.0,
       "kind": "report",
       "mood": "happy",
-      "text": "ready dvote-protobuf!89: PR #90 relicenses to LGPL-3.0-or-later (COPYING + COPYING.LESSER), CI green, review clean\nRe...",
+      "text": "ready ledger#90: relicense done, CI green, review clean",
       "good": true,
-      "tone": "good",
-      "key": "vocdoni/dvote-protobuf!89",
+      "key": "acme/ledger#90",
       "ms": 4000,
+      "tone": "good",
       "burst": "sparkle"
     },
     {
-      "at": 1795614455,
+      "at": 1795614455.0,
       "kind": "tick",
       "mood": "flip",
       "text": "tick · 2 cooking",
       "good": false,
-      "tone": "info",
       "key": null,
       "ms": 2500,
+      "tone": "info",
       "burst": "steam"
     },
     {
-      "at": 1795614789,
+      "at": 1795614600.0,
+      "kind": "stall",
+      "mood": "worried",
+      "text": "no word from acme/gizmo-sdk#14 for 35 min",
+      "good": false,
+      "key": "acme/gizmo-sdk#14",
+      "ms": 3000,
+      "tone": "bad",
+      "burst": "smoke"
+    },
+    {
+      "at": 1795614789.0,
       "kind": "tick",
       "mood": "flip",
       "text": "tick · 2 cooking",
       "good": false,
-      "tone": "info",
       "key": null,
       "ms": 2500,
+      "tone": "info",
       "burst": "steam"
     },
     {
-      "at": 1795616655,
+      "at": 1795616655.0,
       "kind": "report",
       "mood": "happy",
-      "text": "ready vocdoni-app#2022: PR open, CI green",
+      "text": "ready widgets#2022: PR open, CI green",
       "good": true,
-      "tone": "good",
-      "key": "vocdoni/vocdoni-app#2022",
+      "key": "acme/widgets#2022",
       "ms": 4000,
+      "tone": "good",
       "burst": "sparkle"
     },
     {
-      "at": 1795617206,
+      "at": 1795617206.0,
       "kind": "feedback",
       "mood": "flip",
-      "text": "feedback vocdoni-app#2022",
+      "text": "feedback widgets#2022",
       "good": false,
-      "tone": "info",
-      "key": "vocdoni/vocdoni-app#2022",
+      "key": "acme/widgets#2022",
       "ms": 1500,
+      "tone": "info",
       "burst": null
     }
   ],
@@ -4228,43 +2166,57 @@
     "busy": false,
     "balls": [
       {
-        "key": "vocdoni/dvote-protobuf#90",
-        "label": "dvote-protobuf#90",
-        "state": "ready",
-        "heat": 1.0,
-        "focus": false
-      },
-      {
-        "key": "vocdoni/argos-code#3",
-        "label": "argos-code#3",
+        "key": "acme/argos#3",
+        "label": "argos#3",
         "state": "raw",
-        "heat": 1.0,
+        "heat": 0.1,
         "focus": false
       },
       {
-        "key": "vocdoni/explorer-ng#45",
-        "label": "explorer-ng#45",
+        "key": "acme/explorer#45",
+        "label": "explorer#45",
         "state": "burnt",
         "heat": 1.0,
         "focus": false
       },
       {
-        "key": "vocdoni/davinci-sdk#14",
-        "label": "davinci-sdk#14",
+        "key": "acme/gizmo-sdk#14",
+        "label": "gizmo-sdk#14",
         "state": "stalled",
         "heat": 1.0,
         "focus": false
       },
       {
-        "key": "vocdoni/oauth#7",
-        "label": "oauth#7",
+        "key": "acme/site#286",
+        "label": "site#286",
+        "state": "raw",
+        "heat": 0.2,
+        "focus": false
+      },
+      {
+        "key": "acme/widgets#2018",
+        "label": "widgets#2018",
+        "state": "ready",
+        "heat": 1.0,
+        "focus": false
+      },
+      {
+        "key": "acme/auth#7",
+        "label": "auth#7",
         "state": "capped",
         "heat": 0.97,
         "focus": false
       },
       {
-        "key": "vocdoni/vocdoni-app#2022",
-        "label": "vocdoni-app#2022",
+        "key": "acme/ledger#90",
+        "label": "ledger#90",
+        "state": "ready",
+        "heat": 1.0,
+        "focus": false
+      },
+      {
+        "key": "acme/widgets#2022",
+        "label": "widgets#2022",
         "state": "cooking",
         "heat": 0.4,
         "focus": true
@@ -4272,24 +2224,24 @@
     ],
     "shelf": [
       {
-        "key": "vocdoni/saas-backend#872",
-        "label": "saas-backend#872"
+        "key": "acme/billing#737",
+        "label": "billing#737"
       },
       {
-        "key": "vocdoni/saas-backend#737",
-        "label": "saas-backend#737"
+        "key": "acme/billing#872",
+        "label": "billing#872"
       },
       {
-        "key": "vocdoni/vocdoni-app#2024",
-        "label": "vocdoni-app#2024"
+        "key": "acme/widgets#2024",
+        "label": "widgets#2024"
       }
     ],
     "shelf_total": 3,
     "chef": {
       "mood": "idle",
-      "since": 1795617206,
+      "since": 1795617207.7,
       "ms": 0,
-      "resting": "idle"
+      "resting": "doze"
     }
   },
   "global_actions": [
