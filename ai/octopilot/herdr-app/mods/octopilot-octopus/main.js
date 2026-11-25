@@ -1,13 +1,11 @@
-// The messenger as a reluctant octopus: a floating window with the octopus, a
-// speech bubble holding the orchestrator's last message and the kitchen's last
-// lines. Click the octopus to peek the messenger's terminal, the bubble to read
-// the whole message, – to fold the bubble, ✕ to close.
-// Props: { fixture?, dir?, state_dir?, overlay? }, or for the full-text dialog
-// { full: true, text, status }.
+// The messenger as an octopus: poses from the speech and kitchen state, and a bubble
+// with the last message, the kitchen log and the pan count. Props: { fixture?, dir?, state_dir?, overlay? }.
+// For the full-text dialog: { full: true, text, status, overlay }.
 
 import { View, div, image } from "gpui-kit";
 import { v_flex, h_flex, TextView } from "gpui-base";
 import { exec, readTextFile, run, theme, props, shared, home, window, openOverlay, closeOverlay, checking } from "herdr";
+import { clip } from "./clip.js";
 
 const OCTO_W = 125;
 const OCTO_H = 150;
@@ -15,18 +13,17 @@ const BUBBLE_W = 250;
 const FAST_MS = 2000;
 const SLOW_MS = 10000;
 const TALK_MS = 4000;
-const MOOD_S = 5;
 const DOZE_S = 600;
 const LOG_LINES = 4;
-const MAX_LINES = 6;
-const MAX_CHARS = 280;
 
 const WORD = { working: "working", blocked: "needs you", idle: "idle", done: "finished", offline: "offline", paused: "paused" };
 const DOT = { working: "working", blocked: "blocked", idle: "idle", done: "done", offline: "unknown", paused: "idle" };
-// The kitchen's mood names (scene.ts) as poses; only the first group shows for a while.
-const MOOD_POSE = { happy: "happy", serve: "happy", worried: "worried", sad: "sad", surprised: "surprised", flip: "working", pour: "working", busy: "working", sleep: "sleeping", doze: "doze", idle: "idle" };
-const TRANSIENT = new Set(["happy", "serve", "worried", "sad", "surprised"]);
-// Poses whose frames cross-fade back and forth: [frame names, cycle ms].
+// Kitchen moods (scene.ts) that show a pose for a while; the rest of the moods come from status.
+const MOOD_POSE = { happy: "happy", serve: "happy", worried: "worried", sad: "sad", surprised: "surprised", flip: "working", pour: "working", sleep: "sleeping" };
+// How long each event's mood shows, from feed.ts: by event kind, else by mood for a report.
+const KIND_MS = { tick: 2500, spawn: 2500, sent: 1500, request: 2000, cleanup: 3500, merged: 3500, pause: 2000, resume: 1500, round: 2000, reviewed: 2000, capped: 2500, feedback: 1500, reboot: 2000, decline: 1500, untrack: 1500, detach: 1500, track: 2000 };
+const MOOD_MS = { happy: 4000, worried: 3000, sad: 4500, surprised: 2000, serve: 3500, flip: 2000, pour: 2500, sleep: 2000 };
+// Poses whose second frame fades in and out over the first: [frame names, cycle ms].
 const FLIPS = {
   talking: [["talking-0", "talking-1"], 360],
   working: [["working-0", "working-1"], 1200],
@@ -47,25 +44,20 @@ function pick(prop, sharedKey, fallback) {
 const octopilotDir = () => pick("dir", "octopilot.dir", `${home()}/.dotfiles/ai/octopilot`);
 const stateDir = () => pick("state_dir", "octopilot.state_dir", `${home()}/.local/state/octopilot`);
 
+const artPath = (name) => `mods/octopilot-octopus/art/png/${name}-320.png`;
+
 // The art in mods/octopilot-octopus/art/png, 320 px tall, shown at OCTO_H.
 function art(name) {
-  return image(`mods/octopilot-octopus/art/png/${name}-320.png`).w(OCTO_W).h(OCTO_H).flex_none();
+  return image(artPath(name)).w(OCTO_W).h(OCTO_H).flex_none();
 }
 
-// Two poses cross-fading back and forth forever: native motion, no redraws.
-function flip(names, period) {
-  return div().relative().flex_none().w(OCTO_W).h(OCTO_H).children(
-    names.map((name, i) =>
-      image(`mods/octopilot-octopus/art/png/${name}-320.png`).absolute().top(0).left(0).w(OCTO_W).h(OCTO_H)
-        .loop("opacity", { from: i === 0 ? 1 : 0, to: i === 0 ? 0 : 1, period })));
-}
-
-// Long messages are cut to a few lines; the bubble opens the rest.
-function clip(text) {
-  const lines = text.split("\n");
-  if (lines.length <= MAX_LINES && text.length <= MAX_CHARS) return text;
-  const cut = lines.slice(0, MAX_LINES).join("\n").slice(0, MAX_CHARS).trimEnd();
-  return `${cut} …*more*`;
+// The first frame stays put; the second fades in and out over it, natively.
+function flip([first, second], period) {
+  return div().relative().flex_none().w(OCTO_W).h(OCTO_H).children([
+    image(artPath(first)).w(OCTO_W).h(OCTO_H),
+    image(artPath(second)).absolute().top(0).left(0).w(OCTO_W).h(OCTO_H)
+      .loop("opacity", { from: 0, to: 1, period }),
+  ]);
 }
 
 const pad = (n) => String(n).padStart(2, "0");
@@ -73,6 +65,8 @@ const clock = (at) => {
   const d = new Date(at * 1000);
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
+
+const eventMs = (ev) => KIND_MS[ev.kind] ?? MOOD_MS[ev.mood] ?? 0;
 
 export default class Octopus extends View {
   init(_props, cx) {
@@ -84,27 +78,41 @@ export default class Octopus extends View {
     this.talkGen = 0;
     this.sigh = false;
     this.collapsed = false;
+    this.sig = null;
+    this.shownMood = null;
     if (checking() || props()?.full) return;
     this.watch(cx);
     this.sighs(cx);
   }
 
   // Polls the messenger and the kitchen: fast while the window shows, slow while hidden.
+  // Redraws only when something shown changed, and once when a kitchen mood ends.
   watch(cx) {
     cx.spawn(async (cx) => {
       for (;;) {
         await this.poll(cx);
-        cx.notify();
+        const sig = this.signature();
+        const mood = this.activeMood();
+        if (sig !== this.sig || (this.shownMood && !mood)) cx.notify();
+        this.sig = sig;
+        this.shownMood = mood;
         await cx.sleep(window()?.visible === false ? SLOW_MS : FAST_MS);
       }
     });
   }
 
-  // An occasional sigh: the second idle frame for a moment.
+  signature() {
+    const h = this.view?.header;
+    return [this.seq, this.data?.status, this.data?.paused, this.error, this.newest()?.at,
+      h?.active, h?.max_active, h?.paused].join("|");
+  }
+
+  // An occasional sigh: the second idle frame for a moment, only while idle and shown.
   sighs(cx) {
     cx.spawn(async (cx) => {
       for (;;) {
         await cx.sleep(7000 + Math.random() * 5000);
+        if (window()?.visible === false || this.pose() !== "idle") continue;
         this.sigh = true;
         cx.notify();
         await cx.sleep(1600);
@@ -173,17 +181,24 @@ export default class Octopus extends View {
     return best;
   }
 
+  // The pose of the newest kitchen event, while its time is not up.
+  activeMood() {
+    const ev = this.newest();
+    if (!ev || !MOOD_POSE[ev.mood]) return null;
+    return Date.now() / 1000 - ev.at < eventMs(ev) / 1000 ? MOOD_POSE[ev.mood] : null;
+  }
+
   pose() {
     if (this.error || this.data?.status === "offline") return "offline";
     if (!this.data) return "idle";
     if (this.talking) return "talking";
     if (this.data.status === "blocked") return "blocked";
     if (this.data.paused || this.view?.header?.paused) return "sleeping";
-    const ev = this.newest();
-    const age = ev ? Date.now() / 1000 - ev.at : 0;
-    if (ev && TRANSIENT.has(ev.mood) && age < MOOD_S) return MOOD_POSE[ev.mood];
+    const mood = this.activeMood();
+    if (mood) return mood;
     if (this.data.status === "working") return "working";
-    if (ev && age > DOZE_S) return "doze";
+    const ev = this.newest();
+    if (ev && Date.now() / 1000 - ev.at > DOZE_S) return "doze";
     return "idle";
   }
 
@@ -238,12 +253,12 @@ export default class Octopus extends View {
     const muted = (text) => div().text_size(12).text_color(t.muted).child(text);
     if (this.error) return muted(`Can't reach the messenger: ${this.error}`);
     if (!d) return muted("Waiting for the messenger…");
-    if (!d.text) return muted("The messenger hasn't said anything yet.");
+    if (!d.text) return muted(d.status === "offline" ? "The messenger is offline." : "The messenger hasn't said anything yet.");
     return div().text_size(13).text_color(t.foreground)
       .child(TextView.markdown("octopilot-speech", clip(d.text)).raw_html(false));
   }
 
-  // The last kitchen lines, oldest dim, the newest green (good), red (bad) or plain.
+  // The last kitchen lines: older ones dim, the newest green (good), red (bad) or plain.
   logLines(t) {
     const lines = [...this.kitchen()].sort((a, b) => a.at - b.at).slice(-LOG_LINES);
     if (!lines.length) return null;
@@ -281,7 +296,7 @@ export default class Octopus extends View {
               h_flex().gap(2).items_center().children([
                 pans ? div().text_size(11).text_color(t.dim).child(pans) : null,
                 this.button(t, "fold", "–", (cx) => { this.collapsed = true; cx.notify(); }),
-                this.button(t, "close", "✕", () => closeOverlay(p.overlay)),
+                p.overlay ? this.button(t, "close", "✕", () => closeOverlay(p.overlay)) : null,
               ].filter(Boolean)),
             ]),
             this.bubbleBody(t),
@@ -293,10 +308,11 @@ export default class Octopus extends View {
   renderFull(p) {
     const t = theme();
     return v_flex().size_full().p(16).gap(10).bg(t.popover).children([
-      h_flex().justify_between().items_center().flex_none()
-        .child(div().text_size(13).font_semibold().text_color(t.foreground)
-          .child(`Messenger · ${WORD[p.status] ?? p.status ?? ""}`))
-        .child(this.button(t, "close", "✕", () => closeOverlay(p.overlay))),
+      h_flex().justify_between().items_center().flex_none().children([
+        div().text_size(13).font_semibold().text_color(t.foreground)
+          .child(`Messenger · ${WORD[p.status] ?? p.status ?? ""}`),
+        p.overlay ? this.button(t, "close", "✕", () => closeOverlay(p.overlay)) : null,
+      ].filter(Boolean)),
       div().id("speech-full").flex_1().overflow_y_scrollbar().text_size(13).text_color(t.foreground)
         .child(TextView.markdown("octopilot-speech-full", p.text ?? "").raw_html(false)),
     ]);

@@ -16,5 +16,5 @@
 <path d="M113 105 Q122 110 131 105" fill="none" stroke="#3b2145" stroke-width="2.6" stroke-linecap="round"/>
 <path d="M94 133 L106 133" stroke="#3b2145" stroke-width="2.2" stroke-linecap="round"/>
 </g>
-<path d="M152 54 h12 l-12 12 h12" fill="none" stroke="#3b2145" stroke-width="2" stroke-linejoin="round" opacity=".75"/><path d="M168 34 h8 l-8 8 h8" fill="none" stroke="#3b2145" stroke-width="2" stroke-linejoin="round" opacity=".75"/>
+<path d="M148 56 h16 l-16 16 h16" fill="none" stroke="#3b2145" stroke-width="2.4" stroke-linejoin="round" opacity=".75"/><path d="M168 30 h12 l-12 12 h12" fill="none" stroke="#3b2145" stroke-width="2.4" stroke-linejoin="round" opacity=".75"/>
 </svg>

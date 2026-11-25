@@ -27,7 +27,7 @@ Props, all optional: `dir` (the octopilot code dir, default `~/.dotfiles/ai/octo
 the reason in the bubble), `happy`, `worried`, `sad`, `surprised` (kitchen moods, the
 newest event for 5 s) and `doze` (no kitchen event for 10 minutes).
 The art is `art/make.py`: `python3 art/make.py --png` rewrites `art/svg/` and renders
-`art/png/<pose>-<n>-{160,320}.png` (inkscape, or magick without it).
+`art/png/<pose>-<n>-320.png` (inkscape, or magick without it).
 
 ## Testing without the backend
 
@@ -37,3 +37,5 @@ sample per status and `fixtures/state/view.json` a kitchen. Kitchen moods only s
 while their event is fresh, so set `at` to the current epoch to see them.
 
 `herdr-app check` runs without polling (`checking()`).
+
+`clip.js` (the bubble's cut) has node tests: `node --test test/clip.test.mjs`.

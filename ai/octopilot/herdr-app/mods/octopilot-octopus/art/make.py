@@ -2,8 +2,7 @@
 """Draws the messenger octopus poses as SVG, one file per frame.
 
 `python3 make.py` rewrites art/svg/*.svg. `--png` also renders
-art/png/<name>-160.png and -320.png (160 and 320 px tall) with inkscape,
-or magick when inkscape is missing.
+art/png/<name>-320.png (320 px tall) with inkscape, or magick when inkscape is missing.
 """
 
 import math
@@ -40,17 +39,17 @@ FRAMES = {
                       ends={0: (18, 112), 7: (188, 92)}),
     "blocked-1": dict(lid=0, pupil=(-1.5, 0), pupil_r=3.5, mouth="o", alarm=True, dy=-1,
                       ends={0: (16, 116), 7: (184, 100)}),
-    "sleeping-0": dict(closed=True, mouth="flat", dy=0, z=[(150, 62, 9), (164, 46, 6)]),
-    "sleeping-1": dict(closed=True, mouth="flat", dy=-2, z=[(152, 54, 12), (168, 34, 8)]),
+    "sleeping-0": dict(closed=True, mouth="flat", dy=0, z=[(146, 66, 12), (164, 44, 9)]),
+    "sleeping-1": dict(closed=True, mouth="flat", dy=-2, z=[(148, 56, 16), (168, 30, 12)]),
     "offline-0": dict(closed=True, mouth="flat", palette="grey"),
     "happy-0": dict(eye="happy", mouth="smile", ends={0: (18, 176), 7: (182, 184)}),
     "happy-1": dict(eye="happy", mouth="smile", ends={0: (24, 164), 7: (176, 168)}, sparkle=True, dy=-2),
     "worried-0": dict(lid=0.15, pupil=(-1.5, -2), brows=True, mouth="wavy"),
     "worried-1": dict(lid=0.15, pupil=(-1.5, -2), brows=True, mouth="wavy", dy=-1, sweat=True),
-    "sad-0": dict(lid=0.45, pupil=(0, 4), mouth="frown_deep"),
-    "sad-1": dict(lid=0.45, pupil=(0, 4), mouth="frown_deep", tear=True, dy=-1),
-    "surprised-0": dict(lid=0, pupil_r=3.5, mouth="o_big", alarm=True),
-    "surprised-1": dict(lid=0, pupil=(0, -1), pupil_r=4.5, mouth="o_big", alarm=True, dy=-2),
+    "sad-0": dict(lid=0.6, pupil=(0, 5), mouth="frown_deep", tear=True),
+    "sad-1": dict(lid=0.6, pupil=(0, 5), mouth="frown_deep", tear=True, dy=-1),
+    "surprised-0": dict(lid=0, pupil_r=3.5, mouth="o_big", burst=True),
+    "surprised-1": dict(lid=0, pupil=(0, -1), pupil_r=4.5, mouth="o_big", burst=True, dy=-2),
     "doze-0": dict(closed=True, mouth="flat", dy=-1),
 }
 
@@ -154,6 +153,12 @@ def sparkle(p):
             f'stroke="{p["ink"]}" stroke-width=".6"/>')
 
 
+def burst(p):
+    # Pop lines round the head: the surprise mark, where blocked gets the "!".
+    return (f'<path d="M150 40 L143 34 M160 30 L157 21 M172 30 L178 22 M182 42 L190 38" fill="none" '
+            f'stroke="{p["ink"]}" stroke-width="2.2" stroke-linecap="round"/>')
+
+
 def sweat():
     return ('<path d="M150 56 C156 66 160 72 160 78 A10 10 0 0 1 140 78 C140 72 144 66 150 56Z" '
             'fill="#8fd8ff" stroke="#3a8fc0" stroke-width=".8"/>'
@@ -170,7 +175,7 @@ def zs(items, p):
     out = []
     for x, y, s in items:
         out.append(f'<path d="M{x} {y} h{s} l-{s} {s} h{s}" fill="none" stroke="{p["ink"]}" '
-                   f'stroke-width="2" stroke-linejoin="round" opacity=".75"/>')
+                   f'stroke-width="2.4" stroke-linejoin="round" opacity=".75"/>')
     return "".join(out)
 
 
@@ -206,6 +211,8 @@ def draw(frame):
         extras.append(sweat())
     if frame.get("alarm"):
         extras.append(alarm(p))
+    if frame.get("burst"):
+        extras.append(burst(p))
     if frame.get("z"):
         extras.append(zs(frame["z"], p))
     return "\n".join([
@@ -253,11 +260,9 @@ def main(argv):
     if "--png" in argv:
         os.makedirs(png_dir, exist_ok=True)
         for name in FRAMES:
-            svg = os.path.join(svg_dir, f"{name}.svg")
-            for height in (160, 320):
-                png = os.path.join(png_dir, f"{name}-{height}.png")
-                render(svg, png, height)
-                print(png)
+            png = os.path.join(png_dir, f"{name}-320.png")
+            render(os.path.join(svg_dir, f"{name}.svg"), png, 320)
+            print(png)
 
 
 if __name__ == "__main__":
