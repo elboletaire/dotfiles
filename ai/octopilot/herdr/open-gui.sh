@@ -5,8 +5,9 @@
 #   Octopilot (code changes): a claude for changing octopilot itself
 # Each claude is labelled octopilot.agent=<name> and octopilot.session=<uuid>
 # (its transcript, read by scan.py speech and chat). --terminals builds the
-# TUI-style layout instead: terminal panes and the curses dashboard in one tab.
-# From a worktree it needs OCTOPILOT_STATE_DIR (see herdr/README.md, "GUI (herdr-app)").
+# TUI-style layout instead. --close-launcher closes the tab this runs in, when
+# the key or the palette opened it for this alone (programs.json, herdr-app).
+# From a worktree it needs OCTOPILOT_STATE_DIR (see herdr/README.md).
 set -euo pipefail
 APP="herdr-app"
 HC="hc"
@@ -23,10 +24,12 @@ CODE_TAB="Octopilot (code changes)"
 CODE_CWD="$(cd "$DIR/../.." && pwd -P)"   # the checkout this octopilot lives in
 
 TERMINALS=0
+CLOSE_LAUNCHER=0
 for arg in "$@"; do
   case "$arg" in
     --terminals) TERMINALS=1 ;;
-    -h|--help) echo "usage: open-gui.sh [--terminals]"; exit 0 ;;
+    --close-launcher) CLOSE_LAUNCHER=1 ;;
+    -h|--help) echo "usage: open-gui.sh [--terminals] [--close-launcher]"; exit 0 ;;
     *) echo "open-gui.sh: unknown argument $arg" >&2; exit 2 ;;
   esac
 done
@@ -58,6 +61,17 @@ envs+=("${scope[@]+"${scope[@]}"}")
 
 # The props of the mods, which read their octopilot from them.
 MOD_PROPS="$(jq -nc --arg dir "$DIR" --arg state "$STATE_DIR" '{dir: $dir, state_dir: $state}')"
+
+# `herdr-app ...` with its output on stdout; a failure stops here with the
+# output it printed, so a refused command says why.
+app() {
+  local out
+  if ! out=$("$APP" "$@" 2>&1); then
+    echo "open-gui.sh: $APP $* failed: $out" >&2
+    exit 1
+  fi
+  printf '%s\n' "$out"
+}
 
 # A JSON argv array from its arguments, as herdr-app takes it.
 argv_json() {
@@ -117,9 +131,9 @@ owner_dir() {
 add_prompter() {
   local split session
   session=$(new_session)
-  split=$("$APP" do pane.split --direction "$2" --pane "$1" \
+  split=$(app do pane.split --direction "$2" --pane "$1" \
     --argv "$(session_argv "$session" "/octopilot:prompter")")
-  "$APP" do pane.rename --pane "$(jq -r '.pane' <<<"$split")" --name prompter >/dev/null
+  app do pane.rename --pane "$(jq -r '.pane' <<<"$split")" --name prompter >/dev/null
   name_agent "$(jq -r '.terminal' <<<"$split")" "$PROMPTER_AGENT" "$session"
 }
 
@@ -127,9 +141,9 @@ add_prompter() {
 # loops that feed view.json, which the mods show.
 add_headless() {
   local split
-  split=$("$APP" do pane.split --direction down --pane "$1" \
+  split=$(app do pane.split --direction down --pane "$1" \
     --argv "$(argv_json env "${envs[@]}" bash "$DIR/dashboard.sh" --headless)")
-  "$APP" do pane.rename --pane "$(jq -r '.pane' <<<"$split")" --name headless >/dev/null
+  app do pane.rename --pane "$(jq -r '.pane' <<<"$split")" --name headless >/dev/null
   name_agent "$(jq -r '.terminal' <<<"$split")" "$HEADLESS_AGENT"
 }
 
@@ -144,14 +158,14 @@ add_engine_agents() {
 add_main_tab() {
   local created pane
   if [ -n "$(tab_named "$1" "$MAIN_TAB")" ]; then return 0; fi
-  created=$("$APP" do tab.new --space "$1" --name "$MAIN_TAB" \
+  created=$(app do tab.new --space "$1" --name "$MAIN_TAB" \
     --mod octopilot-dashboard --props "$MOD_PROPS" --focus false)
   pane=$(jq -r '.pane // empty' <<<"$created")
   if [ -z "$pane" ]; then
     echo "open-gui.sh: the $MAIN_TAB tab has no pane to split the chat into" >&2
     exit 1
   fi
-  "$APP" do pane.split --direction right --pane "$pane" \
+  app do pane.split --direction right --pane "$pane" \
     --mod octopilot-chat --props "$MOD_PROPS" >/dev/null
 }
 
@@ -159,15 +173,48 @@ add_main_tab() {
 add_code_tab() {
   local created
   if [ -n "$(tab_named "$1" "$CODE_TAB")" ]; then return 0; fi
-  created=$("$APP" do tab.new --space "$1" --name "$CODE_TAB" --folder "$CODE_CWD" \
+  created=$(app do tab.new --space "$1" --name "$CODE_TAB" --folder "$CODE_CWD" \
     --argv "$(session_argv "" "")" --focus false)
   name_agent "$(jq -r '.terminal' <<<"$created")" "$CODE_AGENT"
 }
 
+# The terminal of a dashboard.sh run as the TUI layout's curses dashboard, if
+# the space has one: a second dashboard loop next to the headless one.
+legacy_dashboard() {
+  local t
+  for t in $("$APP" ls | jq -r --arg s "$1" \
+    '.spaces[] | select(.id == $s) | .tabs[].terminals[].terminal'); do
+    if "$HC" get "$t" --json | jq -e '(.argv // []) | join(" ") |
+      test("dashboard[.]sh") and (test("--headless") | not)' >/dev/null; then
+      echo "$t"
+      return 0
+    fi
+  done
+}
+
+# Closes the tab this runs in, when the terminal is its only one (the launcher's
+# own tab), so no idle tab stays behind.
+close_launcher() {
+  local located tab count
+  if [ -z "${HC_TERMINAL_ID:-}" ]; then return 0; fi
+  located=$(locate "$HC_TERMINAL_ID") || return 0
+  IFS=$'\t' read -r _ tab _ <<<"$located"
+  count=$("$APP" ls | jq -r --arg t "$tab" \
+    '[.spaces[].tabs[] | select(.id == $t) | .terminals[]] | length')
+  if [ "$count" = 1 ]; then
+    app do tab.close --id "$tab" --confirmed true >/dev/null
+  fi
+}
+
+# Runs at the end of every path that did its work.
+finish() {
+  if [ "$CLOSE_LAUNCHER" = 1 ]; then close_launcher; fi
+}
+
 # Shows the space and its OCTOPILOT tab.
 focus_main() {
-  "$APP" do space.select --id "$1" >/dev/null
-  "$APP" do tab.select --id "$(tab_named "$1" "$MAIN_TAB")" >/dev/null
+  app do space.select --id "$1" >/dev/null
+  app do tab.select --id "$(tab_named "$1" "$MAIN_TAB")" >/dev/null
 }
 
 orch=$(agent_term "$ORCH_AGENT")
@@ -184,17 +231,29 @@ if [ -n "$orch" ]; then
   fi
   IFS=$'\t' read -r space tab pane <<<"$located"
   if [ "$TERMINALS" = 1 ]; then
-    "$APP" do tab.rename --id "$tab" --name "$MAIN_TAB" >/dev/null
+    if [ -n "$(tab_named "$space" "$MAIN_TAB")" ] && [ "$(tab_named "$space" "$MAIN_TAB")" != "$tab" ]; then
+      echo "open-gui.sh: the space already has an $MAIN_TAB tab (the GUI layout);" \
+        "run without --terminals" >&2
+      exit 1
+    fi
+    app do tab.rename --id "$tab" --name "$MAIN_TAB" >/dev/null
     if [ -z "$(agent_term "$PROMPTER_AGENT")" ]; then add_prompter "$pane" down; fi
     add_code_tab "$space"
-    "$APP" do agent.focus --terminal "$orch" >/dev/null
+    app do agent.focus --terminal "$orch" >/dev/null
   else
-    "$APP" do tab.rename --id "$tab" --name "$ENGINE_TAB" >/dev/null
+    old=$(legacy_dashboard "$space")
+    if [ -n "$old" ]; then
+      echo "open-gui.sh: terminal $old is the curses dashboard of the TUI layout;" \
+        "close its pane first (two dashboards would run), or use --terminals" >&2
+      exit 1
+    fi
+    app do tab.rename --id "$tab" --name "$ENGINE_TAB" >/dev/null
     add_engine_agents "$pane"
     add_main_tab "$space"
     add_code_tab "$space"
     focus_main "$space"
   fi
+  finish
   exit 0
 fi
 
@@ -202,7 +261,7 @@ fi
 session=$(new_session)
 tab_name="$ENGINE_TAB"
 if [ "$TERMINALS" = 1 ]; then tab_name="$MAIN_TAB"; fi
-created=$("$APP" do space.new --name "$LABEL" --folder "$OCTOPILOT_ORCH_CWD" \
+created=$(app do space.new --name "$LABEL" --folder "$OCTOPILOT_ORCH_CWD" \
   --tab "$tab_name" --argv "$(session_argv "$session" "/octopilot:messenger")" --focus false)
 space=$(jq -r '.space' <<<"$created")
 orch=$(jq -r '.terminal' <<<"$created")
@@ -215,18 +274,19 @@ if [ -z "$root" ]; then
 fi
 
 if [ "$TERMINALS" = 1 ]; then
-  "$APP" do pane.rename --pane "$root" --name messenger >/dev/null
+  app do pane.rename --pane "$root" --name messenger >/dev/null
   # The dashboard first, so it takes the full height on the right; the prompter
   # then splits only the messenger's column.
-  dash=$("$APP" do pane.split --direction right --pane "$root" \
+  dash=$(app do pane.split --direction right --pane "$root" \
     --argv "$(argv_json env "${envs[@]}" bash "$DIR/dashboard.sh")")
-  "$APP" do pane.rename --pane "$(jq -r '.pane' <<<"$dash")" --name dashboard >/dev/null
+  app do pane.rename --pane "$(jq -r '.pane' <<<"$dash")" --name dashboard >/dev/null
   add_prompter "$root" down
   add_code_tab "$space"
-  "$APP" do agent.focus --terminal "$orch" >/dev/null
+  app do agent.focus --terminal "$orch" >/dev/null
 else
   add_engine_agents "$root"
   add_main_tab "$space"
   add_code_tab "$space"
   focus_main "$space"
 fi
+finish
