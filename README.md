@@ -13,10 +13,10 @@ git clone https://github.com/elboletaire/dotfiles .dotfiles && cd .dotfiles
 ./scripts/install.sh
 ~~~
 
-To refresh only the AI config (prompts, instructions, agents and the pinned
-skills from `ai/`) without installing agents or tooling, and without backing
-anything up to `~/old_dotfiles` (its legacy cleanup still moves old session
-manager state there, see below):
+To refresh only the AI config (the instructions and the pinned skills from
+`ai/`, with the subagents and hook they bring) without installing agents or
+tooling, and without backing anything up to `~/old_dotfiles` (its legacy cleanup
+still moves old session manager state there, see below):
 
 ~~~bash
 ./scripts/install.sh ai-config
@@ -68,3 +68,11 @@ dependencies by branch; `ai/apm.lock.yaml` pins each one to a commit.
   there.
 - **Targets**: `agent-skills` (`~/.agents/skills/`) and `claude`
   (`~/.claude/skills/`). Pi reads `~/.agents/skills/` natively.
+- **elboletaire/skills**: the personal skills (`review`, `version`, `init-agents`,
+  `dream`, `herdr-orchestrator`), the Claude subagents in `~/.claude/agents/` and
+  the gh hygiene hook in `~/.claude/settings.json`, all from
+  [elboletaire/skills](https://github.com/elboletaire/skills). APM has no Pi
+  target, so the install links `~/.pi/agent/agents` to the Pi subagents in
+  APM's module cache (`~/.apm/apm_modules/elboletaire-skills/pi/agents`).
+- **Hostnames**: the hook blocks this machine's hostname plus `GH_HYGIENE_HOSTNAMES`
+  from `ai/claude/settings.json`.

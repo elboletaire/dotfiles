@@ -73,3 +73,6 @@ dependencies:
       path: skills/create-readme
       alias: create-readme
       ref: main
+    - git: https://github.com/elboletaire/skills.git
+      alias: elboletaire-skills
+      ref: main

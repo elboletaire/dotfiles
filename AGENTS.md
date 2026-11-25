@@ -37,12 +37,13 @@ AI (`ai/`):
 
 - `apm.yml`, `apm.lock.yaml`: the skills. `apm.yml` names each dependency's
   branch; `apm.lock.yaml` pins the commit, and only `skills-bump` moves it.
-  Installed through APM (Agent Package Manager, 0.39 or newer).
-- `claude/`: global Claude Code instructions (`CLAUDE.md`), `settings.json`,
-  subagents in `agents/`.
-- `pi/`: global Pi instructions (`AGENTS.md`), subagents in `agents/`.
-- `prompts/`: slash-command prompts, shared by Pi and Claude.
-- `hooks/`: `gh-hygiene.py`, a tool hook, with its regression suite.
+  Installed through APM (Agent Package Manager, 0.39 or newer). One of the
+  dependencies is `elboletaire/skills` (alias `elboletaire-skills`): the personal
+  skills, the Claude subagents and the gh hygiene hook, all in that repo.
+- `claude/`: global Claude Code instructions (`CLAUDE.md`) and `settings.json`.
+  Its subagents and hook come from `elboletaire/skills`.
+- `pi/`: global Pi instructions (`AGENTS.md`). Its subagents come from
+  `elboletaire/skills` too (`pi/agents/`), which APM does not install for Pi.
 - `arxiu/`: the Arxiu research library and its Claude plugin. See
   `ai/arxiu/README.md`.
 - `taller/`: the Taller board and its Claude plugin. See `ai/taller/README.md`.
@@ -58,22 +59,29 @@ Nothing is copied: `scripts/install.sh` creates symlinks.
 - `symlink_config`: `config/<name>` becomes `~/.config/<name>`. `herdr` is
   skipped there; `link_herdr_config` links only its `config.toml`.
 - `symlink_ai` (through `link_ai`):
-  - `ai/prompts` to `~/.pi/agent/prompts` and `~/.claude/commands`
-  - `ai/pi/agents` to `~/.pi/agent/agents`, `ai/pi/AGENTS.md` to `~/.pi/agent/AGENTS.md`
-  - `ai/claude/CLAUDE.md` to `~/.claude/CLAUDE.md`, `ai/claude/agents` to `~/.claude/agents`
+  - `ai/pi/AGENTS.md` to `~/.pi/agent/AGENTS.md`, `ai/claude/CLAUDE.md` to `~/.claude/CLAUDE.md`
+- `_retire_ai_links` (first step of `install_skills` and `skills-bump`): removes
+  the links the old `symlink_ai` made (`~/.claude/agents`, `~/.claude/commands`,
+  `~/.pi/agent/prompts`, `~/.pi/agent/agents`) when they point into `ai/` or are
+  dangling. Done before APM runs, so it never writes through them into the repo.
 - `install_skills`: copies `ai/apm.yml` and `ai/apm.lock.yaml` to `~/.apm/` (as
   regular files) and runs `apm install -g --target agent-skills,claude` there, which
-  deploys the skills to `~/.agents/skills/` and `~/.claude/skills/`. A lock APM
-  rewrites is copied back to `ai/`. Every dependency must be a plain skill path:
+  deploys the skills to `~/.agents/skills/` and `~/.claude/skills/`, the Claude
+  subagents to `~/.claude/agents/` and the hook to `~/.claude/settings.json`. A
+  lock APM rewrites is copied back to `ai/`. Every dependency must be a plain skill path:
   a native plugin would record per-machine paths in the lock.
   `~/.apm/apm.yml` is owned by the dotfiles and overwritten: add global deps in
   `ai/apm.yml`.
+- `link_pi_agents` (after `install_skills`): links `~/.pi/agent/agents` to
+  `~/.apm/apm_modules/elboletaire-skills/pi/agents`, APM's module cache of the
+  package. It warns and skips when that folder is missing.
 - `merge_claude_settings`: merges `ai/claude/settings.json` into
-  `~/.claude/settings.json`, keeping keys other tools wrote. It sets
-  `CLAUDE_CODE_PLUGIN_DIRS`, which loads the Claude plugins of
+  `~/.claude/settings.json`, keeping keys other tools wrote (APM's hook included).
+  It sets `CLAUDE_CODE_PLUGIN_DIRS`, which loads the Claude plugins of
   `~/src/octopilot/plugin` (Octopilot's repo, see
   [External modules](#external-modules)), `ai/arxiu/bibliotecaria` and
-  `ai/taller/plugin`.
+  `ai/taller/plugin`, and `GH_HYGIENE_HOSTNAMES`, the machine names the gh hygiene
+  hook also blocks besides the local hostname.
 
 ## Commands
 
@@ -84,7 +92,7 @@ Nothing is copied: `scripts/install.sh` creates symlinks.
 | `install` | Full setup of a new machine: system packages, nvm, Claude Code and Pi, APM, herdr with herdr-app and herdr-core, uv, submodules, symlinks, AI config, herdr links, external modules, login shell, vim plugins. Files it replaces go to `~/old_dotfiles`. |
 | `update` | Refreshes the same pieces without system packages or submodule ref bumps, and fast-forwards the external modules. Reinstalls herdr-app only when its version changed. |
 | `ai` | Refreshes only the AI stack: agents, herdr, rtk, skills, AI links, settings, herdr links, and fast-forwards the external modules. |
-| `ai-config` | Relinks prompts, instructions, agents and the locked skills, and runs the external modules' `install.sh` when already cloned. Installs no agents or tooling, clones and pulls nothing, and makes no backups, except the legacy cleanup below. |
+| `ai-config` | Relinks the global instructions, installs the locked skills, subagents and hook, and runs the external modules' `install.sh` when already cloned. Installs no agents or tooling, clones and pulls nothing, and makes no backups, except the legacy cleanup below. |
 | `skills-bump` | Moves every skill to the latest commit of its branch (`apm update -g`), copies `ai/apm.yml` and `ai/apm.lock.yaml` back and shows `git diff --stat -- ai/`. The only command that changes skill versions; `install`, `update`, `ai` and `ai-config` install the locked commits. |
 | `herdr` | Repairs the herdr setup: installs herdr if missing, its agent integrations, config and plugin links, and clones missing external modules and runs their `install.sh`. Does not pull modules, upgrade herdr or touch herdr-app (`install`, `update` and `ai` do). |
 

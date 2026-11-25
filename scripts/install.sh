@@ -216,6 +216,20 @@ _retire_local_apm_package() {
   done
 }
 
+# Links the old symlink_ai made into ai/ (prompts, commands, agents). ai/ no longer
+# has them, and APM would write its agents through a link into the repo, so they
+# go first. Only links into ai/ or dangling ones: a user's own dir or link stays.
+_retire_ai_links() {
+  local ai=$dotfiles/ai link target
+  for link in ~/.claude/agents ~/.claude/commands ~/.pi/agent/prompts ~/.pi/agent/agents; do
+    [ -L "$link" ] || continue
+    target=$(readlink "$link")
+    if [[ "$target" == "$ai"/* ]] || [ ! -e "$link" ]; then
+      rm "$link" && echo "Removed retired link $link -> $target"
+    fi
+  done
+}
+
 install_skills() {
   # Installs the skills from ai/apm.yml globally. The locked commits decide what
   # gets installed, so this reproduces ai/apm.lock.yaml; only skills-bump moves them.
@@ -225,6 +239,7 @@ install_skills() {
     return 1
   fi
   apm_retired_backup=""
+  _retire_ai_links
   mkdir -p "$apm_home" || return 1
   _retire_local_apm_package "$apm_home" "$ai/apm.lock.yaml"
   _copy_apm_files "$ai" "$apm_home" || return 1
@@ -247,6 +262,7 @@ skills_bump() {
   # The only path that moves skill versions: each dependency goes to the latest
   # commit of its ref. ai/ is replaced only after apm update succeeds.
   local ai=$dotfiles/ai apm_home=$HOME/.apm
+  _retire_ai_links
   mkdir -p "$apm_home" || return 1
   _retire_local_apm_package "$apm_home" "$ai/apm.lock.yaml"
   _cleanup_legacy_skills
@@ -775,7 +791,8 @@ def drop_retired(d):
 # Hooks these dotfiles used to write: agent-deck and aoe hooks (any event) are
 # gone. So is the old upstream contributing SessionStart hook: elboletaire/skills'
 # contributing-rules hook injects the same rules, so keeping both injects them twice.
-LEGACY_HOOK_MARKERS = ["agent-deck", "AOE_", "# aoe-hooks"]
+# The gh hygiene marker catches hand-added hooks pointing at the removed ai/hooks script.
+LEGACY_HOOK_MARKERS = ["agent-deck", "AOE_", "# aoe-hooks", "ai/hooks/gh-hygiene.py"]
 # The old contributing hook, with $HOME or the expanded home directory.
 LEGACY_CONTRIBUTING_HOOK = re.compile(
     r"""bash ["']?(\$HOME|~|[^"']*)/\.claude/hooks/contributing/hooks/session-start\.sh["']?"""
@@ -879,17 +896,20 @@ link_ai() {
 symlink_ai() {
   local ai=$dotfiles/ai
 
-  # Prompts: single source of truth shared by Pi prompts and Claude commands.
-  link_ai "$ai/prompts" ~/.pi/agent/prompts
-  link_ai "$ai/prompts" ~/.claude/commands
-
-  # Pi subagent definitions and global instructions.
-  link_ai "$ai/pi/agents" ~/.pi/agent/agents
+  # Pi and Claude global instructions. The subagents come from APM, see link_pi_agents.
   link_ai "$ai/pi/AGENTS.md" ~/.pi/agent/AGENTS.md
-
-  # Claude global instructions and subagent definitions.
   link_ai "$ai/claude/CLAUDE.md" ~/.claude/CLAUDE.md
-  link_ai "$ai/claude/agents" ~/.claude/agents
+}
+
+# Pi subagents are not an APM target: they sit in APM's module cache of the
+# elboletaire/skills package (alias elboletaire-skills). Runs after install_skills.
+link_pi_agents() {
+  local src=$HOME/.apm/apm_modules/elboletaire-skills/pi/agents
+  if [ ! -d "$src" ]; then
+    echo "WARNING: $src not found; Pi subagents not linked" >&2
+    return 0
+  fi
+  link_ai "$src" ~/.pi/agent/agents
 }
 
 install_packages() {
@@ -964,6 +984,7 @@ do_install() {
   install_rtk               # wires hooks into claude and pi, which must exist first
   symlink_ai || return 1    # config symlinks
   install_skills || return 1
+  link_pi_agents
   merge_claude_settings
   link_herdr_config
   install_modules
@@ -989,6 +1010,7 @@ do_update() {
   install_rtk update
   symlink_ai || return 1
   install_skills || return 1
+  link_pi_agents
   merge_claude_settings
   link_herdr_config
   install_modules update
@@ -1009,6 +1031,7 @@ do_update_ai() {
   install_rtk update
   symlink_ai || return 1
   install_skills || return 1
+  link_pi_agents
   merge_claude_settings
   link_herdr_config
   install_modules update
@@ -1025,6 +1048,7 @@ do_install_ai_config() {
   cleanup_legacy
   symlink_ai || return 1
   install_skills || return 1
+  link_pi_agents
   merge_claude_settings
   install_modules relink
   link_herdr_plugin
