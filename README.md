@@ -38,39 +38,26 @@ The herdr pieces are installed and kept current by `install` and `update`
   skips with a note when offline. `install` skips the app when it is present.
   macOS installs `~/Applications/Herdr.app` (Apple Silicon only).
 - **Legacy session managers**: `install`, `update`, `ai` and `ai-config` remove
-  agent-deck and agent-of-empires (`aoe`) left over from before herdr. Binaries
-  are deleted; their config and state, plus `~/.tmux.conf` when it holds only
-  agent-deck's block, are moved to `~/old_dotfiles/legacy-session-managers-<date>/`.
-  The `fleet` and `agent-deck` skills go only where their `SKILL.md` names
-  agent-deck. A `~/.tmux.conf` with
-  other lines is kept and a note is printed. Nothing is printed when there is
-  nothing to clean.
+  agent-deck and agent-of-empires (`aoe`) left over from before herdr: their
+  packages (Homebrew or pacman), binaries, hooks in `~/.claude/settings.json`,
+  and skills. Their config and state, plus `~/.tmux.conf` when it holds only
+  agent-deck's block, move to `~/old_dotfiles/legacy-session-managers-<date>/`.
+  A `~/.tmux.conf` with other lines is kept and a note is printed. Nothing is
+  printed when there is nothing to clean.
 
 ## AI skills
 
-Skills are managed via [APM](https://github.com/microsoft/apm) (Agent Package Manager).
-The tracked `ai/apm.yml` and `ai/apm.lock.yaml` define the full set. The `ai/`
-directory is treated as a local APM package: a global install deploys its
-dependencies into `~/.agents/skills/` and `~/.claude/skills/` without
-overwriting unrelated global APM entries.
+Skills are managed through [APM](https://github.com/microsoft/apm), 0.39 or
+newer (`install_apm` installs or upgrades it). `ai/apm.yml` lists the
+dependencies by branch; `ai/apm.lock.yaml` pins each one to a commit.
 
-- **Dependencies are commit-pinned** in both `ai/apm.yml` and
-  `ai/apm.lock.yaml`; every skill uses a full Git commit SHA. Running
-  `install.sh` therefore reproduces the exact version set.
-- **`install_apm`** -- installs the APM CLI when absent (macOS: Homebrew;
-  Linux: downloaded installer script).
-- **`symlink_ai`** -- removes legacy per-skill symlinks (recording them for
-  rollback) and globally installs both targets. When the local package already
-  exists, it first validates the pinned project, rebuilds APM's flattened
-  global graph, and prunes retired skills previously owned by this package
-  while preserving unrelated global dependencies. On failure, tracked global
-  state and removed legacy symlinks are restored where possible.
-- **`update_apm_skills`** -- resolves each configured repository's default
-  branch to an exact commit in an isolated temporary project, asks APM to
-  validate those pins and rebuild the lock, and only then copies the results
-  into `ai/`. This avoids APM's annotated-tag requirement for updating raw SHA
-  pins. The update flows then perform one global package sync; resolver or APM
-  failures leave the tracked files untouched.
+- **Installing** (`install`, `update`, `ai`, `ai-config`): `install_skills`
+  copies both files to `~/.apm/` and runs `apm install -g` there. The lock
+  decides the commits, so the same skills come back. If APM rewrites the lock,
+  the new one is copied back to `ai/` with a note to review and commit it.
+- **Bumping** (`install.sh skills-bump`): the only command that moves skills.
+  It runs `apm update -g`, which takes each dependency to the latest commit of
+  its branch, copies the manifest and lock back to `ai/`, and prints the diff.
+  A failure leaves `ai/` untouched.
 - **Targets**: `agent-skills` (`~/.agents/skills/`) and `claude`
-  (`~/.claude/skills/`). Pi discovers skills natively from
-  `~/.agents/skills/`.
+  (`~/.claude/skills/`). Pi reads `~/.agents/skills/` natively.
