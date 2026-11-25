@@ -413,8 +413,8 @@ export default class OctopilotDashboard extends View {
       this.openDialog("investigate", { action: action.id });
       return;
     }
-    // A key held down must not confirm or arm anything.
-    if (action.confirm && this.held) return;
+    // A key held down must not repeat an action: only navigation repeats.
+    if (this.held) return;
     const prior = this.prior;
     const armed = prior && Date.now() < prior.until && prior.id === action.id && prior.key === key;
     if (action.confirm && !armed) {
