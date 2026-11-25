@@ -191,6 +191,14 @@ link_herdr_plugin() {
   _link_herdr_plugin elboletaire.taller "$dotfiles/ai/taller/herdr"
 }
 
+link_herdr_app() {
+  # Octopilot's herdr-app mods and its key (herdr-app/install.sh). Only when
+  # herdr-app is installed; a refusal there does not stop the rest.
+  command -v herdr-app &>/dev/null || return 0
+  bash "$dotfiles/ai/octopilot/herdr-app/install.sh" ||
+    echo "WARNING: Octopilot's herdr-app setup failed (see above)" >&2
+}
+
 _herdr_plugin_root() {
   # Where the herdr plugin with this id is linked from; empty when it is not.
   herdr plugin list --json 2>/dev/null | python3 -c '
@@ -919,6 +927,7 @@ do_install() {
   migrate_octopilot_state
   link_herdr_config
   link_herdr_plugin
+  link_herdr_app
   set_login_shell
   vim -c 'PluginInstall' -c 'qa!'
   echo "dotfiles installation was successful"
@@ -941,6 +950,7 @@ do_update() {
   migrate_octopilot_state
   link_herdr_config
   link_herdr_plugin
+  link_herdr_app
   echo "dotfiles update complete"
 }
 
@@ -958,6 +968,7 @@ do_update_ai() {
   migrate_octopilot_state
   link_herdr_config
   link_herdr_plugin
+  link_herdr_app
   echo "AI stack update complete"
 }
 
@@ -970,6 +981,7 @@ do_install_ai_config() {
   merge_claude_settings
   migrate_octopilot_state
   link_herdr_plugin
+  link_herdr_app
   echo "AI config install complete"
 }
 
@@ -978,6 +990,7 @@ do_herdr() {
   install_herdr
   link_herdr_config
   link_herdr_plugin
+  link_herdr_app
   echo "herdr setup complete"
 }
 

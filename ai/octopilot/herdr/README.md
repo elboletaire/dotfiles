@@ -78,13 +78,42 @@ It needs `uv` (which provides `rich`); there is nothing else to install.
 
 ## GUI (herdr-app)
 
-`herdr/open-gui.sh` builds the same space in the Herdr app (`herdr-app`, with
-its terminals in herdr-core): the **Octopilot** space with the messenger,
-dashboard and prompter panes, and the code-changes tab. Like `open.sh`, it
-focuses the space when it exists and adds what is missing. Each claude is an
-hc terminal labelled `octopilot.agent=<name>`, and everything it starts runs
-with `OCTOPILOT_BACKEND=hc`. Unlike the TUI layout, the prompter's split is
-50/50: `pane.split` takes no ratio.
+`herdr/open-gui.sh` builds Octopilot in the Herdr app (`herdr-app`, its
+terminals run in herdr-core) as one space with three tabs:
+
+| Tab | Holds |
+|---|---|
+| **OCTOPILOT** | the `octopilot-dashboard` mod (the table below) and, beside it, the `octopilot-chat` mod: the prompter as a chat |
+| **engine** | the orchestrator (`octopilot`, `/octopilot:messenger`), the prompter (`octopilot-prompter`) and `dashboard.sh --headless` (`octopilot-headless`), each an hc terminal |
+| **Octopilot (code changes)** | a claude for changing octopilot itself |
+
+The headless dashboard runs the loops and writes `view.json`; the mods only
+render it and send actions. The octopus window (the orchestrator's last
+message and the kitchen log) is the `octopilot-octopus` mod, opened by the
+dashboard, not by the launcher.
+
+Each claude starts with `claude --session-id <uuid>` and is labelled
+`octopilot.session=<uuid>`, which names its transcript
+(`~/.claude/projects/*/<uuid>.jsonl`). `scan.sh speech --json` reads the
+orchestrator's last message, `scan.sh chat --json [--after <id>]` the prompter's
+conversation, and `scan.sh chat-send <text>` / `chat-keys <keys>` type into the
+prompter. Under the TUI backend, or with nothing running, they report
+`"status": "offline"`.
+
+**Key and install.** `herdr-app/install.sh` links each `herdr-app/mods/<name>`
+into `~/.config/herdr-app/mods/` (a real file or folder there is refused, never
+replaced) and binds `ctrl-alt-o` in `keys.json` to open `herdr/open-gui.sh` in a
+new tab. It backs `keys.json` up first, leaves a key bound to something else
+alone, and waits for `keys.error` after writing. `scripts/install.sh` runs it
+when `herdr-app` is installed. Options: `--dir <octopilot dir>` (link the mods
+of another checkout, a worktree for instance), `--dry-run`, `--uninstall`.
+`HERDR_APP_HOME` picks another app home, as herdr-app does. Once `keys.json`
+is edited, herdr-app stops adding its new default shortcuts to it on upgrade;
+those then need adding by hand.
+
+**Fallback.** `open-gui.sh --terminals` builds the TUI-style layout instead:
+one OCTOPILOT tab with the messenger, the curses dashboard and the prompter as
+terminal panes, plus the code-changes tab.
 
 To test it next to a live TUI octopilot, run it from a worktree with a scratch
 state dir. Without `OCTOPILOT_STATE_DIR` it refuses, so a worktree never
@@ -100,10 +129,10 @@ HOME_REPOS="<owner/repo>" ISSUE_ORGS="<org>" \
 the values you set are passed on, so config.sh's defaults keep applying to
 everything else. The script refuses to run when the orchestrator labelled
 `octopilot.agent=octopilot` runs from another checkout (`octopilot.dir` label,
-since labels are global). Its own sessions, the dashboard and the code tab get
-`OCTOPILOT_BACKEND=hc`, `OCTOPILOT_DIR` and `OCTOPILOT_STATE_DIR` from this
-script. The workers that scan.py spawns get them from scan.py, so the test is
-only isolated as far as that hand-off goes.
+since labels are global). Its own sessions (the engine tab, the headless
+dashboard and the code tab) get `OCTOPILOT_BACKEND=hc`, `OCTOPILOT_DIR` and
+`OCTOPILOT_STATE_DIR` from this script. The workers that scan.py spawns get them
+from scan.py, so the test is only isolated as far as that hand-off goes.
 
 Plugins: settings.json's `CLAUDE_CODE_PLUGIN_DIRS` loads the installed
 `octopilot` plugin into every session. A worktree's `--plugin-dir` does not
