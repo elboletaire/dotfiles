@@ -5,8 +5,10 @@
 #   Octopilot (code changes): a claude for changing octopilot itself
 # Each claude is labelled octopilot.agent=<name> and octopilot.session=<uuid>
 # (its transcript, read by scan.py speech and chat). --terminals builds the
-# TUI-style layout instead. --close-launcher closes the tab this runs in, when
-# the key or the palette opened it for this alone (programs.json, herdr-app).
+# TUI-style layout instead. After building it switches to the `octopilot`
+# layout (the kitchen corner) when herdr-app/install.sh made one; --no-layout
+# skips that. --close-launcher closes this terminal's own pane at the end (the
+# tab goes with its last pane), for the key or the palette (programs.json).
 # From a worktree it needs OCTOPILOT_STATE_DIR (see herdr/README.md).
 set -euo pipefail
 APP="herdr-app"
@@ -25,11 +27,13 @@ CODE_CWD="$(cd "$DIR/../.." && pwd -P)"   # the checkout this octopilot lives in
 
 TERMINALS=0
 CLOSE_LAUNCHER=0
+LAYOUT=1
 for arg in "$@"; do
   case "$arg" in
     --terminals) TERMINALS=1 ;;
     --close-launcher) CLOSE_LAUNCHER=1 ;;
-    -h|--help) echo "usage: open-gui.sh [--terminals] [--close-launcher]"; exit 0 ;;
+    --no-layout) LAYOUT=0 ;;
+    -h|--help) echo "usage: open-gui.sh [--terminals] [--no-layout] [--close-launcher]"; exit 0 ;;
     *) echo "open-gui.sh: unknown argument $arg" >&2; exit 2 ;;
   esac
 done
@@ -179,36 +183,51 @@ add_code_tab() {
 }
 
 # The terminal of a dashboard.sh run as the TUI layout's curses dashboard, if
-# the space has one: a second dashboard loop next to the headless one.
+# the space has one: a second dashboard loop next to the headless one. herdr-app
+# runs an argv inside a shell, so the foreground's argv and the pane's name
+# (`dashboard`, as the TUI layout's builder gives it) count too.
 legacy_dashboard() {
   local t
   for t in $("$APP" ls | jq -r --arg s "$1" \
+    '.spaces[] | select(.id == $s) | .tabs[].terminals[] |
+      select(.name == "dashboard") | .terminal'); do
+    echo "$t"
+    return 0
+  done
+  for t in $("$APP" ls | jq -r --arg s "$1" \
     '.spaces[] | select(.id == $s) | .tabs[].terminals[].terminal'); do
-    if "$HC" get "$t" --json | jq -e '(.argv // []) | join(" ") |
-      test("dashboard[.]sh") and (test("--headless") | not)' >/dev/null; then
+    if "$HC" get "$t" --json | jq -e '[(.argv // []), (.foreground.argv // [])] |
+      any(join(" ") | test("dashboard[.]sh") and (test("--headless") | not))' >/dev/null; then
       echo "$t"
       return 0
     fi
   done
 }
 
-# Closes the tab this runs in, when the terminal is its only one (the launcher's
-# own tab), so no idle tab stays behind.
+# Closes this terminal's own pane, so no idle launcher tab stays behind (a tab
+# whose last pane closes goes with it). Never the tab itself: the terminal may
+# share it with panes that are not ours. The last step of a path that worked.
 close_launcher() {
-  local located tab count
+  local located pane
   if [ -z "${HC_TERMINAL_ID:-}" ]; then return 0; fi
   located=$(locate "$HC_TERMINAL_ID") || return 0
-  IFS=$'\t' read -r _ tab _ <<<"$located"
-  count=$("$APP" ls | jq -r --arg t "$tab" \
-    '[.spaces[].tabs[] | select(.id == $t) | .terminals[]] | length')
-  if [ "$count" = 1 ]; then
-    app do tab.close --id "$tab" --confirmed true >/dev/null
-  fi
+  IFS=$'\t' read -r _ _ pane <<<"$located"
+  if [ -z "$pane" ]; then return 0; fi
+  app do pane.close --pane "$pane" >/dev/null
 }
 
-# Runs at the end of every path that did its work.
+# Runs at the end of every path that did its work: the octopilot layout (the
+# kitchen corner), then the launcher's own pane.
 finish() {
+  if [ "$TERMINALS" = 0 ] && [ "$LAYOUT" = 1 ] && layout_exists octopilot; then
+    app do layout.switch --name octopilot >/dev/null
+  fi
   if [ "$CLOSE_LAUNCHER" = 1 ]; then close_launcher; fi
+}
+
+# True when herdr-app has a layout of this name (layouts/<name>.json).
+layout_exists() {
+  [ -f "${HERDR_APP_HOME:-$HOME/.config/herdr-app}/layouts/$1.json" ]
 }
 
 # Shows the space and its OCTOPILOT tab.
