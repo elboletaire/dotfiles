@@ -234,12 +234,12 @@ install_skills() {
   # Installs the skills from ai/apm.yml globally. The locked commits decide what
   # gets installed, so this reproduces ai/apm.lock.yaml; only skills-bump moves them.
   local ai=$dotfiles/ai apm_home=$HOME/.apm
+  _retire_ai_links
   if ! _apm_at_least "$(_apm_version)" "$apm_min_version"; then
     echo "ERROR: apm $apm_min_version or newer is required; run 'install.sh ai' first" >&2
     return 1
   fi
   apm_retired_backup=""
-  _retire_ai_links
   mkdir -p "$apm_home" || return 1
   _retire_local_apm_package "$apm_home" "$ai/apm.lock.yaml"
   _copy_apm_files "$ai" "$apm_home" || return 1
