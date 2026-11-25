@@ -303,7 +303,7 @@ class HerdrBackend:
         asked."""
         if not shutil.which("herdr"):
             return []
-        code, data, _ = herdr(["workspace", "list"], timeout=10)
+        code, data, _ = herdr(["workspace", "list"])
         if code != 0 or not data:
             return None
         return (data.get("result") or {}).get("workspaces", [])
@@ -319,7 +319,7 @@ class HerdrBackend:
                 by_repo.setdefault(wt["repo_root"], []).append((w, wt))
         out = []
         for repo, rows in by_repo.items():
-            code, d, _ = herdr(["worktree", "list", "--cwd", repo], timeout=10)
+            code, d, _ = herdr(["worktree", "list", "--cwd", repo])
             listed_ = ((d or {}).get("result") or {}).get("worktrees", []) \
                 if code == 0 else []
             branch = {x.get("open_workspace_id"): x.get("branch") for x in listed_}
@@ -334,7 +334,7 @@ class HerdrBackend:
         """[{session, agent, pane, status}] for every herdr agent."""
         if not shutil.which("herdr"):
             return []
-        code, data, _ = herdr(["agent", "list"], timeout=10)
+        code, data, _ = herdr(["agent", "list"])
         if code != 0 or not data:
             return []
         return [{"session": a.get("workspace_id"), "agent": a.get("name"),
@@ -458,10 +458,10 @@ class HcBackend:
     remove_label = "herdr-app space remove"
 
     def spaces(self):
-        """Every space herdr-app shows, on any machine; [] without herdr-app,
-        None when it is not answering."""
+        """Every space herdr-app shows, on any machine; None when herdr-app is
+        missing or not answering, so nothing is taken for closed."""
         if not shutil.which("herdr-app"):
-            return []
+            return None
         code, data, _ = cli(["herdr-app", "ls"], timeout=10)
         if code != 0 or not data:
             return None
@@ -561,11 +561,11 @@ class HcBackend:
 
     def discard(self, session, wt):
         """Close the space, then remove its worktree -> (code, message). A
-        tracked item has none on record: its space's worktree stands in."""
+        tracked item has none on record: its space's worktree stands in, and
+        when the space list is unreadable the worktree is kept."""
         spaces = self.spaces()
         if not wt:
-            wt = next((s["path"] for s in self.sessions(spaces) or []
-                       if s["id"] == session), None)
+            wt = self.checkout_of(spaces, session)
         code, raw = self.close(session)
         if code != 0:
             remaining = self.spaces()
@@ -573,11 +573,21 @@ class HcBackend:
                 # Still open, or unknown: its worktree is still in use.
                 return code, raw
             code, raw = 0, ""
+        if not wt and spaces is None:
+            spaces = self.spaces()
+            if spaces is None:
+                return 1, "space closed, worktree kept: its path is unknown"
+            wt = self.checkout_of(spaces, session)
         if wt and os.path.isdir(wt):
             code, out, err = sh(["git", "worktree", "remove", "--force", wt],
                                 cwd=wt, timeout=180)
             raw = err or out
         return code, raw
+
+    def checkout_of(self, spaces, session):
+        """The worktree path of a space, or None."""
+        return next((s["path"] for s in self.sessions(spaces) or []
+                     if s["id"] == session), None)
 
     def current(self):
         """This terminal's address when it is the orchestrator, i.e. labelled
