@@ -84,7 +84,7 @@ terminals run in herdr-core) as one space with three tabs:
 
 | Tab | Holds |
 |---|---|
-| **OCTOPILOT** | the `octopilot-dashboard` mod (the table below) on the left, full height; on the right the `octopilot-chat` mod (the prompter as a chat) over the `octopilot-kitchen` mod, a pane 300 px tall (`props`: `dir`, `state_dir`, `pane_name`) |
+| **OCTOPILOT** | the `octopilot-dashboard` mod (the table below) on the left, full height; on the right the `octopilot-chat` mod (the prompter as a chat) over the `octopilot-kitchen` mod, a pane 300 px tall (`props`: `dir`, `state_dir`; its pane is named by `pane.rename`, the mod reads no name) |
 | **engine** | the orchestrator (`octopilot`, `/octopilot:messenger`), the prompter (`octopilot-prompter`) and `dashboard.sh --headless` (`octopilot-headless`), each an hc terminal. Parked after building: they keep running with no pane, so the tab goes away (see below) |
 | **Octopilot (code changes)** | the code agent's own claude (`octopilot-code`, a claude in the dotfiles root, an hc terminal that is never parked) and, beside it, the `octopilot-side` mod: the agent's status, its sub-agents, the model and the commands (`props`: `dir`, `state_dir`, `agent`, `title`) |
 
@@ -147,13 +147,16 @@ agent's terminal alive and labelled, and the reruns would never restart it.
 The headless dashboard runs the loops and writes `view.json`; the mods only
 render it and send actions. The kitchen is the `octopilot-kitchen` mod, a pane
 split down from the chat (`pane.split`), then sized to 300 px with `pane.resize`.
-The run records the chat's pane on the orchestrator (`octopilot.chat` label) and
-the kitchen's (`octopilot.kitchen`), and a rerun keeps the kitchen while its pane
-exists (a `pane.rename` probe, as the side panel's), else splits a new one. A tab
-from an earlier run has no `octopilot.chat` record, so a rerun cannot split its
-kitchen: it says so and leaves the tab as it is. Add it once by hand: focus the
-chat pane, record its id (`herdr-app status` `focused_pane`) as `octopilot.chat`
-on the orchestrator, and rerun `open-gui.sh`.
+The run records the chat's pane on the orchestrator (`octopilot.chat=<tab>:<pane>`)
+and the kitchen's (`octopilot.kitchen=<tab>:<pane>`). A record counts only when its
+tab is this space's OCTOPILOT tab, and a rerun keeps the kitchen while its pane
+exists (a `pane.rename` probe, as the side panel's), else splits a new one. The
+steps are best effort: a failure is warned about and the run goes on. A tab from
+an earlier run has no `octopilot.chat` record, so a rerun cannot split its kitchen:
+it says so and leaves the tab as it is. Add it once by hand: focus the chat pane,
+take its id (`herdr-app status` `focused_pane`) and the OCTOPILOT tab's id
+(`herdr-app ls`), record `octopilot.chat=<tab>:<pane>` on the orchestrator, and
+rerun `open-gui.sh`.
 
 Each claude starts with `claude --session-id <uuid>` and is labelled
 `octopilot.session=<uuid>`. Its transcript (`~/.claude/projects/*/<uuid>.jsonl`)

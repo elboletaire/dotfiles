@@ -87,12 +87,11 @@ DASH_PROPS="$(jq -nc --argjson mod "$MOD_PROPS" --arg name "$(pane_name "$DASHBO
   '$mod + {pane_name: $name}')"
 PROMPTER_PROPS="$(jq -nc --argjson mod "$MOD_PROPS" --arg name "$(pane_name "$PROMPTER_PANE")" \
   '$mod + {pane_name: $name}')"
-# The code tab's side panel: the code agent it shows, and its title.
+# The code tab's side panel: the code agent it shows, and its title. Its pane has the
+# hashed name too, but no pane_name prop: the side mod finds the agent's terminal, not its pane.
 SIDE_PROPS="$(jq -nc --argjson mod "$MOD_PROPS" --arg agent "$CODE_AGENT" \
   '$mod + {agent: $agent, title: "Code changes"}')"
-# The kitchen's props: the mod's dir and state dir, and the name of its pane.
-KITCHEN_PROPS="$(jq -nc --argjson mod "$MOD_PROPS" --arg name "$(pane_name "$KITCHEN_PANE")" \
-  '$mod + {pane_name: $name}')"
+# The kitchen takes the MOD_PROPS only: its pane is named by pane.rename, and the mod reads no name.
 
 # `herdr-app ...` with its output on stdout; a failure stops here with the
 # output it printed, so a refused command says why.
@@ -258,11 +257,29 @@ add_engine_agents() {
   if [ -z "$(find_agent "$PROMPTER_AGENT")" ]; then add_prompter "$1" "$2" right; fi
 }
 
+# The pane a terminal's label records as <tab>:<pane>, when the tab is $3; else nothing.
+# A record of another tab (closed since) is never trusted.
+recorded_pane() {
+  local v
+  v=$("$HC" get "$1" --json | jq -r --arg k "$2" '.labels[$k] // empty' 2>/dev/null || true)
+  case "$v" in
+    "$3:"*) echo "${v#*:}" ;;
+  esac
+}
+
+# Records a <tab>:<pane> label on a terminal. Best effort: a refusal is warned about.
+record_label() {
+  local out
+  if ! out=$("$HC" label "$1" "$2=$3" 2>&1); then
+    echo "open-gui.sh: could not record $2 on $1: $out" >&2
+  fi
+}
+
 # The OCTOPILOT tab, unless the space has one: the dashboard mod, and the chat
 # mod (the prompter) beside it. The chat's pane is recorded on the orchestrator
-# (octopilot.chat) so the kitchen can split from it; herdr-app ls lists no mod panes.
+# (octopilot.chat=<tab>:<pane>) so the kitchen can split from it; herdr-app ls lists no mod panes.
 add_main_tab() {
-  local created pane chat
+  local created pane chat tab
   if [ -n "$(tab_named "$1" "$MAIN_TAB")" ]; then return 0; fi
   created=$(app do tab.new --space "$1" --name "$MAIN_TAB" \
     --mod octopilot-dashboard --props "$DASH_PROPS" --focus false)
@@ -276,39 +293,59 @@ add_main_tab() {
     --mod octopilot-chat --props "$PROMPTER_PROPS")
   chat=$(jq -r '.pane // empty' <<<"$created")
   name_mod_pane "$chat" "$(pane_name "$PROMPTER_PANE")"
-  if [ -n "$chat" ]; then "$HC" label "$(find_orch)" "octopilot.chat=$chat" >/dev/null; fi
+  tab=$(tab_named "$1" "$MAIN_TAB")
+  if [ -n "$chat" ] && [ -n "$tab" ]; then record_label "$(find_orch)" octopilot.chat "$tab:$chat"; fi
 }
 
 # Sizes the kitchen (pane $2) to KITCHEN_PX: the divider above it (the chat's bottom
-# edge, pane $1) goes down, so the kitchen is at its minimum whatever the split gave,
-# then up by KITCHEN_PX. A refused first move is not fatal: the size is then the split's.
+# edge, pane $1) goes down, so the kitchen ends at its minimum height plus KITCHEN_PX.
+# Best effort: a refused move is warned about, and the kitchen keeps the split's size.
 size_kitchen() {
+  local out
   "$APP" do pane.resize --direction down --pane "$1" --px 10000 >/dev/null 2>&1 || true
-  app do pane.resize --direction up --pane "$2" --px "$KITCHEN_PX" >/dev/null
+  if ! out=$("$APP" do pane.resize --direction up --pane "$2" --px "$KITCHEN_PX" 2>&1); then
+    echo "open-gui.sh: could not size pane $2 to $KITCHEN_PX px: $out" >&2
+  fi
 }
 
-# The kitchen under the chat in the OCTOPILOT tab, once. The pane this run recorded on
-# the orchestrator (octopilot.kitchen) is kept while it exists (pane.rename fails on a
-# pane that is gone), as the side panel's is. A tab from an earlier run has no chat
-# record: the kitchen cannot be split from its chat, so it is left out with a note.
+# The kitchen under the chat in the OCTOPILOT tab (space $1), once. The orchestrator
+# records the kitchen and the chat as <tab>:<pane>; a record counts only in this space's
+# OCTOPILOT tab, and a pane is kept while pane.rename finds it. Best effort: what cannot
+# be done is warned about and the run goes on. A tab from an earlier run has no chat
+# record, so its kitchen is not split (the note says so).
 add_kitchen() {
-  local orch kitchen chat created
+  local space=$1 orch main kitchen chat created
   orch=$(find_orch)
-  kitchen=$("$HC" get "$orch" --json | jq -r '.labels["octopilot.kitchen"] // empty')
-  if [ -n "$kitchen" ] && "$APP" do pane.rename --pane "$kitchen" --name "$KITCHEN_PANE" >/dev/null 2>&1; then
+  main=$(tab_named "$space" "$MAIN_TAB")
+  if [ -z "$orch" ] || [ -z "$main" ]; then
+    echo "open-gui.sh: no $MAIN_TAB tab or $ORCH_AGENT agent to add the $KITCHEN_PANE pane to" >&2
     return 0
   fi
-  chat=$("$HC" get "$orch" --json | jq -r '.labels["octopilot.chat"] // empty')
-  if [ -z "$chat" ] || ! "$APP" do pane.rename --pane "$chat" --name "$PROMPTER_PANE" >/dev/null 2>&1; then
-    echo "open-gui.sh: the $PROMPTER_PANE pane is not recorded (octopilot.chat), so the" \
-      "$KITCHEN_PANE pane is not added; see herdr/README.md" >&2
+  kitchen=$(recorded_pane "$orch" octopilot.kitchen "$main")
+  if [ -n "$kitchen" ] \
+    && "$APP" do pane.rename --pane "$kitchen" --name "$(pane_name "$KITCHEN_PANE")" >/dev/null 2>&1; then
     return 0
   fi
-  created=$(app do pane.split --direction down --pane "$chat" --mod octopilot-kitchen --props "$KITCHEN_PROPS")
-  kitchen=$(jq -r '.pane' <<<"$created")
+  chat=$(recorded_pane "$orch" octopilot.chat "$main")
+  if [ -z "$chat" ] \
+    || ! "$APP" do pane.rename --pane "$chat" --name "$(pane_name "$PROMPTER_PANE")" >/dev/null 2>&1; then
+    echo "open-gui.sh: the $PROMPTER_PANE pane is not recorded in the $MAIN_TAB tab (octopilot.chat)," \
+      "so the $KITCHEN_PANE pane is not added; see herdr/README.md" >&2
+    return 0
+  fi
+  if ! created=$("$APP" do pane.split --direction down --pane "$chat" --mod octopilot-kitchen \
+    --props "$MOD_PROPS" 2>&1); then
+    echo "open-gui.sh: could not split the $KITCHEN_PANE pane from the chat: $created" >&2
+    return 0
+  fi
+  kitchen=$(jq -r '.pane // empty' <<<"$created" 2>/dev/null || true)
+  if [ -z "$kitchen" ]; then
+    echo "open-gui.sh: no pane came back for the $KITCHEN_PANE mod" >&2
+    return 0
+  fi
   name_mod_pane "$kitchen" "$(pane_name "$KITCHEN_PANE")"
   size_kitchen "$chat" "$kitchen"
-  "$HC" label "$orch" "octopilot.kitchen=$kitchen" >/dev/null
+  record_label "$orch" octopilot.kitchen "$main:$kitchen"
 }
 
 # The code agent's claude in a tab of its own, named CODE_TAB, in the dotfiles root.
@@ -318,7 +355,11 @@ start_code_tab() {
   session=$(new_session)
   created=$(app do tab.new --space "$1" --name "$CODE_TAB" \
     --argv "$(session_argv "$session" "" "$CODE_CWD")" --focus false)
-  term=$(jq -r '.terminal' <<<"$created")
+  term=$(jq -r '.terminal // empty' <<<"$created")
+  if [ -z "$term" ]; then
+    echo "open-gui.sh: the $CODE_TAB tab has no terminal for the $CODE_AGENT agent" >&2
+    exit 1
+  fi
   name_agent "$term" "$CODE_AGENT" "$session"
   echo "$term"
 }
@@ -363,15 +404,19 @@ show_code_tab() {
 # octopilot.side=<tab>:<pane> is kept while it names this tab and that pane still exists.
 add_side_panel() {
   local code=$1 tab=$2 pane=$3 side created
-  side=$("$HC" get "$code" --json | jq -r '.labels["octopilot.side"] // empty')
-  if [ "${side%%:*}" = "$tab" ] \
-    && "$APP" do pane.rename --pane "${side#*:}" --name "$SIDE_PANE" >/dev/null 2>&1; then
+  side=$(recorded_pane "$code" octopilot.side "$tab")
+  if [ -n "$side" ] \
+    && "$APP" do pane.rename --pane "$side" --name "$(pane_name "$SIDE_PANE")" >/dev/null 2>&1; then
     return 0
   fi
   created=$(app do pane.split --direction right --pane "$pane" --mod octopilot-side --props "$SIDE_PROPS")
-  side=$(jq -r '.pane' <<<"$created")
-  name_mod_pane "$side" "$SIDE_PANE"
-  "$HC" label "$code" "octopilot.side=$tab:$side" >/dev/null
+  side=$(jq -r '.pane // empty' <<<"$created")
+  if [ -z "$side" ]; then
+    echo "open-gui.sh: no pane came back for the $SIDE_PANE panel" >&2
+    return 0
+  fi
+  name_mod_pane "$side" "$(pane_name "$SIDE_PANE")"
+  record_label "$code" octopilot.side "$tab:$side"
 }
 
 # The code-changes tab: the code agent's claude, with the side panel beside it. A rerun
@@ -439,8 +484,11 @@ legacy_dashboard() {
 # whose last pane closes goes with it). Never the tab itself: the terminal may
 # share it with panes that are not ours. The last step of a path that worked.
 close_launcher() {
-  local located pane
+  local located pane code
   if [ -z "${HC_TERMINAL_ID:-}" ]; then return 0; fi
+  # Run from the code agent's own terminal: its pane is the agent's, never closed here.
+  code=$(find_agent "$CODE_AGENT")
+  if [ "$HC_TERMINAL_ID" = "$code" ]; then return 0; fi
   located=$(locate "$HC_TERMINAL_ID") || return 0
   IFS=$'\t' read -r _ _ pane <<<"$located"
   if [ -z "$pane" ]; then return 0; fi
@@ -587,7 +635,7 @@ if [ -n "$orch" ]; then
     if [ -n "$pane" ]; then app do tab.rename --id "$tab" --name "$ENGINE_TAB" >/dev/null; fi
     add_engine_agents "$space" "$pane"
     add_main_tab "$space"
-    add_kitchen
+    add_kitchen "$space"
     add_code_tab "$space"
     focus_main "$space"
   fi
@@ -636,7 +684,7 @@ if [ "$TERMINALS" = 1 ]; then
 else
   add_engine_agents "$space" "$root"
   add_main_tab "$space"
-  add_kitchen
+  add_kitchen "$space"
   add_code_tab "$space"
   focus_main "$space"
 fi
