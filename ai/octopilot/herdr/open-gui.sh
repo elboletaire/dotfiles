@@ -23,7 +23,8 @@ ORCH_AGENT="octopilot"                 # scan.py's ORCH_AGENT
 PROMPTER_AGENT="octopilot-prompter"    # scan.py's PROMPTER_AGENT
 HEADLESS_AGENT="octopilot-headless"    # the engine tab's dashboard.sh --headless
 CODE_AGENT="octopilot-code"            # scan.py's CODE_AGENT
-# The names of the mod panes: each mod finds its own in panes() by these (see ownPane in the mods).
+# The roles of the mod panes. Each pane is named role-<hash of the checkout's dir> (pane_name),
+# and its mod finds it in panes() by the name given in props.pane_name.
 DASHBOARD_PANE="octopilot-dashboard"
 PROMPTER_PANE="octopilot-prompter"
 SIDE_PANE="octopilot-side"
@@ -73,13 +74,24 @@ envs=(OCTOPILOT_BACKEND=hc "OCTOPILOT_DIR=$DIR")
 if [ -n "${OCTOPILOT_STATE_DIR:-}" ]; then envs+=("OCTOPILOT_STATE_DIR=$OCTOPILOT_STATE_DIR"); fi
 envs+=("${scope[@]+"${scope[@]}"}")
 
+# The name of a mod pane: its role and a short hash of this checkout's dir, so two
+# checkouts in one window each find their own.
+DIR_HASH=$(printf '%s' "$DIR" | sha1sum | cut -c1-8)
+pane_name() {
+  printf '%s-%s' "$1" "$DIR_HASH"
+}
+
 # The props of the mods, which read their octopilot from them.
 MOD_PROPS="$(jq -nc --arg dir "$DIR" --arg state "$STATE_DIR" '{dir: $dir, state_dir: $state}')"
+DASH_PROPS="$(jq -nc --argjson mod "$MOD_PROPS" --arg name "$(pane_name "$DASHBOARD_PANE")" \
+  '$mod + {pane_name: $name}')"
+PROMPTER_PROPS="$(jq -nc --argjson mod "$MOD_PROPS" --arg name "$(pane_name "$PROMPTER_PANE")" \
+  '$mod + {pane_name: $name}')"
 # The code tab's side panel: the code agent it shows, and its title.
 SIDE_PROPS="$(jq -nc --argjson mod "$MOD_PROPS" --arg agent "$CODE_AGENT" \
   '$mod + {agent: $agent, title: "Code changes"}')"
 # The kitchen's props: the mod's dir and state dir, and the name of its pane.
-KITCHEN_PROPS="$(jq -nc --argjson mod "$MOD_PROPS" --arg name "$KITCHEN_PANE" \
+KITCHEN_PROPS="$(jq -nc --argjson mod "$MOD_PROPS" --arg name "$(pane_name "$KITCHEN_PANE")" \
   '$mod + {pane_name: $name}')"
 
 # `herdr-app ...` with its output on stdout; a failure stops here with the
@@ -211,9 +223,17 @@ start_engine_term() {
   echo "$term"
 }
 
-# Names a mod pane after its role, so its copy finds its own pane in panes().
+# Names a mod pane (its id, then its name). Best effort: a pane that cannot be named
+# is warned about, and its copy falls back to the only pane of its mod.
 name_mod_pane() {
-  app do pane.rename --pane "$1" --name "$2" >/dev/null
+  local out
+  if [ -z "$1" ]; then
+    echo "open-gui.sh: no pane to name $2" >&2
+    return 0
+  fi
+  if ! out=$("$APP" do pane.rename --pane "$1" --name "$2" 2>&1); then
+    echo "open-gui.sh: could not name pane $1 $2: $out" >&2
+  fi
 }
 
 # Starts the prompter, labelled with its claude's session.
@@ -240,23 +260,23 @@ add_engine_agents() {
 
 # The OCTOPILOT tab, unless the space has one: the dashboard mod, and the chat
 # mod (the prompter) beside it. The chat's pane is recorded on the orchestrator
-# (octopilot.chat): the kitchen splits from it on a later run.
+# (octopilot.chat) so the kitchen can split from it; herdr-app ls lists no mod panes.
 add_main_tab() {
   local created pane chat
   if [ -n "$(tab_named "$1" "$MAIN_TAB")" ]; then return 0; fi
   created=$(app do tab.new --space "$1" --name "$MAIN_TAB" \
-    --mod octopilot-dashboard --props "$MOD_PROPS" --focus false)
+    --mod octopilot-dashboard --props "$DASH_PROPS" --focus false)
   pane=$(jq -r '.pane // empty' <<<"$created")
   if [ -z "$pane" ]; then
     echo "open-gui.sh: the $MAIN_TAB tab has no pane to split the chat into" >&2
     exit 1
   fi
-  name_mod_pane "$pane" "$DASHBOARD_PANE"
+  name_mod_pane "$pane" "$(pane_name "$DASHBOARD_PANE")"
   created=$(app do pane.split --direction right --pane "$pane" \
-    --mod octopilot-chat --props "$MOD_PROPS")
-  chat=$(jq -r '.pane' <<<"$created")
-  name_mod_pane "$chat" "$PROMPTER_PANE"
-  "$HC" label "$(find_orch)" "octopilot.chat=$chat" >/dev/null
+    --mod octopilot-chat --props "$PROMPTER_PROPS")
+  chat=$(jq -r '.pane // empty' <<<"$created")
+  name_mod_pane "$chat" "$(pane_name "$PROMPTER_PANE")"
+  if [ -n "$chat" ]; then "$HC" label "$(find_orch)" "octopilot.chat=$chat" >/dev/null; fi
 }
 
 # Sizes the kitchen (pane $2) to KITCHEN_PX: the divider above it (the chat's bottom
@@ -286,7 +306,7 @@ add_kitchen() {
   fi
   created=$(app do pane.split --direction down --pane "$chat" --mod octopilot-kitchen --props "$KITCHEN_PROPS")
   kitchen=$(jq -r '.pane' <<<"$created")
-  name_mod_pane "$kitchen" "$KITCHEN_PANE"
+  name_mod_pane "$kitchen" "$(pane_name "$KITCHEN_PANE")"
   size_kitchen "$chat" "$kitchen"
   "$HC" label "$orch" "octopilot.kitchen=$kitchen" >/dev/null
 }
