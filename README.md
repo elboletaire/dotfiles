@@ -21,6 +21,27 @@ anything up to `~/old_dotfiles`:
 ./scripts/install.sh ai-config
 ~~~
 
+The herdr pieces are installed and kept current by `install` and `update`
+(`ai` does the same for the AI stack; `herdr` only repairs herdr's setup):
+
+- **herdr** (terminal workspace manager): installed with its official script on
+  Linux, Homebrew on macOS. An existing herdr is upgraded by whoever owns it
+  (pacman via yay, Homebrew, or `herdr update` for the copy from the script),
+  so no second copy appears.
+- **herdr-app** (desktop app, with `herdr-core` / `hc` when none is installed):
+  installed from `https://releases.herdr.dev/app/install.sh`. On Arch the app's
+  runtime libraries (`vulkan-icd-loader mesa libxkbcommon-x11 wayland`) are
+  installed with pacman first. `update` reruns the installer, which is
+  idempotent and updates the app in place; `install` skips it when present.
+  macOS installs `~/Applications/Herdr.app` (Apple Silicon only).
+- **Legacy session managers**: `install`, `update`, `ai` and `ai-config` remove
+  agent-deck and agent-of-empires (`aoe`) left over from before herdr. Binaries
+  are deleted; their config and state, plus `~/.tmux.conf` when it holds only
+  agent-deck's block, are moved to `~/old_dotfiles/legacy-session-managers-<date>/`.
+  The `fleet` skill goes only where it names agent-deck. A `~/.tmux.conf` with
+  other lines is kept and a note is printed. Nothing is printed when there is
+  nothing to clean.
+
 ## AI skills
 
 Skills are managed via [APM](https://github.com/microsoft/apm) (Agent Package Manager).

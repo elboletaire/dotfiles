@@ -1126,6 +1126,13 @@ fi
 MOCK
   chmod +x "$MOCK_BIN/$tool"
 done
+# pacman owns herdr only when PACMAN_OWNS is set.
+cat > "$MOCK_BIN/pacman" <<MOCK
+#!/bin/bash
+echo "pacman \$*" >> "$TESTDIR/tools.log"
+[ -n "\${PACMAN_OWNS:-}" ]
+MOCK
+chmod +x "$MOCK_BIN/pacman"
 OS_SAVED="${OS:-}"
 OS=Linux
 
@@ -1144,10 +1151,10 @@ else
 fi
 
 : > "$TESTDIR/tools.log"
-install_herdr update >/dev/null
+PACMAN_OWNS=1 install_herdr update >/dev/null
 grep -q "^yay -S --needed --noconfirm herdr-bin$" "$TESTDIR/tools.log" \
-  && pass "update upgrades herdr-bin through yay" \
-  || fail "update did not run yay for herdr-bin"
+  && pass "update upgrades a pacman-owned herdr through yay" \
+  || fail "update did not run yay for a pacman-owned herdr"
 
 OS=Darwin
 : > "$TESTDIR/tools.log"
@@ -1156,7 +1163,7 @@ grep -q "^brew upgrade herdr$" "$TESTDIR/tools.log" \
   && pass "update upgrades herdr through brew on macOS" \
   || fail "macOS update did not run brew upgrade herdr"
 OS="$OS_SAVED"
-for tool in herdr yay brew claude pi; do rm -f "$MOCK_BIN/$tool"; done
+for tool in herdr yay brew claude pi pacman; do rm -f "$MOCK_BIN/$tool"; done
 
 echo ""
 echo "=== Test 26: set_login_shell only runs chsh when the login shell is not zsh ==="
@@ -1456,6 +1463,226 @@ else
   fail "hook skills link helper touched the wrong paths"
 fi
 rm -rf "$FAKE_HOME/.claude"
+
+echo ""
+echo "=== Test 37: install_herdr upgrades herdr with whoever owns it, never a second copy ==="
+# Stub-only PATH: the real herdr, pacman, yay, brew, curl and sh never run.
+STUB_BIN="$TESTDIR/stub-bin"
+STUB_LOG="$TESTDIR/stub.log"
+rm -rf "$STUB_BIN"
+mkdir -p "$STUB_BIN"
+for tool in mkdir dirname readlink cmp rm mv date ln cat grep awk sed tr cut head; do
+  ln -s "$(command -v "$tool")" "$STUB_BIN/$tool"
+done
+# stub <tool> <body>: logs "<tool> <args>" to $STUB_LOG, then runs <body>.
+stub() {
+  printf '#!/bin/bash\necho "%s $*" >> "%s"\n%s\n' "$1" "$STUB_LOG" "$2" > "$STUB_BIN/$1"
+  chmod +x "$STUB_BIN/$1"
+}
+stub herdr 'if [ "$1 $2" = "integration status" ]; then echo "claude: current (v1) (x)"; fi'
+stub pacman '[ "$STUB_OWNS" = 1 ]'
+stub brew '[ "$1" != list ] || [ "$STUB_OWNS" = 1 ]'
+stub yay 'true'
+stub curl 'true'
+stub sh 'cat > /dev/null'
+stub sudo '"$@"'
+stub herdr-app 'true'
+
+# run_stubbed <OS> <owns 0|1> <command...>: runs with STUB_BIN as the only PATH.
+run_stubbed() {
+  local os=$1 owns=$2
+  shift 2
+  : > "$STUB_LOG"
+  (
+    export PATH="$STUB_BIN" OS="$os" STUB_OWNS="$owns"
+    "$@"
+  ) >/dev/null 2>&1 || true
+}
+called() { grep -qxF -- "$1" "$STUB_LOG"; }
+
+run_stubbed Linux 0 install_herdr update
+if called "herdr update" && ! called "yay -S --needed --noconfirm herdr-bin"; then
+  pass "update runs herdr's own updater when pacman does not own it"
+else
+  fail "update did not run herdr update: $(tr '\n' ';' < "$STUB_LOG")"
+fi
+
+run_stubbed Linux 1 install_herdr update
+if called "yay -S --needed --noconfirm herdr-bin" && ! called "herdr update"; then
+  pass "update upgrades a pacman-owned herdr through yay"
+else
+  fail "pacman-owned herdr did not go through yay: $(tr '\n' ';' < "$STUB_LOG")"
+fi
+
+run_stubbed Linux 0 install_herdr
+if ! called "herdr update" && ! called "yay -S --needed --noconfirm herdr-bin" &&
+   ! called "curl -fsSL https://herdr.dev/install.sh"; then
+  pass "install leaves an installed herdr alone"
+else
+  fail "install touched an installed herdr: $(tr '\n' ';' < "$STUB_LOG")"
+fi
+
+rm -f "$STUB_BIN/herdr"
+run_stubbed Linux 0 install_herdr
+if called "curl -fsSL https://herdr.dev/install.sh" && ! called "yay -S --needed --noconfirm herdr-bin"; then
+  pass "installs a missing herdr with the official script on Linux"
+else
+  fail "missing herdr did not use the official script: $(tr '\n' ';' < "$STUB_LOG")"
+fi
+
+run_stubbed Darwin 0 install_herdr
+if called "brew install herdr" && ! called "curl -fsSL https://herdr.dev/install.sh"; then
+  pass "installs a missing herdr with brew on macOS"
+else
+  fail "missing herdr on macOS did not use brew: $(tr '\n' ';' < "$STUB_LOG")"
+fi
+
+stub herdr 'if [ "$1 $2" = "integration status" ]; then echo "claude: current (v1) (x)"; fi'
+run_stubbed Darwin 1 install_herdr update
+if called "brew upgrade herdr" && ! called "herdr update"; then
+  pass "update upgrades a brew-owned herdr through brew on macOS"
+else
+  fail "brew-owned herdr did not go through brew: $(tr '\n' ';' < "$STUB_LOG")"
+fi
+run_stubbed Darwin 0 install_herdr update
+if called "herdr update" && ! called "brew upgrade herdr"; then
+  pass "update runs herdr's own updater for a non-brew herdr on macOS"
+else
+  fail "non-brew herdr on macOS did not run herdr update: $(tr '\n' ';' < "$STUB_LOG")"
+fi
+
+echo ""
+echo "=== Test 38: install_herdr_app installs the app once and reruns the installer on update ==="
+rm -f "$STUB_BIN/herdr-app"
+run_stubbed Linux 0 install_herdr_app
+if called "sudo pacman -S --needed --noconfirm vulkan-icd-loader mesa libxkbcommon-x11 wayland" &&
+   called "curl -fsSL https://releases.herdr.dev/app/install.sh"; then
+  pass "installs the Arch runtime libraries, then runs the app installer"
+else
+  fail "missing herdr-app did not install its deps and the app: $(tr '\n' ';' < "$STUB_LOG")"
+fi
+
+run_stubbed Darwin 0 install_herdr_app
+if called "curl -fsSL https://releases.herdr.dev/app/install.sh" && ! grep -q '^sudo' "$STUB_LOG"; then
+  pass "installs herdr-app on macOS without the Arch libraries"
+else
+  fail "macOS herdr-app install ran pacman or skipped the app: $(tr '\n' ';' < "$STUB_LOG")"
+fi
+
+stub herdr-app 'true'
+run_stubbed Linux 0 install_herdr_app
+if [ ! -s "$STUB_LOG" ]; then
+  pass "install skips herdr-app when it is already installed"
+else
+  fail "install touched an installed herdr-app: $(tr '\n' ';' < "$STUB_LOG")"
+fi
+
+run_stubbed Linux 0 install_herdr_app update
+if called "curl -fsSL https://releases.herdr.dev/app/install.sh" && ! grep -q '^sudo' "$STUB_LOG"; then
+  pass "update reruns the app installer without reinstalling the libraries"
+else
+  fail "update did not rerun the app installer: $(tr '\n' ';' < "$STUB_LOG")"
+fi
+rm -f "$STUB_BIN/herdr-app"
+
+echo ""
+echo "=== Test 39: cleanup_legacy removes and moves agent-deck and aoe, quietly the second time ==="
+LEGACY_BK="$FAKE_HOME/old_dotfiles/legacy-session-managers-$(date +%Y%m%d)"
+rm -rf "$FAKE_HOME/.local/bin" "$FAKE_HOME/.config/agent-deck" "$FAKE_HOME/.local/share/agent-deck" \
+  "$FAKE_HOME/.cache/agent-deck" "$FAKE_HOME/.config/agent-of-empires" "$FAKE_HOME/.tmux.conf" \
+  "$FAKE_HOME/.claude/skills/fleet" "$FAKE_HOME/.agents/skills/fleet" "$FAKE_HOME/.pi/agent/skills" \
+  "$FAKE_HOME/old_dotfiles"
+mkdir -p "$FAKE_HOME/.local/bin" "$FAKE_HOME/.config/agent-deck" "$FAKE_HOME/.local/share/agent-deck" \
+  "$FAKE_HOME/.cache/agent-deck" "$FAKE_HOME/.config/agent-of-empires" \
+  "$FAKE_HOME/.claude/skills/fleet" "$FAKE_HOME/.agents/skills/fleet" "$FAKE_HOME/.pi/agent/skills"
+touch "$FAKE_HOME/.local/bin/agent-deck" "$FAKE_HOME/.local/bin/aoe" "$FAKE_HOME/.local/bin/aoe (deleted)"
+cat > "$FAKE_HOME/.tmux.conf" <<'CONF'
+
+# agent-deck configuration
+# agent-deck-tmux-config-version: 4
+# Added by agent-deck installer - 2026-07-23
+set -g mouse on
+# End agent-deck configuration
+CONF
+for d in "$FAKE_HOME/.claude/skills/fleet" "$FAKE_HOME/.agents/skills/fleet"; do
+  echo "description: fan out agent-deck child sessions" > "$d/SKILL.md"
+done
+ln -s ../../../.agents/skills/fleet "$FAKE_HOME/.pi/agent/skills/fleet"
+ln -s ../../../.agents/skills/agent-deck "$FAKE_HOME/.pi/agent/skills/agent-deck"
+
+out=$(cleanup_legacy 2>&1)
+if [ ! -e "$FAKE_HOME/.local/bin/agent-deck" ] && [ ! -e "$FAKE_HOME/.local/bin/aoe" ] &&
+   [ ! -e "$FAKE_HOME/.local/bin/aoe (deleted)" ] &&
+   [ -d "$LEGACY_BK/.config/agent-deck" ] && [ -d "$LEGACY_BK/.local/share/agent-deck" ] &&
+   [ -d "$LEGACY_BK/.cache/agent-deck" ] && [ -d "$LEGACY_BK/.config/agent-of-empires" ] &&
+   [ -f "$LEGACY_BK/.tmux.conf" ] && [ ! -e "$FAKE_HOME/.tmux.conf" ] &&
+   [ ! -e "$FAKE_HOME/.config/agent-deck" ] && [ ! -e "$FAKE_HOME/.claude/skills/fleet" ] &&
+   [ ! -e "$FAKE_HOME/.agents/skills/fleet" ] && [ ! -L "$FAKE_HOME/.pi/agent/skills/fleet" ] &&
+   [ ! -L "$FAKE_HOME/.pi/agent/skills/agent-deck" ]; then
+  pass "removes binaries and fleet, moves config and tmux block, drops dangling pi links"
+else
+  fail "cleanup_legacy missed something: $out"
+fi
+
+out=$(cleanup_legacy 2>&1)
+if [ -z "$out" ]; then
+  pass "second run prints nothing"
+else
+  fail "second run was not quiet: $out"
+fi
+
+echo ""
+echo "=== Test 40: cleanup_legacy keeps a tmux.conf with the user's lines and a foreign fleet skill ==="
+rm -rf "$FAKE_HOME/old_dotfiles" "$FAKE_HOME/.claude/skills/fleet"
+mkdir -p "$FAKE_HOME/.claude/skills/fleet"
+echo "description: my own fleet skill" > "$FAKE_HOME/.claude/skills/fleet/SKILL.md"
+cat > "$FAKE_HOME/.tmux.conf" <<'CONF'
+set -g base-index 1
+
+# agent-deck configuration
+# Added by agent-deck installer - 2026-07-23
+set -g mouse on
+# End agent-deck configuration
+CONF
+
+out=$(cleanup_legacy 2>&1)
+if [ -f "$FAKE_HOME/.tmux.conf" ] && [ ! -e "$FAKE_HOME/old_dotfiles" ] &&
+   [ -f "$FAKE_HOME/.claude/skills/fleet/SKILL.md" ] &&
+   case "$out" in *"left as is"*) true ;; *) false ;; esac; then
+  pass "keeps the mixed tmux.conf with a note and leaves a fleet skill without agent-deck alone"
+else
+  fail "cleanup_legacy touched user content: $out"
+fi
+rm -rf "$FAKE_HOME/.tmux.conf" "$FAKE_HOME/.claude/skills/fleet"
+
+echo ""
+echo "=== Test 41: cleanup_legacy does nothing when nothing is left ==="
+out=$(cleanup_legacy 2>&1)
+if [ -z "$out" ] && [ ! -e "$FAKE_HOME/old_dotfiles" ]; then
+  pass "prints nothing and creates no backup dir"
+else
+  fail "cleanup_legacy was not a no-op: $out"
+fi
+
+echo ""
+echo "=== Test 42: symlink never links AGENTS.md or CLAUDE.md into HOME ==="
+# An earlier test stubs symlink out; take the real one from install.sh.
+eval "$(sed -n '/^symlink() {/,/^}/p' "$TESTDIR/install_patched.sh")"
+touch "$DOTFILES/AGENTS.md" "$DOTFILES/CLAUDE.md" "$DOTFILES/zz-probe"
+rm -f "$FAKE_HOME/.AGENTS.md" "$FAKE_HOME/.CLAUDE.md" "$FAKE_HOME/.zz-probe"
+# symlink ends each excluded entry with in_array's 1, which the harness's set -e
+# would take as a failure; the assertions below check what it did.
+symlink || true
+if [ ! -e "$FAKE_HOME/.AGENTS.md" ] && [ ! -L "$FAKE_HOME/.AGENTS.md" ] &&
+   [ ! -e "$FAKE_HOME/.CLAUDE.md" ] && [ ! -L "$FAKE_HOME/.CLAUDE.md" ] &&
+   [ -L "$FAKE_HOME/.zz-probe" ]; then
+  pass "skips AGENTS.md and CLAUDE.md, still links other dotfiles"
+else
+  fail "symlink linked AGENTS.md or CLAUDE.md into HOME"
+fi
+rm -f "$DOTFILES/AGENTS.md" "$DOTFILES/CLAUDE.md" "$DOTFILES/zz-probe" \
+  "$FAKE_HOME/.zz-probe"
+rm -rf "$FAKE_HOME/old_dotfiles"
 
 echo ""
 echo "=== ALL TESTS COMPLETE ==="

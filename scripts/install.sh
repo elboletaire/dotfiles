@@ -2,11 +2,14 @@
 
 declare -r dotfiles=~/.dotfiles
 declare -r oldfiles=~/old_dotfiles
-declare -r exclude=("README.md" "LICENSE" "scripts" "git" "config" "ai")
+declare -r exclude=("README.md" "LICENSE" "scripts" "git" "config" "ai" "AGENTS.md" "CLAUDE.md")
 declare -r aborting="Aborting dotfiles installation..."
 # When set, link_ai replaces existing paths instead of moving them to $oldfiles.
 no_backup=0
 OS=$(uname -s)
+# herdr and herdr-app install into ~/.local/bin, which must be on PATH for the
+# command -v checks below.
+export PATH="$HOME/.local/bin:$PATH"
 
 backup_dotfile() {
   if [ ! -d $oldfiles ]; then
@@ -135,17 +138,16 @@ install_herdr() {
   # Pass "update" to upgrade even when herdr is already installed.
   local mode=${1:-} agent
 
-  if [[ "$mode" != "update" ]] && command -v herdr &>/dev/null; then
-    echo "herdr already installed ($(herdr --version 2>/dev/null || echo present))"
-  elif [[ "$OS" == "Darwin" ]]; then
+  if command -v herdr &>/dev/null; then
     if [[ "$mode" == "update" ]]; then
-      brew upgrade herdr || brew install herdr
+      _update_herdr
     else
-      brew install herdr
+      echo "herdr already installed ($(herdr --version 2>/dev/null || echo present))"
     fi
+  elif [[ "$OS" == "Darwin" ]]; then
+    brew install herdr
   else
-    # AUR, like obscura-browser-bin: pacman owns the binary and its upgrades.
-    yay -S --needed --noconfirm herdr-bin
+    curl -fsSL https://herdr.dev/install.sh | sh
   fi
   command -v herdr &>/dev/null || return 0
 
@@ -158,6 +160,115 @@ install_herdr() {
       herdr integration install "$agent"
     fi
   done
+}
+
+_update_herdr() {
+  # Upgrades herdr with whoever installed it, so no second copy appears: the
+  # package manager that owns the binary, else herdr's own updater.
+  if [[ "$OS" == "Darwin" ]]; then
+    if brew list --formula herdr &>/dev/null; then
+      brew upgrade herdr
+    else
+      herdr update
+    fi
+  elif pacman -Qo "$(command -v herdr)" &>/dev/null; then
+    # AUR, like obscura-browser-bin: pacman owns the binary and its upgrades.
+    yay -S --needed --noconfirm herdr-bin
+  else
+    herdr update
+  fi
+}
+
+install_herdr_app() {
+  # herdr-app: the Herdr desktop app, with herdr-core (hc) beside it if none is
+  # installed yet. Its installer is idempotent, so "update" just reruns it.
+  # Arch needs the app's runtime libraries, installed only with the app.
+  local mode=${1:-}
+  if ! command -v herdr-app &>/dev/null; then
+    if [[ "$OS" != "Darwin" ]]; then
+      sudo pacman -S --needed --noconfirm vulkan-icd-loader mesa libxkbcommon-x11 wayland ||
+        echo "WARNING: could not install herdr-app's runtime libraries" >&2
+    fi
+  elif [[ "$mode" != "update" ]]; then
+    echo "herdr-app already installed"
+    return 0
+  fi
+  curl -fsSL https://releases.herdr.dev/app/install.sh | sh ||
+    echo "WARNING: herdr-app install failed (see above)" >&2
+}
+
+# Session managers replaced by herdr (agent-deck, agent-of-empires) and the
+# fleet skill that drove agent-deck. Binaries are deleted; config and state go
+# under ~/old_dotfiles. Prints only what it did.
+cleanup_legacy() {
+  local backup=$oldfiles/legacy-session-managers-$(date +%Y%m%d)
+  local bin=$HOME/.local/bin f skill link
+
+  for f in "$bin/agent-deck" "$bin/aoe" "$bin/aoe (deleted)"; do
+    if [ -e "$f" ] || [ -L "$f" ]; then
+      rm -f "$f"
+      echo "Removed $f"
+    fi
+  done
+
+  for f in "$HOME/.config/agent-deck" "$HOME/.local/share/agent-deck" \
+    "$HOME/.cache/agent-deck" "$HOME/.config/agent-of-empires"; do
+    if [ -e "$f" ] || [ -L "$f" ]; then
+      _move_legacy "$f" "$backup"
+    fi
+  done
+
+  # Only agent-deck's own block: a file with the user's lines too is theirs.
+  if [ -f "$HOME/.tmux.conf" ] && _is_agent_deck_tmux_conf "$HOME/.tmux.conf"; then
+    _move_legacy "$HOME/.tmux.conf" "$backup"
+  elif [ -f "$HOME/.tmux.conf" ] && grep -q '^# agent-deck configuration$' "$HOME/.tmux.conf"; then
+    echo "NOTE: $HOME/.tmux.conf has agent-deck's block next to other lines; left as is"
+  fi
+
+  # The fleet skill is removed only where it names agent-deck.
+  for skill in "$HOME/.claude/skills/fleet" "$HOME/.agents/skills/fleet"; do
+    if [ -f "$skill/SKILL.md" ] && grep -q agent-deck "$skill/SKILL.md"; then
+      rm -rf "$skill"
+      echo "Removed $skill"
+    fi
+  done
+
+  # Pi's links: fleet's once its target is gone, agent-deck's when dangling or
+  # pointing at ~/.agents/skills/agent-deck.
+  link=$HOME/.pi/agent/skills/fleet
+  if [ -L "$link" ] && [ ! -e "$link" ]; then
+    rm -f "$link"
+    echo "Removed $link"
+  fi
+  link=$HOME/.pi/agent/skills/agent-deck
+  if [ -L "$link" ] && { [ ! -e "$link" ] || [ "$link" -ef "$HOME/.agents/skills/agent-deck" ]; }; then
+    rm -f "$link"
+    echo "Removed $link"
+  fi
+  return 0
+}
+
+_move_legacy() {
+  # Moves $1 under $2, keeping its path relative to $HOME so names never clash.
+  local src=$1 dest
+  dest=$2/${1#"$HOME"/}
+  mkdir -p "$(dirname "$dest")"
+  if [ -e "$dest" ] || [ -L "$dest" ]; then
+    dest=$dest.$(date +%H%M%S)
+  fi
+  mv "$src" "$dest"
+  echo "Moved $src -> $dest"
+}
+
+_is_agent_deck_tmux_conf() {
+  # True when the file holds agent-deck's installer block and nothing else.
+  grep -q '^# Added by agent-deck installer' "$1" || return 1
+  awk '
+    /^# agent-deck configuration$/ { inblock = 1; next }
+    /^# End agent-deck configuration$/ { inblock = 0; ended = 1; next }
+    !inblock && NF { extra = 1 }
+    END { exit (extra || !ended) }
+  ' "$1"
 }
 
 install_uv() {
@@ -912,11 +1023,13 @@ set_login_shell() {
 }
 
 do_install() {
+  cleanup_legacy
   install_packages
   install_nvm               # must come before anything that needs node/npx/npm
   install_ai_agents         # claude-code and pi need node from the step above
   install_apm || return 1   # apm manages skills
   install_herdr             # after install_ai_agents: wires agent-state hooks
+  install_herdr_app         # the herdr desktop app; also installs herdr-core if missing
   install_uv
   git submodule update --init --recursive
   symlink
@@ -935,11 +1048,13 @@ do_install() {
 
 do_update() {
   # Lightweight: no system packages, no submodule version bump.
+  cleanup_legacy
   git submodule update --init --recursive
   install_nvm
   install_ai_agents
   install_apm || return 1
   install_herdr update
+  install_herdr_app update
   install_uv
   symlink
   symlink_config
@@ -956,10 +1071,12 @@ do_update() {
 
 do_update_ai() {
   # AI-only fast path: refresh rtk, its hooks, the AI symlinks and the skills.
+  cleanup_legacy
   install_nvm
   install_ai_agents
   install_apm || return 1
   install_herdr update
+  install_herdr_app update
   install_uv
   install_rtk update
   update_apm_skills || return 1
@@ -977,6 +1094,7 @@ do_install_ai_config() {
   # the pinned skills. No agents, node or tooling installs, no ref bumps, and
   # no ~/old_dotfiles backups since everything relinked is tracked in git.
   no_backup=1
+  cleanup_legacy
   symlink_ai || return 1
   merge_claude_settings
   migrate_octopilot_state
@@ -988,6 +1106,7 @@ do_install_ai_config() {
 do_herdr() {
   # Repairs herdr's setup without upgrading herdr: config and plugin links.
   install_herdr
+  install_herdr_app
   link_herdr_config
   link_herdr_plugin
   link_herdr_app
