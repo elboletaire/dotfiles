@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
-# The GUI twin of open.sh: the Octopilot space in herdr-app, each claude an hc
-# terminal labelled octopilot.agent=<name>. From a worktree it needs
-# OCTOPILOT_STATE_DIR (see herdr/README.md, "GUI (herdr-app)").
+# The GUI twin of open.sh: the Octopilot space in herdr-app, with three tabs:
+#   OCTOPILOT: the octopilot-dashboard and octopilot-chat mods
+#   engine: the orchestrator, the prompter and the headless dashboard, as hc terminals
+#   Octopilot (code changes): a claude for changing octopilot itself
+# Each claude is labelled octopilot.agent=<name> and octopilot.session=<uuid>
+# (its transcript, read by scan.py speech and chat). --terminals builds the
+# TUI-style layout instead: terminal panes and the curses dashboard in one tab.
+# From a worktree it needs OCTOPILOT_STATE_DIR (see herdr/README.md, "GUI (herdr-app)").
 set -euo pipefail
 APP="herdr-app"
 HC="hc"
@@ -9,11 +14,22 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 LIVE_DIR="$(cd "$HOME/.dotfiles/ai/octopilot" 2>/dev/null && pwd -P || echo "$HOME/.dotfiles/ai/octopilot")"
 LABEL="Octopilot"
 ORCH_AGENT="octopilot"                 # scan.py's ORCH_AGENT
-PROMPTER_AGENT="octopilot-prompter"
+PROMPTER_AGENT="octopilot-prompter"    # scan.py's PROMPTER_AGENT
+HEADLESS_AGENT="octopilot-headless"    # the engine tab's dashboard.sh --headless
 CODE_AGENT="octopilot-code"            # scan.py's CODE_AGENT
 MAIN_TAB="OCTOPILOT"
+ENGINE_TAB="engine"
 CODE_TAB="Octopilot (code changes)"
 CODE_CWD="$(cd "$DIR/../.." && pwd -P)"   # the checkout this octopilot lives in
+
+TERMINALS=0
+for arg in "$@"; do
+  case "$arg" in
+    --terminals) TERMINALS=1 ;;
+    -h|--help) echo "usage: open-gui.sh [--terminals]"; exit 0 ;;
+    *) echo "open-gui.sh: unknown argument $arg" >&2; exit 2 ;;
+  esac
+done
 
 if [ "$DIR" != "$LIVE_DIR" ] && [ -z "${OCTOPILOT_STATE_DIR:-}" ]; then
   echo "open-gui.sh: $DIR is not the live octopilot ($LIVE_DIR), and would" \
@@ -40,20 +56,30 @@ envs=(OCTOPILOT_BACKEND=hc "OCTOPILOT_DIR=$DIR")
 if [ -n "${OCTOPILOT_STATE_DIR:-}" ]; then envs+=("OCTOPILOT_STATE_DIR=$OCTOPILOT_STATE_DIR"); fi
 envs+=("${scope[@]+"${scope[@]}"}")
 
+# The props of the mods, which read their octopilot from them.
+MOD_PROPS="$(jq -nc --arg dir "$DIR" --arg state "$STATE_DIR" '{dir: $dir, state_dir: $state}')"
+
 # A JSON argv array from its arguments, as herdr-app takes it.
 argv_json() {
   jq -nc '$ARGS.positional' --args -- "$@"
+}
+
+# A fresh session id for a claude that is started with --session-id.
+new_session() {
+  uuidgen | tr '[:upper:]' '[:lower:]'
 }
 
 # The --settings that put a worktree's octopilot plugin in place of the
 # installed one (empty on the live checkout), for every claude started here.
 SETTINGS="$(OCTOPILOT_DIR="$DIR" "$DIR/scan.sh" plugin-settings)"
 
-# argv for a claude session, optionally started with a prompt.
+# argv for a claude session: its session id (empty: none), optionally started
+# with a prompt.
 session_argv() {
   local args=(env "${envs[@]}" claude)
   if [ -n "$SETTINGS" ]; then args+=(--settings "$SETTINGS"); fi
-  if [ -n "${1:-}" ]; then args+=("$1"); fi
+  if [ -n "${1:-}" ]; then args+=(--session-id "$1"); fi
+  if [ -n "${2:-}" ]; then args+=("$2"); fi
   argv_json "${args[@]}"
 }
 
@@ -74,8 +100,11 @@ tab_named() {
     '.spaces[] | select(.id == $s) | .tabs[] | select(.name == $n) | .id' | head -n1
 }
 
+# Labels a terminal as an agent: its name, and for a claude its session id.
 name_agent() {
-  "$HC" label "$1" "octopilot.agent=$2" >/dev/null
+  local labels=("octopilot.agent=$2")
+  if [ -n "${3:-}" ]; then labels+=("octopilot.session=$3"); fi
+  "$HC" label "$1" "${labels[@]}" >/dev/null
 }
 
 # The octopilot dir an orchestrator runs from. Labels are global, so one from
@@ -84,13 +113,46 @@ owner_dir() {
   "$HC" get "$1" --json | jq -r --arg d "$LIVE_DIR" '.labels["octopilot.dir"] // $d'
 }
 
-# Split the messenger pane down and start the prompter in the new pane.
+# Split a pane (direction: right or down) and start the prompter in the new one.
 add_prompter() {
+  local split session
+  session=$(new_session)
+  split=$("$APP" do pane.split --direction "$2" --pane "$1" \
+    --argv "$(session_argv "$session" "/octopilot:prompter")")
+  "$APP" do pane.rename --pane "$(jq -r '.pane' <<<"$split")" --name prompter >/dev/null
+  name_agent "$(jq -r '.terminal' <<<"$split")" "$PROMPTER_AGENT" "$session"
+}
+
+# Split the orchestrator's pane down and run the headless dashboard in it: the
+# loops that feed view.json, which the mods show.
+add_headless() {
   local split
   split=$("$APP" do pane.split --direction down --pane "$1" \
-    --argv "$(session_argv "/octopilot:prompter")")
-  "$APP" do pane.rename --pane "$(jq -r '.pane' <<<"$split")" --name prompter >/dev/null
-  name_agent "$(jq -r '.terminal' <<<"$split")" "$PROMPTER_AGENT"
+    --argv "$(argv_json env "${envs[@]}" bash "$DIR/dashboard.sh" --headless)")
+  "$APP" do pane.rename --pane "$(jq -r '.pane' <<<"$split")" --name headless >/dev/null
+  name_agent "$(jq -r '.terminal' <<<"$split")" "$HEADLESS_AGENT"
+}
+
+# The engine tab's helpers under the orchestrator's pane, those that are missing.
+add_engine_agents() {
+  if [ -z "$(agent_term "$HEADLESS_AGENT")" ]; then add_headless "$1"; fi
+  if [ -z "$(agent_term "$PROMPTER_AGENT")" ]; then add_prompter "$1" right; fi
+}
+
+# The OCTOPILOT tab, unless the space has one: the dashboard mod, and the chat
+# mod (the prompter) beside it.
+add_main_tab() {
+  local created pane
+  if [ -n "$(tab_named "$1" "$MAIN_TAB")" ]; then return 0; fi
+  created=$("$APP" do tab.new --space "$1" --name "$MAIN_TAB" \
+    --mod octopilot-dashboard --props "$MOD_PROPS" --focus false)
+  pane=$(jq -r '.pane // empty' <<<"$created")
+  if [ -z "$pane" ]; then
+    echo "open-gui.sh: the $MAIN_TAB tab has no pane to split the chat into" >&2
+    exit 1
+  fi
+  "$APP" do pane.split --direction right --pane "$pane" \
+    --mod octopilot-chat --props "$MOD_PROPS" >/dev/null
 }
 
 # The code-changes tab, unless the space has one; a claude starts in it.
@@ -98,8 +160,14 @@ add_code_tab() {
   local created
   if [ -n "$(tab_named "$1" "$CODE_TAB")" ]; then return 0; fi
   created=$("$APP" do tab.new --space "$1" --name "$CODE_TAB" --folder "$CODE_CWD" \
-    --argv "$(session_argv)" --focus false)
+    --argv "$(session_argv "" "")" --focus false)
   name_agent "$(jq -r '.terminal' <<<"$created")" "$CODE_AGENT"
+}
+
+# Shows the space and its OCTOPILOT tab.
+focus_main() {
+  "$APP" do space.select --id "$1" >/dev/null
+  "$APP" do tab.select --id "$(tab_named "$1" "$MAIN_TAB")" >/dev/null
 }
 
 orch=$(agent_term "$ORCH_AGENT")
@@ -115,31 +183,50 @@ if [ -n "$orch" ]; then
     exit 1
   fi
   IFS=$'\t' read -r space tab pane <<<"$located"
-  "$APP" do tab.rename --id "$tab" --name "$MAIN_TAB" >/dev/null
-  "$APP" do agent.focus --terminal "$orch" >/dev/null
-  if [ -z "$(agent_term "$PROMPTER_AGENT")" ]; then add_prompter "$pane"; fi
-  add_code_tab "$space"
+  if [ "$TERMINALS" = 1 ]; then
+    "$APP" do tab.rename --id "$tab" --name "$MAIN_TAB" >/dev/null
+    if [ -z "$(agent_term "$PROMPTER_AGENT")" ]; then add_prompter "$pane" down; fi
+    add_code_tab "$space"
+    "$APP" do agent.focus --terminal "$orch" >/dev/null
+  else
+    "$APP" do tab.rename --id "$tab" --name "$ENGINE_TAB" >/dev/null
+    add_engine_agents "$pane"
+    add_main_tab "$space"
+    add_code_tab "$space"
+    focus_main "$space"
+  fi
   exit 0
 fi
 
 # The orchestrator in its own space, in its folder, started ticking straight away.
+session=$(new_session)
+tab_name="$ENGINE_TAB"
+if [ "$TERMINALS" = 1 ]; then tab_name="$MAIN_TAB"; fi
 created=$("$APP" do space.new --name "$LABEL" --folder "$OCTOPILOT_ORCH_CWD" \
-  --tab "$MAIN_TAB" --argv "$(session_argv "/octopilot:messenger")")
+  --tab "$tab_name" --argv "$(session_argv "$session" "/octopilot:messenger")" --focus false)
 space=$(jq -r '.space' <<<"$created")
 orch=$(jq -r '.terminal' <<<"$created")
-"$HC" label "$orch" "octopilot.agent=$ORCH_AGENT" "octopilot.dir=$DIR" >/dev/null
+"$HC" label "$orch" "octopilot.agent=$ORCH_AGENT" "octopilot.dir=$DIR" \
+  "octopilot.session=$session" >/dev/null
 root=$(locate "$orch" | cut -f3)
 if [ -z "$root" ]; then
   echo "open-gui.sh: the new $ORCH_AGENT terminal ($orch) is not in a Herdr space" >&2
   exit 1
 fi
-"$APP" do pane.rename --pane "$root" --name messenger >/dev/null
 
-# The dashboard first, so it takes the full height on the right; the prompter
-# then splits only the messenger's column.
-dash=$("$APP" do pane.split --direction right --pane "$root" \
-  --argv "$(argv_json env "${envs[@]}" bash "$DIR/dashboard.sh")")
-"$APP" do pane.rename --pane "$(jq -r '.pane' <<<"$dash")" --name dashboard >/dev/null
-add_prompter "$root"
-add_code_tab "$space"
-"$APP" do agent.focus --terminal "$orch" >/dev/null
+if [ "$TERMINALS" = 1 ]; then
+  "$APP" do pane.rename --pane "$root" --name messenger >/dev/null
+  # The dashboard first, so it takes the full height on the right; the prompter
+  # then splits only the messenger's column.
+  dash=$("$APP" do pane.split --direction right --pane "$root" \
+    --argv "$(argv_json env "${envs[@]}" bash "$DIR/dashboard.sh")")
+  "$APP" do pane.rename --pane "$(jq -r '.pane' <<<"$dash")" --name dashboard >/dev/null
+  add_prompter "$root" down
+  add_code_tab "$space"
+  "$APP" do agent.focus --terminal "$orch" >/dev/null
+else
+  add_engine_agents "$root"
+  add_main_tab "$space"
+  add_code_tab "$space"
+  focus_main "$space"
+fi
