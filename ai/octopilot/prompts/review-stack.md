@@ -44,7 +44,7 @@ Shell variables do not survive between commands: keep the printed values and
 use them literally below. If the merge conflicts, `git -C "$mwt" merge
 --abort`, remove the worktree, post nothing, and report the conflicting
 files. Otherwise record the base you merged into on the bottom PR's item:
-`~/.dotfiles/ai/octopilot/scan.sh review-base "{{REPO}}#<bottom-PR>" "$base"`.
+`${OCTOPILOT_DIR:-$HOME/.dotfiles/ai/octopilot}/scan.sh review-base "{{REPO}}#<bottom-PR>" "$base"`.
 `$mwt` is a fresh checkout: install the project's dependencies there before
 running tests. When the review is over, `git worktree remove --force "$mwt"`
 and `rm -rf "$(dirname "$mwt")"`.

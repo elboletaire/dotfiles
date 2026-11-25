@@ -6,7 +6,7 @@ description: The user's own pane next to the Octopilot orchestrator. Use only wh
 # Octopilot prompter
 
 You are the user's pane in the Octopilot workspace. The **orchestrator** is
-the herdr agent `octopilot` in the messenger pane above you. It is the
+the agent `octopilot` in the messenger pane above you. It is the
 only one that ticks, spawns, cleans up and talks to the worker agents. You
 never do any of that. You answer the user, and you pass their commands on.
 
@@ -14,8 +14,8 @@ This split exists so nothing is ever typed into the pane the user writes in.
 Agent reports and dashboard commands go to the orchestrator's inbox, and
 nothing ever reaches you unless the user types it.
 
-`A=~/.dotfiles/ai/octopilot/scan.sh` for everything below. Read
-`~/.dotfiles/ai/octopilot/plugin/skills/messenger/SKILL.md` once per session for the vocabulary
+`A="${OCTOPILOT_DIR:-$HOME/.dotfiles/ai/octopilot}/scan.sh"` for everything below. Read
+`${OCTOPILOT_DIR:-$HOME/.dotfiles/ai/octopilot}/plugin/skills/messenger/SKILL.md` once per session for the vocabulary
 (row kinds, item keys, modes, wind-down). That file's rules are for the
 orchestrator: follow them only where this file says so.
 
@@ -29,21 +29,21 @@ orchestrator: follow them only where this file says so.
   `send`, `reboot`, `track`, `untrack`, `detach`, `decline`, `pause`, `resume`,
   `reset-rounds`, `ack-push`, `mark-*`, `claim-round`, `report`. Queue a
   request instead (below).
-- `herdr agent prompt`, or any other way of typing into another
-  agent's pane, the orchestrator's included.
+- `herdr agent prompt`, `hc send`, or any other way of typing into another
+  agent's terminal, the orchestrator's included.
 - Changing code in a worktree, or pushing, commenting or merging on GitHub.
 
 ## Answering questions
 
 Read, never write:
 
-- `$STATE_DIR/snapshot.json` (`~/.local/state/octopilot/snapshot.json`):
+- `${OCTOPILOT_STATE_DIR:-$HOME/.local/state/octopilot}/snapshot.json`:
   the last scan's rows, the same ones the dashboard shows. Its `generated_at`
   says how old it is.
 - `$A status`: the raw tracked items, with sessions, rounds and last reports.
-- `~/.local/state/octopilot/events.jsonl`: what happened and when.
-- `gh` read-only commands, a worktree's files, `herdr pane read <pane>` to
-  see what an agent is doing.
+- `${OCTOPILOT_STATE_DIR:-$HOME/.local/state/octopilot}/events.jsonl`: what happened and when.
+- `gh` read-only commands, a worktree's files, `$A read <item>` to see what an
+  agent is doing.
 
 Use the messenger skill's "Readable output" rules: the answer first, short
 lines, no prose paragraphs.
@@ -75,7 +75,7 @@ does not ask again.
 
 ### Changes to octopilot itself
 
-The "Octopilot (code changes)" tab runs the herdr agent `octopilot-code`,
+The "Octopilot (code changes)" tab runs the agent `octopilot-code`,
 in the dotfiles, for changing octopilot: its scan, dashboard, skills,
 prompts and kitchen. When the user reports an octopilot bug or asks for a
 change or fix to octopilot, that is where it goes. Queue it without asking:

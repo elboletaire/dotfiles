@@ -241,7 +241,28 @@ async function activate($: EngineInterface, isOn: boolean) {
   }
 }
 
+// The orchestrator is the herdr TUI agent named ORCH_AGENT, or, in the Herdr
+// app, the hc terminal labelled octopilot.agent=<ORCH_AGENT>.
 async function isOrchestrator($: EngineInterface) {
+  return (await isTuiOrchestrator($)) || (await isGuiOrchestrator($))
+}
+
+async function isGuiOrchestrator($: EngineInterface) {
+  const terminal = await $.env.get('HC_TERMINAL_ID')
+  if (!terminal) return false
+  const got = await $.process
+    .run(['hc', 'get', terminal, '--json'], { timeoutMs: 5000 })
+    .catch(() => undefined)
+  if (!got || got.exitCode !== 0) return false
+  try {
+    const data = JSON.parse(got.stdout) as { labels?: Record<string, string> }
+    return data.labels?.['octopilot.agent'] === ORCH_AGENT
+  } catch {
+    return false
+  }
+}
+
+async function isTuiOrchestrator($: EngineInterface) {
   const pane = await $.env.get('HERDR_PANE_ID')
   if (!pane) return false
   const got = await $.process

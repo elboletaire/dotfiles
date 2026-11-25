@@ -36,7 +36,7 @@ Then record which base you merged, so a later update to `{{BASE}}` can be told
 apart from the one you reviewed against:
 
 ```
-~/.dotfiles/ai/octopilot/scan.sh review-base "{{KEY}}" "$base"
+${OCTOPILOT_DIR:-$HOME/.dotfiles/ai/octopilot}/scan.sh review-base "{{KEY}}" "$base"
 ```
 
 `$mwt` is a fresh checkout: install the project's dependencies there before
