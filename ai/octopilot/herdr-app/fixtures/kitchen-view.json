@@ -1,0 +1,166 @@
+{
+  "v": 1,
+  "generated_at": 1795616700,
+  "header": {
+    "needs": 2,
+    "running": 3,
+    "pick": 4,
+    "active": 3,
+    "max_active": 6,
+    "untracked": 0,
+    "github": {
+      "state": "ok",
+      "age_s": 42,
+      "error": null
+    },
+    "last_tick_s": 120,
+    "orch_label": "octopilot",
+    "paused": false,
+    "wind_down": {
+      "state": "no",
+      "at": "16:00"
+    }
+  },
+  "columns": [],
+  "pick": [],
+  "notes": [],
+  "activity": [],
+  "kitchen": [
+    {
+      "at": 1795615200,
+      "kind": "spawn",
+      "key": "acme/api#412",
+      "mood": "pour",
+      "text": "new order api#412 Rate limit the login route",
+      "good": true,
+      "tone": "good",
+      "ms": 2500,
+      "burst": "batter"
+    },
+    {
+      "at": 1795615800,
+      "kind": "report",
+      "key": "acme/web#398",
+      "mood": "sad",
+      "text": "blocked web#398: tests are red on main",
+      "good": false,
+      "tone": "bad",
+      "ms": 4500,
+      "burst": "smoke"
+    },
+    {
+      "at": 1795616280,
+      "kind": "report",
+      "key": "acme/docs#77",
+      "mood": "worried",
+      "text": "stalled docs#77: no commit in 40 min",
+      "good": false,
+      "tone": "bad",
+      "ms": 3000,
+      "burst": "smoke"
+    },
+    {
+      "at": 1795616520,
+      "kind": "merged",
+      "key": "acme/cli#51",
+      "mood": "serve",
+      "text": "served cli#51 (merged)",
+      "good": true,
+      "tone": "good",
+      "ms": 3500,
+      "burst": "heart"
+    },
+    {
+      "at": 1795616640,
+      "kind": "tick",
+      "key": null,
+      "mood": "flip",
+      "text": "tick · 3 cooking",
+      "good": false,
+      "tone": "info",
+      "ms": 2500,
+      "burst": "steam"
+    },
+    {
+      "at": 1795616699,
+      "kind": "report",
+      "key": "acme/api#401",
+      "mood": "happy",
+      "text": "ready api#401: PR open, CI green",
+      "good": true,
+      "tone": "good",
+      "ms": 4000,
+      "burst": "sparkle"
+    }
+  ],
+  "pan": {
+    "holes": 6,
+    "paused": false,
+    "busy": true,
+    "balls": [
+      {
+        "key": "acme/api#412",
+        "label": "api#412",
+        "state": "raw",
+        "heat": 0.0,
+        "focus": false
+      },
+      {
+        "key": "acme/web#405",
+        "label": "web#405",
+        "state": "cooking",
+        "heat": 0.3,
+        "focus": false
+      },
+      {
+        "key": "acme/sdk#19",
+        "label": "sdk#19",
+        "state": "cooking",
+        "heat": 0.9,
+        "focus": true
+      },
+      {
+        "key": "acme/api#401",
+        "label": "api#401",
+        "state": "ready",
+        "heat": 1.0,
+        "focus": false
+      },
+      {
+        "key": "acme/app#230",
+        "label": "app#230",
+        "state": "capped",
+        "heat": 1.0,
+        "focus": false
+      },
+      {
+        "key": "acme/web#398",
+        "label": "web#398",
+        "state": "burnt",
+        "heat": 1.0,
+        "focus": false
+      }
+    ],
+    "shelf": [
+      {
+        "key": "acme/cli#51",
+        "label": "cli#51"
+      },
+      {
+        "key": "acme/api#388",
+        "label": "api#388"
+      },
+      {
+        "key": "acme/docs#70",
+        "label": "docs#70"
+      }
+    ],
+    "shelf_total": 3,
+    "chef": {
+      "mood": "happy",
+      "since": 1795616699,
+      "ms": 4000,
+      "resting": "busy"
+    }
+  }
+}
