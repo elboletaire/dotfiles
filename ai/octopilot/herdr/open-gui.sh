@@ -283,57 +283,44 @@ await_shown() {
   return 1
 }
 
-# Waits (up to 10 s) until a terminal has no pane.
-await_parked() {
-  local i
-  for i in $(seq 40); do
-    if [ -z "$(locate "$1")" ]; then return 0; fi
-    sleep 0.25
-  done
-  echo "open-gui.sh: $1 did not park" >&2
-  return 1
-}
-
-# Moves the code agent's claude into a tab of its own. Shown in another tab, or parked,
-# it is parked (its process keeps running) and kept again, which gives it a new tab of
-# its space; the old tab (the chat, or a terminal tab that holds only the agent) goes,
-# and the new one takes CODE_TAB's name. Prints the "space tab pane" it shows in.
+# Shows a parked code agent in its space (labelled, else terminal.keep), never moving one
+# that is shown. Prints its "space tab pane" only when it is in $space, alone in its tab.
 show_code_tab() {
-  local space=$1 code=$2 old=$3 located
-  if [ -n "$(locate "$code")" ]; then
-    app do terminal.park --terminal "$code" >/dev/null
-    await_parked "$code" >/dev/null
+  local space=$1 code=$2 located
+  if [ -z "$(locate "$code")" ]; then
+    "$HC" label "$code" "herdr.space=$space" "octopilot.space=$space" >/dev/null
+    if [ -z "$(locate "$code")" ]; then app do terminal.keep --terminal "$code" >/dev/null; fi
   fi
-  "$HC" label "$code" "herdr.space=$space" "octopilot.space=$space" >/dev/null
-  app do terminal.keep --terminal "$code" >/dev/null
-  located=$(await_shown "$code")
-  if [ -n "$old" ] && [ "$old" != "$(cut -f2 <<<"$located")" ]; then
-    app do tab.close --id "$old" >/dev/null
+  located=$(await_shown "$code") || return 1
+  if [ "$(cut -f1 <<<"$located")" != "$space" ] \
+    || [ "$(tab_terminals "$(cut -f2 <<<"$located")")" != "$code" ]; then
+    echo "open-gui.sh: the $CODE_AGENT terminal ($code) is not alone in a tab of" \
+      "this space; left as it is, with no side panel" >&2
+    return 1
   fi
-  app do tab.rename --id "$(cut -f2 <<<"$located")" --name "$CODE_TAB" >/dev/null
   echo "$located"
 }
 
-# The octopilot-side panel beside the agent's terminal, once. The pane this run recorded
-# on the agent (a label) is kept while it exists: pane.rename fails on a pane that is gone.
+# The octopilot-side panel beside the agent's terminal, once per tab: the agent's label
+# octopilot.side=<tab>:<pane> is kept while it names this tab and that pane still exists.
 add_side_panel() {
-  local code=$1 pane=$2 side created
+  local code=$1 tab=$2 pane=$3 side created
   side=$("$HC" get "$code" --json | jq -r '.labels["octopilot.side"] // empty')
-  if [ -n "$side" ] && "$APP" do pane.rename --pane "$side" --name "$SIDE_PANE" >/dev/null 2>&1; then
+  if [ "${side%%:*}" = "$tab" ] \
+    && "$APP" do pane.rename --pane "${side#*:}" --name "$SIDE_PANE" >/dev/null 2>&1; then
     return 0
   fi
   created=$(app do pane.split --direction right --pane "$pane" --mod octopilot-side --props "$SIDE_PROPS")
   side=$(jq -r '.pane' <<<"$created")
   name_mod_pane "$side" "$SIDE_PANE"
-  "$HC" label "$code" "octopilot.side=$side" >/dev/null
+  "$HC" label "$code" "octopilot.side=$tab:$side" >/dev/null
 }
 
-# The code-changes tab: the code agent's claude in its own terminal, with the side panel
-# beside it. A rerun converts what an earlier one left: the chat mod tab, a terminal tab
-# without the panel, or the agent parked (its claude keeps running). A terminal in the
-# tab that is not the agent's is refused, never closed.
+# The code-changes tab: the code agent's claude, with the side panel beside it. A rerun
+# converts the chat tab, a panel-less terminal tab or a parked agent, never ending its
+# claude; a tab holding another terminal is refused.
 add_code_tab() {
-  local space=$1 old code shown located t pane
+  local space=$1 old code located t
   old=$(tab_named "$space" "$CODE_TAB")
   code=$(find_agent "$CODE_AGENT")
   if [ -n "$old" ]; then
@@ -347,21 +334,15 @@ add_code_tab() {
   fi
   if [ -z "$code" ]; then
     # What is left of the old tab holds no terminal: the panel or the chat only.
-    if [ -n "$old" ]; then app do tab.close --id "$old" >/dev/null; fi
+    if [ -n "$old" ]; then app do tab.close --id "$old" >/dev/null; old=""; fi
     code=$(start_code_tab "$space")
-  else
-    shown=$(locate "$code" | cut -f2)
-    if [ -z "$shown" ] || [ "$shown" != "$old" ]; then
-      show_code_tab "$space" "$code" "$old" >/dev/null
-    fi
   fi
-  located=$(locate "$code")
-  pane=$(cut -f3 <<<"$located")
-  if [ -z "$pane" ]; then
-    echo "open-gui.sh: the $CODE_AGENT terminal ($code) has no pane to split the panel from" >&2
-    exit 1
-  fi
-  add_side_panel "$code" "$pane"
+  located=$(show_code_tab "$space" "$code") || return 0
+  t=$(cut -f2 <<<"$located")
+  # The old tab holds no terminal now (checked above, and the agent is in $t): mods only.
+  if [ -n "$old" ] && [ "$old" != "$t" ]; then app do tab.close --id "$old" >/dev/null; fi
+  app do tab.rename --id "$t" --name "$CODE_TAB" >/dev/null
+  add_side_panel "$code" "$t" "$(cut -f3 <<<"$located")"
 }
 
 # The --terminals code tab: a terminal tab with its claude in the dotfiles root,
@@ -440,11 +421,11 @@ park_engine() {
   done
 }
 
-# Ends this checkout's engine and code agents, by label: their space is gone, so
-# octopilot is stopped and built again.
+# Ends this checkout's engine terminals, by label: their space is gone, so octopilot is
+# stopped and built again. Never the code agent: it is the person's own claude session.
 stop_engine() {
   local label t
-  for label in "$ORCH_AGENT" "$PROMPTER_AGENT" "$HEADLESS_AGENT" "$CODE_AGENT"; do
+  for label in "$ORCH_AGENT" "$PROMPTER_AGENT" "$HEADLESS_AGENT"; do
     for t in $("$HC" ls --json --label "octopilot.agent=$label" | jq -r '.terminals[].address'); do
       if is_mine "$t"; then
         "$HC" kill "$t" >/dev/null || true
@@ -492,7 +473,7 @@ focus_main() {
 
 # The space is found before the reap, which may end the terminals that prove it.
 known_space=$(existing_space)
-for a in "$ORCH_AGENT" "$PROMPTER_AGENT" "$HEADLESS_AGENT" "$CODE_AGENT"; do reap_dead "$a"; done
+for a in "$ORCH_AGENT" "$PROMPTER_AGENT" "$HEADLESS_AGENT"; do reap_dead "$a"; done
 orch=$(find_orch)
 if [ -z "$orch" ]; then
   other=$("$HC" ls --json --label "octopilot.agent=$ORCH_AGENT" | jq -r '.terminals[0].address // empty')

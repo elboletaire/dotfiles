@@ -1,10 +1,9 @@
-// The code changes agent's side panel, beside its own claude terminal: its status, its
-// sub-agents (herdr's terminals whose parent it is, and Claude's own, read-only), the model
-// and the commands. Sends go through `scan.sh chat-send --agent <agent>`, one at a time, never
-// while the agent waits on a prompt. Props: dir, state_dir, agent, title (see herdr/README.md).
+// The code agent's side panel beside its claude terminal: status, sub-agents, model, commands.
+// Sends go through `scan.sh chat-send --agent <agent>`, one at a time, never into a prompt or
+// an open /resume picker. Props: dir, state_dir, agent, title (see herdr/README.md).
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { exec, hc, run, props, shared, home, theme, terminals, panes, nextCommand, window, checking } from "herdr";
+import { exec, hc, run, props, shared, setShared, home, theme, terminals, panes, nextCommand, window, checking } from "herdr";
 
 const MODELS = ["opus", "sonnet", "haiku"];
 const WORDS = { working: "working", blocked: "needs you", idle: "idle", done: "finished", offline: "offline" };
@@ -14,6 +13,10 @@ const RECORDS_MS = 3000;
 const LOCK_MS = 1500;
 // The panel's width: once laid out wider, its divider with the agent's terminal moves to make it this.
 const PANEL_PX = 240;
+// A notice goes after this long, or sooner when the agent's status changes.
+const NOTICE_MS = 8000;
+// The panes already narrowed (by pane id), so a panel the person widened stays wide.
+const FITTED_KEY = "octopilot-side.fitted";
 
 // scan.sh under the hc backend, with the dashboard's folder and state dir, set by env(1).
 // The agent prop goes right after the verb, where scan.sh reads it. -> [command, argv]
@@ -45,6 +48,9 @@ export default class Side extends View {
     this.sending = false;
     this.lockedUntil = 0;
     this.notice = null;
+    this.noticeAt = 0;
+    this.noticeStatus = null;
+    this.picker = null;     // after /resume: the agent's status and title then; sends wait until they change
     this.confirming = false;
     this.width = 0;
     this.fitted = false;
@@ -75,16 +81,28 @@ export default class Side extends View {
   }
 
   canSend() {
-    return this.online() && !this.blocked() && !this.busy();
+    return this.online() && !this.blocked() && !this.busy() && !this.picker;
   }
 
-  // Narrows the panel to PANEL_PX, once: the divider with the agent's terminal moves left.
-  // Waits until the agent's terminal is shown beside it.
+  setNotice(text) {
+    this.notice = text;
+    this.noticeAt = Date.now();
+    this.noticeStatus = this.agent?.status ?? null;
+  }
+
+  // Narrows the panel to PANEL_PX, once per pane: the divider with the agent's terminal moves
+  // right. Waits until the agent's terminal is shown beside it.
   fit() {
     if (this.fitted || this.width < PANEL_PX + 8 || !this.agent) return;
     const pane = panes().find((p) => p.terminal === this.agent.address);
-    if (!pane) return;
+    const me = pane && panes().find((p) => p.mod === "octopilot-side" && p.tab === pane.tab);
+    if (!me) return;
     this.fitted = true;
+    const done = shared(FITTED_KEY) ?? {};
+    if (done[me.pane]) return;
+    setShared(FITTED_KEY, { ...done, [me.pane]: true });
+    // on_size_change gives logical px; whether pane.resize's px are scaled by the app zoom
+    // is not documented, so at a zoom other than 1 the panel may land a little off 240.
     run("pane.resize", { direction: "right", pane: pane.pane, px: Math.round(this.width - PANEL_PX) });
   }
 
@@ -94,6 +112,12 @@ export default class Side extends View {
     this.agent = agent;
     this.subs = agent ? terminals().filter((t) => t.parent === agent.address) : [];
     this.fit();
+    if (this.picker && (!agent || agent.status !== this.picker.status || agent.title !== this.picker.title)) {
+      this.picker = null;
+    }
+    if (this.notice && (Date.now() - this.noticeAt > NOTICE_MS || (agent?.status ?? null) !== this.noticeStatus)) {
+      this.notice = null;
+    }
     if (!agent) {
       this.records = [];
       this.confirming = false;
@@ -111,7 +135,7 @@ export default class Side extends View {
     return JSON.stringify([
       this.agent?.address, this.agent?.status, this.agent?.title,
       this.subs.map((s) => [s.address, s.status, s.title, s.name]),
-      this.records, this.notice, this.confirming, this.sending, this.busy(),
+      this.records, this.notice, this.confirming, this.sending, this.busy(), this.picker,
     ]);
   }
 
@@ -163,7 +187,7 @@ export default class Side extends View {
       this.lockedUntil = Date.now() + LOCK_MS;
       cx.timer.after(LOCK_MS, (cx) => cx.notify());
       if (r.code === 0) done?.();
-      else this.notice = this.sendNotice(r);
+      else this.setNotice(this.sendNotice(r));
       cx.notify();
     });
   }
@@ -340,11 +364,25 @@ export default class Side extends View {
           }, { flex: true, disabled: !enabled }),
         ]),
       this.button(t, "cmd-resume", "/resume", (_e, cx) => {
-        // The picker is answered in the terminal, so it comes up there.
+        // The picker is answered in the terminal: it comes up there, and every send waits
+        // until the agent's status or title changes (or "Picker done"), so none types into it.
         const address = this.agent?.address;
-        this.act(cx, ["chat-send", "/resume"], () => run("pane.focus", { terminal: address }));
+        this.act(cx, ["chat-send", "/resume"], () => {
+          this.picker = { status: this.agent?.status, title: this.agent?.title };
+          run("pane.focus", { terminal: address });
+        });
       }, { disabled: !enabled }),
     ];
+    if (this.picker) {
+      rows.push(h_flex()
+        .gap(6)
+        .items_center()
+        .child(div().flex_1().text_size(11.5).text_color(t.muted).child("The /resume picker is open in the terminal."))
+        .child(this.ghost(t, "picker-done", "Picker done", (_e, cx) => {
+          this.picker = null;
+          cx.notify();
+        })));
+    }
     if (this.confirming) {
       rows.push(v_flex()
         .gap(8)

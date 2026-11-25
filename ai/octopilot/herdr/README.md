@@ -100,12 +100,12 @@ debugging). On a rerun, `--terminals` and `--show-engine` refuse and list the
 parked engine terminals, each to show with `herdr-app do terminal.keep`.
 
 Rerunning finds what is there. A parked orchestrator whose space is closed means
-octopilot was closed with it: its engine and code agents of this checkout are
-ended, and it is built again. After a core restart the parked engine is gone,
-but the space and its code agent are back: the orchestrator starts in the space
-named `Octopilot` (or the code agent's), in a new tab that the run parks. An
-engine or code agent not running its claude (or the headless's uv) is ended
-and started again.
+octopilot was closed with it: its engine terminals of this checkout are ended,
+and it is built again. After a core restart the parked engine is gone, but the
+space and its code agent are back: the orchestrator starts in the space named
+`Octopilot` (or the code agent's), in a new tab that the run parks. An engine
+terminal not running its claude (or the headless's uv) is ended and started again.
+The launcher never ends the code agent: it is your own claude session.
 
 The code agent is not an engine terminal: its claude is the terminal of the code
 tab, so its pickers and sub-agents are Claude's own, and `--show-engine` does not
@@ -115,18 +115,22 @@ from `hc get`'s `records`, read-only), and sends `/model opus|sonnet|haiku`,
 `/compact`, `/clear` (confirmed) and `/resume` through `scan.sh chat-send --agent
 octopilot-code`. It sends one at a time and never while the agent waits on a prompt
 (the answer is typed in its terminal). `/resume` opens its picker in that terminal,
-which the panel then focuses. The panel narrows itself to 240 px once, by moving its
-divider with the agent's terminal (`pane.resize`). `chat`, `chat-send` and
+which the panel then focuses; every send then waits until the agent's status or
+title changes, or you click "Picker done", so no click types into the picker. A
+notice goes when the agent's status changes, or after 8 s. The panel narrows itself
+to 240 px once per pane (`pane.resize` on its divider), remembered in
+`shared("octopilot-side.fitted")`, so a panel you widen stays wide. `chat`, `chat-send` and
 `chat-keys` take `--agent octopilot-code` too; the orchestrator's `send-code` still
 queues requests for the code agent.
 
-A code agent from an earlier run is converted on a rerun. A chat tab (the previous
-version's) or a parked agent: the claude is moved into a tab of its own, with
-`terminal.keep` (a parked agent is parked again first), its tab takes the name and
-the old chat tab goes. A terminal tab keeps its claude. Either way the panel goes
-beside the agent's terminal once: the run records the panel's pane on the agent
-(`octopilot.side` label) and keeps it while that pane exists. A tab that holds a
-terminal other than the agent's is refused, never closed.
+A code agent from an earlier run is converted on a rerun. A parked agent (the
+previous version's chat tab) is labelled with the space and, if that does not show
+it, given a tab with `terminal.keep`; a shown agent is never moved. Only when it is
+then alone in a tab of this space does that tab take the name, the old chat tab go
+and the panel go beside it; otherwise the run warns and leaves it. The panel is
+recorded on the agent (`octopilot.side=<tab>:<pane>`) and kept while that pane
+exists in the agent's tab. A tab that holds a terminal other than the agent's is
+refused, never closed.
 
 In the `--terminals` layout, the dashboard's `a` peeks the prompter (or the
 orchestrator), as the GUI layout does, and the code agent stays a terminal in its
