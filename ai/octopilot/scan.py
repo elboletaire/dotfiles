@@ -40,6 +40,9 @@ MODEL_FOR = {
     "investigate-readonly": os.environ.get("MODEL_INVESTIGATE",
                                            "claude-opus-5-5[1m]"),
     "review-fix": os.environ.get("MODEL_REVIEW_FIX", "claude-opus-5-5[1m]"),
+    "review-stack": os.environ.get("MODEL_REVIEW_COMMENT", "claude-opus-5-5[1m]"),
+    "adopt-stack": os.environ.get("MODEL_REVIEW_FIX", "claude-opus-5-5[1m]"),
+    "rebase-stack": os.environ.get("MODEL_REVIEW_FIX", "claude-opus-5-5[1m]"),
     "review-comment": os.environ.get("MODEL_REVIEW_COMMENT", "claude-opus-5-5[1m]"),
     "re-review": os.environ.get("MODEL_REVIEW_COMMENT", "claude-opus-5-5[1m]"),
 }
@@ -559,6 +562,12 @@ def new_feedback(detail, since):
     return sorted(out, key=lambda x: x[1])
 
 
+def worst_checks(details):
+    """checks_of over several PRs: the worst result wins."""
+    rank = {"fail": 0, "pending": 1, "none": 2, "pass": 3}
+    return min((checks_of(d) for d in details), key=rank.get)
+
+
 def checks_of(detail):
     roll = (detail or {}).get("statusCheckRollup") or []
     if not roll:
@@ -595,6 +604,43 @@ SEP = {"pr": "#", "issue": "!", "investigate": "?"}
 
 def key(slug, num, kind="pr"):
     return f"{slug}{SEP[kind]}{num}"
+
+
+# A stack item's `stack` is its layers bottom to top: [{pr, branch}], the
+# bottom included. Each layer keeps its own feedback watermark, in layer_seen.
+
+def layer_since(it, pr):
+    """Feedback watermark of one layer; a layer with no mark of its own starts
+    from the item's feedback_seen, as a plain PR does."""
+    return (it.get("layer_seen") or {}).get(str(pr)) or it.get("feedback_seen")
+
+
+def stack_feedback(it, detail_of):
+    """The first layer, bottom up, with feedback past its watermark, as
+    (layer, feedback); (None, []) when no layer has any."""
+    for layer in it["stack"]:
+        fb = new_feedback(detail_of(layer["pr"]), layer_since(it, layer["pr"]))
+        if fb:
+            return layer, fb
+    return None, []
+
+
+def closed_layer(layers, detail_of):
+    """The first of `layers` that GitHub reports CLOSED (not merged), or None."""
+    for layer in layers:
+        if (detail_of(layer["pr"]) or {}).get("state") == "CLOSED":
+            return layer
+    return None
+
+
+def stack_rest(it, detail_of):
+    """Drop the merged layers from the bottom of a stack -> (merged, left).
+
+    Several can merge between two ticks, so all of them are dropped."""
+    left, merged = list(it["stack"]), []
+    while left and (detail_of(left[0]["pr"]) or {}).get("state") == "MERGED":
+        merged.append(left.pop(0))
+    return merged, left
 
 
 def scan(state, refresh=False, info=None):
@@ -646,8 +692,20 @@ def scan(state, refresh=False, info=None):
         jobs[("oi", "*")] = ex.submit(org_issues, me)
         tracked = {k: ex.submit(pr_detail, k.split("#")[0], v["pr"])
                    for k, v in items.items() if v.get("pr")}
+        # Every layer of a stack, not just its bottom: feedback and merges are
+        # checked per layer.
+        layer_jobs = {(k, layer["pr"]): ex.submit(pr_detail, k.split("#")[0],
+                                                  layer["pr"])
+                      for k, v in items.items() if v.get("pr")
+                      for layer in v.get("stack") or []
+                      if layer["pr"] != v["pr"]}
         results = {k: f.result() for k, f in jobs.items()}
         details = {k: f.result() for k, f in tracked.items()}
+        layer_details = {kp: f.result() for kp, f in layer_jobs.items()}
+
+    def layer_detail(k, it, pr):
+        """GitHub's view of one layer of a tracked stack item."""
+        return details.get(k) if pr == it.get("pr") else layer_details.get((k, pr))
 
     meta = {}
     # Revivals are reported, not logged, here: snapshot() runs this on a
@@ -681,6 +739,24 @@ def scan(state, refresh=False, info=None):
             continue
 
         if it.get("pr") and d and d.get("state") == "MERGED":
+            # A fix stack whose bottom merged, with layers still open, is
+            # restacked, not cleaned up. Comment stacks are never restacked:
+            # nothing of theirs is pushed to.
+            if it.get("stack") and it["mode"] == "fix":
+                merged, left = stack_rest(it, lambda pr: layer_detail(k, it, pr))
+                cl = closed_layer(left, lambda pr: layer_detail(k, it, pr))
+                if cl:
+                    rows.append(("CLOSED", k, f"branch={it.get('branch')} "
+                                              f"{smeta} layer=#{cl['pr']} -> not "
+                                              f"merged; bottom=#{merged[0]['pr']} "
+                                              "merged, fan-out pending"))
+                    continue
+                if left:
+                    gone = ",".join(f"#{m['pr']}" for m in merged)
+                    rows.append(("RESTACK", k,
+                                 f"merged={gone} next=#{left[0]['pr']} "
+                                 f"branch={left[0]['branch']} {smeta}"))
+                    continue
             if k not in handled:
                 rows.append(("MERGED", k, f"branch={it.get('branch')} {smeta}"))
             continue
@@ -689,6 +765,14 @@ def scan(state, refresh=False, info=None):
             rows.append(("CLOSED", k, f"branch={it.get('branch')} {smeta} "
                                       "-> not merged; session left alone"))
             continue
+
+        if it.get("stack") and it["mode"] == "fix":
+            cl = closed_layer(it["stack"], lambda pr: layer_detail(k, it, pr))
+            if cl:
+                rows.append(("CLOSED", k, f"branch={it.get('branch')} {smeta} "
+                                          f"layer=#{cl['pr']} -> not merged; "
+                                          "session left alone"))
+                continue
 
         if it.get("phase") == "booting":
             active += 1
@@ -704,7 +788,9 @@ def scan(state, refresh=False, info=None):
             prev = it.get("reviewed_sha")
             if it["mode"] == "comment" and not prev:
                 prev = last_own_review(d, me)
-            if it["mode"] == "comment" and prev:
+            if it.get("stack") and it["mode"] == "comment":
+                tmpl = "template=review-stack"
+            elif it["mode"] == "comment" and prev:
                 tmpl = f"template=re-review PREV={prev}"
             elif it["mode"] == "comment":
                 tmpl = "template=review-comment"
@@ -790,7 +876,11 @@ def scan(state, refresh=False, info=None):
         if it.get("parked"):
             revive = None
             if it["mode"] == "fix":
-                if new_feedback(d, it.get("feedback_seen")):
+                if it.get("stack"):
+                    fb = stack_feedback(it, lambda pr: layer_detail(k, it, pr))[1]
+                else:
+                    fb = new_feedback(d, it.get("feedback_seen"))
+                if fb:
                     revive = "new feedback"
             elif review_requested(d, me) and (
                     not it["parked"].get("requested")
@@ -815,19 +905,33 @@ def scan(state, refresh=False, info=None):
             if "feedback_seen" not in it:
                 it["feedback_seen"] = time.strftime("%Y-%m-%dT%H:%M:%SZ",
                                                     time.gmtime())
-            fb = new_feedback(d, it.get("feedback_seen"))
+            if it.get("stack"):
+                layer, fb = stack_feedback(it, lambda pr: layer_detail(k, it, pr))
+            else:
+                layer, fb = None, new_feedback(d, it.get("feedback_seen"))
             if fb:
                 who, when, kind, snippet = fb[-1]
-                # since= is the newest feedback's timestamp: it is what
-                # mark-feedback must be given to advance the watermark past
-                # it. Printing the old watermark here made the documented
-                # flow a no-op.
+                # since= is the newest feedback's timestamp: mark-feedback
+                # needs it to move the watermark past this feedback.
+                where = f" pr={layer['pr']} branch={layer['branch']}" \
+                    if layer else ""
                 rows.append(("FEEDBACK", k,
-                             f"mode=fix {smeta} since={when} "
+                             f"mode=fix {smeta}{where} since={when} "
                              f"{who} {kind} \"{snippet}\""))
                 continue
 
         rounds = int(it.get("review_rounds", 0))
+        # A stack's agent reports its top layer's head, so READY and REVIEW
+        # compare that one. Without its detail the item stays WORKING.
+        top = layer_detail(k, it, it["stack"][-1]["pr"]) if it.get("stack") \
+            else d
+        if it.get("stack") and not top:
+            rows.append(("WORKING", k, f"mode={it['mode']} {smeta} "
+                                       f"layer=#{it['stack'][-1]['pr']} "
+                                       "detail unavailable"))
+            continue
+        cmp_head = (top or {}).get("headRefOid", "") if it.get("stack") \
+            else head
 
         # An agent-driven item runs its own loop: it waits on its own CI,
         # claims its own rounds and reports when it is done. The orchestrator
@@ -853,9 +957,9 @@ def scan(state, refresh=False, info=None):
                              "-> agent stopped at the cap; you decide"))
                 continue
             if rep.get("state") == "ready" and rep.get("sha") \
-                    and head.startswith(rep["sha"]):
-                rv = head   # falls through to READY below
-            if not rv or not head.startswith(rv):
+                    and cmp_head.startswith(rep["sha"]):
+                rv = cmp_head   # falls through to READY below
+            if not rv or not cmp_head.startswith(rv):
                 quiet = (int(time.time()) - int(it.get("last_seen")
                          or it.get("added") or 0)) // 60
                 # Mid-turn (a long review subagent, say) sends no heartbeat
@@ -943,7 +1047,7 @@ def scan(state, refresh=False, info=None):
 
         # the table prints head[:7] and mark-reviewed stores whatever it was
         # given, so compare by prefix rather than exact match
-        if not rv or not head.startswith(rv):
+        if not rv or not cmp_head.startswith(rv):
             if rounds >= MAX_REVIEW_ROUNDS:
                 rows.append(("CAPPED", k,
                              f"mode={it['mode']} {smeta} head={head[:7]} "
@@ -968,7 +1072,10 @@ def scan(state, refresh=False, info=None):
                 rows.append(("DONE", k, f"mode=comment {smeta} review posted "
                                         "-> not yours to merge"))
         else:
-            rows.append(("READY", k, f"mode=fix {smeta} checks={checks_of(d)} "
+            checks = worst_checks([layer_detail(k, it, layer["pr"])
+                                   for layer in it["stack"]]) \
+                if it.get("stack") else checks_of(d)
+            rows.append(("READY", k, f"mode=fix {smeta} checks={checks} "
                                      "-> you merge"))
 
     # ---- candidates
@@ -976,6 +1083,10 @@ def scan(state, refresh=False, info=None):
     # proposing it again would let "go N" spawn a second agent on it.
     seen = set(items) | declined | {pk for it in items.values()
                                     for pk in it.get("prev_keys") or []}
+    # The layers above a stack's bottom belong to its item: never their own
+    # row, never a proposal.
+    seen |= {f"{k.split('#')[0]}#{layer['pr']}" for k, it in items.items()
+             for layer in it.get("stack") or []}
     cand = {}
 
     for slug in HOME_REPOS:
@@ -1158,11 +1269,25 @@ def render_prompt(name, subs):
     with open(os.path.join(pdir, "shared", "pr-hygiene.md")) as fh:
         subs.setdefault("HYGIENE", fh.read().strip())
     # {{LOOP}} is only substituted for templates that actually carry it, so
-    # review-comment.md (someone else's branch) never gets a push loop.
+    # review-comment.md (someone else's branch) never gets a push loop. Only
+    # address-feedback on a stack layer gets the stack loop: it restacks and
+    # pushes the layers above, and the feedback stays on its one PR.
+    stacked = name == "address-feedback" and bool(subs.get("STACK"))
     if "{{LOOP}}" in body:
-        with open(os.path.join(pdir, "shared", "agent-loop.md")) as fh:
+        loop = "stack-loop.md" if stacked else "agent-loop.md"
+        with open(os.path.join(pdir, "shared", loop)) as fh:
             subs.setdefault("LOOP", fh.read().strip())
-    if "{{ORCH}}" in body or "{{LOOP}}" in body:
+    # The stack-only wording: a sync before anything else, and a restack with
+    # one atomic push in place of the plain push. Both empty for a plain PR.
+    if stacked:
+        with open(os.path.join(pdir, "shared", "stack-feedback.md")) as fh:
+            subs.setdefault("STACK_FEEDBACK", "\n" + fh.read().strip() + "\n")
+        with open(os.path.join(pdir, "shared", "stack-push.md")) as fh:
+            subs.setdefault("STACK_PUSH", " " + fh.read().strip())
+    if "{{STACK_LOOP}}" in body:
+        with open(os.path.join(pdir, "shared", "stack-loop.md")) as fh:
+            subs.setdefault("STACK_LOOP", fh.read().strip())
+    if "{{ORCH}}" in body or "{{LOOP}}" in body or "{{STACK_LOOP}}" in body:
         subs.setdefault("ORCH", orchestrator_session())
     # Set unconditionally: this placeholder lives inside the LOOP fragment,
     # not in the template body, so an `in body` test would never fire.
@@ -1176,6 +1301,21 @@ def render_prompt(name, subs):
     if "{{CONTEXT}}" in body and "CONTEXT" not in subs and subs.get("ISSUE") \
             and subs.get("REPO"):
         subs["CONTEXT"] = issue_context(subs["REPO"], subs["ISSUE"])
+    # Fail before the KEY autofill below, which would turn a layer's PR into
+    # its own key instead of the stack's.
+    if name in ("adopt-stack", "rebase-stack"):
+        required = ("STACK", "KEY")
+    elif name == "review-stack":
+        required = ("STACK",)
+    elif name == "address-feedback" and subs.get("STACK"):
+        required = ("KEY",)
+    else:
+        required = ()
+    missing = [k for k in required if not subs.get(k)]
+    if missing:
+        hint = "" if missing == ["STACK"] else \
+            " (a stack item's KEY is its bottom PR's key)"
+        raise SystemExit(f"render {name} needs {' and '.join(missing)}{hint}")
     if "KEY" not in subs and subs.get("REPO"):
         if subs.get("PR"):
             subs["KEY"] = f"{subs['REPO']}#{subs['PR']}"
@@ -1192,11 +1332,13 @@ def render_prompt(name, subs):
     # {{PR}} and {{BRANCH}} placeholders, and if they were substituted in the
     # same pass as everything else those would survive the pass and then be
     # stripped to empty by the sweep below -- yielding `gh pr checks  -R  `.
-    for frag in ("CONTEXT", "LOOP", "MERGE", "HYGIENE"):
+    for frag in ("CONTEXT", "LOOP", "STACK_LOOP", "MERGE", "HYGIENE",
+                 "STACK_FEEDBACK", "STACK_PUSH"):
         if frag in subs:
             body = body.replace("{{" + frag + "}}", str(subs[frag]))
     for k, v in subs.items():
-        if k in ("CONTEXT", "LOOP", "MERGE", "HYGIENE"):
+        if k in ("CONTEXT", "LOOP", "STACK_LOOP", "MERGE", "HYGIENE",
+                 "STACK_FEEDBACK", "STACK_PUSH"):
             continue
         body = body.replace("{{" + k + "}}", str(v))
     return re.sub(r"\{\{[A-Z_]+\}\}", "", body).strip()
@@ -1221,8 +1363,58 @@ def find_session(repo_path, branch):
     return None
 
 
+def flag_value(args, flag):
+    """The word after `flag` in argv, or None when the flag is absent."""
+    if flag not in args:
+        return None
+    i = args.index(flag)
+    if i + 1 >= len(args):
+        raise SystemExit(f"{flag} needs a value")
+    return args[i + 1]
+
+
+def parse_stack(spec):
+    """'704:payg/0-prep 705:payg/1-foundation' -> [{pr, branch}], bottom up."""
+    layers = []
+    for part in spec.split():
+        num, _, branch = part.partition(":")
+        if not num.isdigit() or not branch:
+            raise SystemExit(f"bad --stack entry {part!r} (want PR:branch)")
+        layers.append({"pr": int(num), "branch": branch})
+    if len(layers) < 2:
+        raise SystemExit("--stack needs at least two PR:branch entries")
+    if len({layer["pr"] for layer in layers}) != len(layers):
+        raise SystemExit("--stack lists a PR twice")
+    return layers
+
+
+def check_stack(slug, num, branch, base, layers, me):
+    """Refuses unless the layers are open PRs chained bottom to top onto base.
+    -> each layer's mode, bottom up. One gh call covers the whole repo."""
+    if layers[0] != {"pr": num, "branch": branch}:
+        raise SystemExit(f"the first --stack entry must be {num}:{branch}, "
+                         "the PR this key names")
+    open_prs = {r["number"]: r for r in gh_json(
+        ["pr", "list", "-R", slug, "--state", "open", "--limit", "200",
+         "--json", PR_FIELDS], default=[]) or []}
+    modes, below = [], base
+    for layer in layers:
+        pr = open_prs.get(layer["pr"])
+        if pr is None:
+            raise SystemExit(f"#{layer['pr']} is not an open PR in {slug}")
+        if pr.get("headRefName") != layer["branch"]:
+            raise SystemExit(f"#{layer['pr']} is on {pr.get('headRefName')}, "
+                             f"not {layer['branch']}")
+        if pr.get("baseRefName") != below:
+            raise SystemExit(f"#{layer['pr']} targets {pr.get('baseRefName')}, "
+                             f"not {below}: the stack is not chained")
+        modes.append(mode_for(pr, me))
+        below = layer["branch"]
+    return modes
+
+
 def spawn(state, key_, branch, title, new_branch, question=None,
-          read_only=False):
+          read_only=False, stack_spec=None):
     me = whoami(state)
     slug, num, kind = split_key(key_)
     reg = state.get("registry", {})
@@ -1232,6 +1424,26 @@ def spawn(state, key_, branch, title, new_branch, question=None,
     r = reg[slug]
     path, base = r["path"], r["base"]
     mode = resolve_mode(slug, num, kind, me)
+
+    # Validated before anything is created: a refused stack leaves no trace.
+    stack = None
+    if stack_spec is not None:
+        if kind != "pr" or new_branch:
+            raise SystemExit("--stack takes an existing PR key, without --new")
+        stack = parse_stack(stack_spec)
+        modes = check_stack(slug, num, branch, base, stack, me)
+        not_mine = [f"#{layer['pr']}" for layer, m in zip(stack, modes)
+                    if m != "fix"]
+        if not_mine and len(not_mine) < len(stack):
+            raise SystemExit(f"mixed stack: {' '.join(not_mine)} not yours "
+                             "(mode=comment). A stack is all yours or none of "
+                             "it: spawn the yours and the others separately")
+        held = {layer["pr"] for k2, it2 in state.get("items", {}).items()
+                if k2 != key_ and k2.startswith(slug + "#")
+                for layer in it2.get("stack") or [{"pr": it2.get("pr")}]}
+        busy = [f"#{layer['pr']}" for layer in stack[1:] if layer["pr"] in held]
+        if busy:
+            raise SystemExit(f"{' '.join(busy)} already tracked by octopilot")
 
     code, _, err = sh(["git", "fetch", "origin"], cwd=path, timeout=180)
     if code != 0:
@@ -1245,12 +1457,14 @@ def spawn(state, key_, branch, title, new_branch, question=None,
     # Someone else's PR the user already reviewed (possibly before a detach)
     # gets a follow-up, not a second full review.
     reviewed = None
-    if kind == "pr" and mode == "comment":
+    if kind == "pr" and mode == "comment" and not stack:
         reviewed = last_own_review(pr_detail(slug, num), me)
     tmpl = {"issue": "work", "investigate": "investigate"}.get(
         kind, "review-fix" if mode == "fix" else "review-comment")
     if reviewed:
         tmpl = "re-review"
+    if stack:
+        tmpl = "adopt-stack" if mode == "fix" else "review-stack"
     if read_only:
         tmpl = "investigate-readonly"
     model = MODEL_FOR.get(tmpl, "")
@@ -1261,6 +1475,8 @@ def spawn(state, key_, branch, title, new_branch, question=None,
             "reviewed_sha": reviewed, "phase": "working", "added": int(time.time()),
             "driver": "agent" if mode == "fix" else "orchestrator"}
     item.update({k: v for k, v in host.items() if k != "warning"})
+    if stack:
+        item["stack"] = stack
     if question:
         item["question"] = question
     if read_only:
@@ -1280,7 +1496,28 @@ def spawn(state, key_, branch, title, new_branch, question=None,
           + (" (PREV= from the last line)" if reviewed else ""))
     prev = f" PREV={reviewed}" if reviewed else ""
     print(f"PROMPT_TEMPLATE={tmpl} BASE={base} REPO={slug}{prev}")
+    if stack:
+        print(f"STACK=\"{stack_text(stack)}\"")
     return 0
+
+
+def stack_text(stack):
+    """[{pr, branch}] -> '704:payg/0-prep 705:payg/1-foundation' (STACK=)."""
+    return " ".join(f"{layer['pr']}:{layer['branch']}" for layer in stack)
+
+
+def item_key_for(state, slug, pr):
+    """The key of the item at slug#pr, or else of the stack item that has
+    slug#pr as a layer (a layer is never an item of its own); '' for neither."""
+    items = state.get("items") or {}
+    k = key(slug, pr)
+    if k in items:
+        return k
+    for k_, it in items.items():
+        if k_.startswith(f"{slug}#") and any(
+                str(layer["pr"]) == str(pr) for layer in it.get("stack") or []):
+            return k_
+    return ""
 
 
 def worktree_dir(repo, branch):
@@ -1396,7 +1633,9 @@ def print_siblings(state, slug, exclude=None):
         return
     print("SIBLINGS:")
     for k, it in rows:
-        print(f"  {it['session']} {it['branch']} {it['pr']} {base} {k}")
+        # A trailing `stack` tells the orchestrator to send rebase-stack.
+        marker = " stack" if it.get("stack") else ""
+        print(f"  {it['session']} {it['branch']} {it['pr']} {base} {k}{marker}")
 
 
 def cleanup(state, key_):
@@ -1427,8 +1666,89 @@ def cleanup(state, key_):
     return 0
 
 
-ORDER = ["MERGED", "REVIEW", "FEEDBACK", "BOOTING", "WORKING", "STALLED",
-         "READY", "CAPPED", "PUSHED", "DONE", "CLOSED", "GONE",
+def restack(state, k):
+    """Drop a stack's merged bottom layers and re-key the item to the new
+    bottom. Its session and worktree stay; everything else on the item moves
+    with it. A single layer left is no stack: the item becomes a plain PR."""
+    k = resolve_key(state, k)
+    it = state.get("items", {}).get(k)
+    if it is None:
+        print(f"unknown item {k}", file=sys.stderr)
+        return 1
+    if not it.get("stack"):
+        print(f"{k} is not a stack", file=sys.stderr)
+        return 1
+    if it.get("mode") != "fix":
+        print(f"{k} is mode={it.get('mode')}: never restacked, nothing of "
+              "theirs is pushed to", file=sys.stderr)
+        return 1
+    slug = k.split("#")[0]
+    # Asked again rather than taken from the row: the row is one tick old.
+    merged, left = stack_rest(it, lambda pr: pr_detail(slug, pr))
+    if not merged:
+        print(f"{k}: the bottom PR is not merged; nothing to restack",
+              file=sys.stderr)
+        return 1
+    if not left:
+        print(f"{k}: every layer is merged; cleanup takes it from here",
+              file=sys.stderr)
+        return 1
+    nxt = left[0]
+    nk = key(slug, nxt["pr"])
+    if nk in state["items"]:
+        print(f"{nk} is already tracked", file=sys.stderr)
+        return 1
+    nxt_d = pr_detail(slug, nxt["pr"])
+    if nxt_d is None:
+        print(f"{k}: gh pr view failed for #{nxt['pr']}", file=sys.stderr)
+        return 1
+    if nxt_d.get("state") == "CLOSED":
+        print(f"{k}: #{nxt['pr']} is closed, not merged; the stack cannot "
+              "restack past it -- you decide", file=sys.stderr)
+        return 1
+    # rebase-stack replays the layers above from this head, passed on the
+    # command line: a squash merge leaves it out of base's history.
+    top_head = (pr_detail(slug, merged[-1]["pr"]) or {}).get("headRefOid")
+    if not top_head:
+        print(f"{k}: could not read the merged head of #{merged[-1]['pr']}",
+              file=sys.stderr)
+        return 1
+    base = state.get("registry", {}).get(slug, {}).get("base", "main")
+
+    for layer in merged:
+        (it.get("layer_seen") or {}).pop(str(layer["pr"]), None)
+    if len(left) > 1:
+        it["stack"] = left
+    else:
+        # The last layer keeps its feedback mark as the plain PR watermark,
+        # so feedback it already had does not come back.
+        seen_next = (it.get("layer_seen") or {}).get(str(nxt["pr"]))
+        if seen_next and seen_next > (it.get("feedback_seen") or ""):
+            it["feedback_seen"] = seen_next
+        it.pop("stack")
+        it.pop("layer_seen", None)
+    it["pr"], it["branch"] = nxt["pr"], nxt["branch"]
+    it.setdefault("prev_keys", []).append(k)
+    state["items"][nk] = state["items"].pop(k)
+    if k not in state["handled_merges"]:
+        state["handled_merges"].append(k)
+    save(state)
+    gone = ",".join(f"#{layer['pr']}" for layer in merged)
+    log_event("restack", nk, old=k, merged=gone, next=f"#{nxt['pr']}")
+    print(f"restacked {k} -> {nk} branch={nxt['branch']} "
+          f"layers={len(left)} session={sid(it.get('session'))}")
+    if len(left) > 1:
+        print(f"next: `$A send {nk} \"$($A render rebase-stack REPO={slug} "
+              f"BASE={base} KEY={nk} RESTACK_FROM={top_head})\"`")
+    else:
+        print(f"next: `$A send {nk} \"$($A render rebase REPO={slug} "
+              f"PR={nxt['pr']} BRANCH={nxt['branch']} BASE={base})\"`")
+    print_siblings(state, slug, exclude=nk)
+    return 0
+
+
+ORDER = ["MERGED", "RESTACK", "REVIEW", "FEEDBACK", "BOOTING", "WORKING",
+         "STALLED", "READY", "CAPPED", "PUSHED", "DONE", "CLOSED", "GONE",
          "PROPOSE", "UNCLONED", "STALE", "UNKNOWN"]
 
 
@@ -1785,18 +2105,28 @@ def dispatch(cmd, args, state):
     if cmd == "render":
         # render <template> KEY=VAL ...
         subs = dict(kv.split("=", 1) for kv in args[2:] if "=" in kv)
+        if "KEY" not in subs and subs.get("REPO") and subs.get("PR"):
+            # BOOTING rows send no KEY: a layer's PR resolves to its stack.
+            found = item_key_for(state, subs["REPO"], subs["PR"])
+            if found:
+                subs["KEY"] = found
         it_ = state.get("items", {}).get(subs.get("KEY", ""), {})
         if it_.get("question"):
             subs.setdefault("QUESTION", it_["question"])
             subs.setdefault("BRANCH", it_.get("branch", ""))
+        if it_.get("stack"):
+            subs.setdefault("STACK", stack_text(it_["stack"]))
         # A read-only item never gets a prompt that tells it to commit and
         # open a PR, whatever template the caller asked for.
         tmpl = "investigate-readonly" if it_.get("read_only") else args[1]
         print(render_prompt(tmpl, subs))
         return 0
     if cmd == "spawn":
-        # spawn <key> <branch> <title> [--new]
-        return spawn(state, args[1], args[2], args[3], "--new" in args[4:])
+        # spawn <key> <branch> <title> [--new] [--stack "PR:branch ..."]
+        return spawn(state, args[1], args[2], args[3], "--new" in args[4:],
+                     stack_spec=flag_value(args, "--stack"))
+    if cmd == "restack":
+        return restack(state, args[1])
     if cmd == "investigate":
         # investigate <slug> <name> <branch> <title> <question> [--read-only]
         slug_, name, branch, title, question = args[1:6]
@@ -1963,14 +2293,28 @@ def dispatch(cmd, args, state):
             return 1
         return 0
     if cmd == "mark-feedback":
+        # mark-feedback <key> <since> [<layer PR>]: a stack needs the layer's
+        # PR, so one layer's mark never hides another layer's feedback.
         k, when = args[1], args[2]
         if k in state["items"]:
-            state["items"][k]["feedback_seen"] = when
-            state["items"][k]["review_rounds"] = 0
-            state["items"][k].pop("capped_at", None)
+            it = state["items"][k]
+            pr = None
+            if it.get("stack"):
+                pr = int(args[3]) if len(args) > 3 and args[3].isdigit() else None
+                if pr not in [layer["pr"] for layer in it["stack"]]:
+                    print(f"{k} is a stack: name one of its layers "
+                          f"({' '.join(str(layer['pr']) for layer in it['stack'])})",
+                          file=sys.stderr)
+                    return 1
+                it.setdefault("layer_seen", {})[str(pr)] = when
+            else:
+                it["feedback_seen"] = when
+            it["review_rounds"] = 0
+            it.pop("capped_at", None)
             save(state)
-            log_event("feedback", k, since=when)
-            print(f"{k} feedback_seen={when} rounds=0")
+            log_event("feedback", k, since=when, pr=pr)
+            layer = f" layer=#{pr}" if pr else ""
+            print(f"{k}{layer} feedback_seen={when} rounds=0")
         return 0
     if cmd == "mark-reviewed":
         k, sha = args[1], args[2]
@@ -2054,7 +2398,7 @@ def dispatch(cmd, args, state):
     print("usage: scan.sh [scan|refresh|status|pause|resume|decline|undecline|"
           "track|untrack|detach|park|unpark|set-phase|mark-reviewed|claim-round|heartbeat|"
           "reset-rounds|review-base|"
-          "mark-merged|"
+          "mark-merged|restack|"
           "render|spawn|"
           "investigate|snapshot|report|inbox|request|send|send-code|reboot|wind-down]", file=sys.stderr)
     return 1

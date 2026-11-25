@@ -128,10 +128,11 @@ the dashboard's `g`/`n` keys send) still work. Report `UNCLONED` and
 
 | Row | Do this |
 |---|---|
-| `MERGED` | `$A cleanup <key>` -- removes the session and its worktree, marks it handled, and then prints the fan-out set as `SIBLINGS:` lines of `<session> <branch> <pr> <base> <key>`. For each of those lines, `$A send <key> "$($A render rebase REPO=<slug> PR=<pr> BRANCH=<branch> BASE=<base>)"`. The set is already filtered to `mode=fix` and excludes the merged item; never widen it by hand. |
+| `MERGED` | `$A cleanup <key>` -- removes the session and its worktree, marks it handled, and then prints the fan-out set as `SIBLINGS:` lines of `<session> <branch> <pr> <base> <key>`. For each of those lines, `$A send <key> "$($A render rebase REPO=<slug> PR=<pr> BRANCH=<branch> BASE=<base>)"`. A line ending in ` stack` is a stack item instead: send `$A send <key> "$($A render rebase-stack REPO=<slug> BASE=<base> KEY=<key>)"` (`STACK=` is filled in from the item). The set is already filtered to `mode=fix` and excludes the merged item; never widen it by hand. |
+| `RESTACK` | A stack's bottom PR merged and layers above it are still open. Its item is kept, not cleaned up. Run `$A restack <key>`: it drops the merged layers, re-keys the item to the new bottom (the row's `next=`), and prints the key to use from here on. Then send exactly the command it prints: `rebase-stack` with `KEY=<new key>` and `RESTACK_FROM=<sha>` while more than one layer is left, or a plain `rebase` once one is left (the stack is then gone). `restack` also prints `SIBLINGS:` for the merged bottom's base move: fan those out exactly as `MERGED` does. It refuses a closed next layer (report it, as `CLOSED`) and any `mode=comment` item. Never clean it up. |
 | `REVIEW` | Only ever appears for `driver=orchestrator` items (legacy, and `mode=comment`). `$A reboot <key>` -- a fresh conversation for the agent (herdr clears it in place) and the item marked `booting`. `reboot` waits for the agent to go idle first. If it returned 0, run `$A scan` again straight away in this same tick and handle the item's `BOOTING` row. Only if the reboot failed (exit 3: cleared but not idle yet), or the item still does not show `BOOTING`, does the prompt wait for the next tick. |
-| `BOOTING` | The row names the prompt as `template=`. Send exactly that one: `$A send <key> "$($A render <template> REPO=<slug> PR=<n> BRANCH=<branch> BASE=<base> PREV=<prev>)"` (`PREV=` only for `re-review`, taken from the row). Before sending, make sure the item's worktree (`worktree` in `$A status`) is on the PR's current head (fetch, then `git checkout --detach origin/<branch>` when the worktree is clean). Then `$A mark-reviewed <key> <head-sha>` with the head you checked out. `re-review` is the follow-up after the author pushed: it checks that the new commits fix what we raised and break nothing else, and it is never a second full review. `review-comment` is the first review of someone else's PR, when the user has no review of it on GitHub. Both verify every finding in a fresh subagent before posting. |
-| `FEEDBACK` | A human or a review bot left a review on a PR you own. Addressing it resets the review-round budget to 0. Bot accounts in `FEEDBACK_IGNORE_AUTHORS` (default `github-actions`) never produce these rows, for reviews as well as comments -- a CI bot that reviews on every push would otherwise reset the cap forever. `$A send <key> "$($A render address-feedback REPO=<slug> PR=<pr> BRANCH=<branch> BASE=<base>)"`, then `$A mark-feedback <key> <the since= value from the row>`. Only ever appears for `mode=fix`. |
+| `BOOTING` | The row names the prompt as `template=`. A stack item in `mode=comment` names `template=review-stack` (no `PREV=`; `STACK=` is filled in from the item). Send exactly that one: `$A send <key> "$($A render <template> REPO=<slug> PR=<n> BRANCH=<branch> BASE=<base> PREV=<prev>)"` (`PREV=` only for `re-review`, taken from the row). Before sending, make sure the item's worktree (`worktree` in `$A status`) is on the PR's current head (fetch, then `git checkout --detach origin/<branch>` when the worktree is clean). Then `$A mark-reviewed <key> <head-sha>` with the head you checked out. `re-review` is the follow-up after the author pushed: it checks that the new commits fix what we raised and break nothing else, and it is never a second full review. `review-comment` is the first review of someone else's PR, when the user has no review of it on GitHub. Both verify every finding in a fresh subagent before posting. |
+| `FEEDBACK` | A human or a review bot left a review on a PR you own. Addressing it resets the review-round budget to 0. Bot accounts in `FEEDBACK_IGNORE_AUTHORS` (default `github-actions`) never produce these rows, for reviews as well as comments -- a CI bot that reviews on every push would otherwise reset the cap forever. `$A send <key> "$($A render address-feedback REPO=<slug> PR=<pr> BRANCH=<branch> BASE=<base>)"`, then `$A mark-feedback <key> <the since= value from the row>`. Only ever appears for `mode=fix`. On a stack the row's key is the stack's and it carries the layer's `pr=` and `branch=`: pass those as `PR=`/`BRANCH=` with `KEY=<stack key>`, and mark with `$A mark-feedback <key> <the since= value> <the pr= value>`, so the other layers' feedback still shows. |
 | `STALLED` | An agent-driven item that has neither pushed nor sent a heartbeat for `AGENT_STALL_MIN` (35m). **Take no action** -- do not reboot it, do not re-prompt it. Report the branch, the quiet time and the round count, and let the user decide. It usually means the agent crashed, its background CI wait never returned, or its report never arrived. |
 | `WORKING` | Nothing. Report branch and age. A `driver=agent` row also shows `rounds=N/M quiet=Xm` -- it is running its own loop and needs nothing from you. If `age` is large and `state=idle`, say so -- the user decides. |
 | `CAPPED` | Octopilot hit `MAX_REVIEW_ROUNDS` on this PR and stopped on its own. **Take no action.** Report it once with the round count and the head sha, and say the PR is waiting on the user: merge it, review it on github.com (which resets the budget), or run `$A reset-rounds <key>` to grant another round. Never send another review prompt to a capped item. |
@@ -139,7 +140,7 @@ the dashboard's `g`/`n` keys send) still work. Report `UNCLONED` and
 | `DONE` | Report once. A posted review holds no slot; while its session is still running the scan shows `WORKING ... reviewing, not posted yet` instead, which does. `mode=comment` work ends here -- there is nothing to merge and nothing to push. A card the user parked with `d` shows as DONE `parked by you`: it holds no slot, still goes through MERGED and FEEDBACK normally, and you take no action. |
 | `PUSHED` | **Stale PR.** The author of a PR we reviewed pushed new commits and never re-requested the review, and the branch has been quiet for `RE_REVIEW_QUIET_HOURS` (4h). Never review it on your own. Put it in 🔴 Needs you as a stale PR, with the quiet time. The user replies `re-review <#>` (you do the `REVIEW` action for it, then handle its `BOOTING` row in the same tick) or `ack <#>` (`$A ack-push <key>`, which stops the flag until the next push or re-request). |
 | `GONE` | The user removed this item's session by hand. The scan has already untracked it, and it no longer holds a slot. Report it once. Take no action. |
-| `CLOSED` | Report. The PR was closed unmerged; ask the user whether to clean up. Do not remove anything yourself. |
+| `CLOSED` | Report. The PR was closed unmerged; ask the user whether to clean up. Do not remove anything yourself. On a stack, `layer=#N` names the closed layer (the item's own PR may still be open): report it the same way, and take no action on the stack. A closed layer is for the user to resolve: reopen it, or detach the stack. If the row also says `bottom=#N merged, fan-out pending`, the merged bottom's SIBLINGS fan-out has not run, and waits on the user too. |
 | `PROPOSE` | Collect these and present them as a numbered list. **Spawn nothing until the user says so.** |
 | `UNCLONED` | Report with the clone command. Never clone, never spawn. |
 | `STALE` | Report with the removal command as a suggestion: `herdr worktree remove --workspace <session> --force`. **Never run it.** |
@@ -196,7 +197,9 @@ a follow-up limited to the commits since that review, never a first review.
 For any `comment` PR, first put the worktree on the PR's head (as in
 `BOOTING`), and after sending run `$A mark-reviewed <key> <head-sha>`: until
 then the item reads as DONE with the old sha, and is flagged `PUSHED` hours
-later. A stack still gets `review-stack` instead, whatever `spawn` printed.
+later. A stack is spawned with `--stack` (`spawn <key> <branch> "<Title>"
+--stack "PR:branch ..."`), which tracks it as one item and prints
+`review-stack` or `adopt-stack`; see Stacked PRs.
 
 A PR's mode comes from `scan.py`, never from you: `fix` when the user opened
 it or is its **assignee** (the explicit adopt signal), `comment` otherwise --
@@ -206,26 +209,43 @@ review loop, so a later `review-fix` would prompt the agent twice.
 
 ### Stacked PRs
 
-A `mode=comment` PR whose base is another open PR's head branch is part of a
-stack. Before spawning, walk the stack with `gh pr list --json
-number,headRefName,baseRefName` until the base is the repo's default branch,
-and review the whole stack at once instead of one layer: a lone review flags
-things a later layer already fixes. Spawn on the **bottom** PR (its key tracks
-the stack, its base is the real base), then send `review-stack` instead of
-`review-comment`, with `STACK=` as space-separated `PR:branch` entries in
-merge order, bottom to top:
+A PR whose base is another open PR's head branch is part of a stack. Before
+spawning, walk the stack with `gh pr list --json number,headRefName,baseRefName`
+until the base is the repo's default branch, and handle the whole stack at once
+instead of one layer: a lone review or fix flags things a later layer already
+fixes. Spawn on the **bottom** PR (its key tracks the stack, its base is the
+real base) with `--stack "<PR:branch ...>"`, the layers in merge order, bottom
+to top. `spawn` checks the chain against GitHub, tracks the whole stack as one
+item (the other layers never get rows or proposals of their own), and prints
+the template that matches the layers' modes. `render` fills `STACK=` from the
+item, so `KEY=` is all it needs.
 
-```
-$A spawn <bottom-key> <bottom-branch> "<Title>"
-$A send <bottom-key> "$($A render review-stack REPO=<slug> BASE=<base> \
-    STACK="704:payg/0-prep 705:payg/1-foundation 706:payg/2-paying")"
-```
+- **Every layer `mode=comment`** -- `review-stack` instead of `review-comment`.
+  The template reviews every layer in parallel, drops candidates a later layer
+  fixes, verifies the rest at the top of the stack, and posts at most one
+  review per PR:
 
-Then `$A mark-reviewed <bottom-key> <bottom-head-sha>` as for any review. The
-template reviews every layer in parallel, drops candidates a later layer
-fixes, verifies the rest at the top of the stack, and posts at most one
-review per PR. Only the bottom PR is tracked; the others get their review and
-nothing else.
+  ```
+  $A spawn <bottom-key> <bottom-branch> "<Title>" --stack "704:payg/0-prep 705:payg/1-foundation 706:payg/2-paying"
+  $A send <bottom-key> "$($A render review-stack KEY=<bottom-key> REPO=<slug> BASE=<base>)"
+  ```
+
+  Then `$A mark-reviewed <bottom-key> <bottom-head-sha>` as for any review.
+
+- **Every layer `mode=fix`** (the user's own stack) -- adopt it with
+  `adopt-stack`: one session owns every layer, reviews the stack, fixes what it
+  confirms on the layer it belongs to, restacks and pushes:
+
+  ```
+  $A spawn <bottom-key> <bottom-branch> "<Title>" --stack "704:payg/0-prep 705:payg/1-foundation 706:payg/2-paying"
+  $A send <bottom-key> "$($A render adopt-stack KEY=<bottom-key> REPO=<slug> BASE=<base>)"
+  ```
+
+  The stack's restack and feedback rows are in the table above, keyed on the
+  current bottom's key (it changes after a restack).
+
+- **Mixed** -- some layers yours, some not -- is not adopted: `spawn` refuses
+  it and names the layers that are not the user's. Tell the user.
 
 ### Investigations
 

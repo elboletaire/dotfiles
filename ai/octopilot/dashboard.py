@@ -94,13 +94,15 @@ CONFIRMED = "(confirmed past wind-down)"
 # Rows by who has the next move. Agent reports and blocked agents are moved
 # into NEEDS on top of these; see build().
 NEEDS_ROWS = {"CAPPED", "READY", "PUSHED", "STALLED", "CLOSED"}
-ORCH_ROWS = {"MERGED": "cleanup + rebase fan-out", "REVIEW": "reboot for review",
+ORCH_ROWS = {"MERGED": "cleanup + rebase fan-out",
+             "RESTACK": "restack + rebase-stack",
+             "REVIEW": "reboot for review",
              "FEEDBACK": "send address-feedback", "BOOTING": "send review prompt"}
 RUN_ROWS = {"WORKING"}
 DONE_ROWS = {"DONE", "GONE"}
 # Rows that keep a parked card out of Done, whatever the snapshot's age: each
 # needs the orchestrator or the user now.
-PARK_EXEMPT = {"MERGED", "CLOSED", "GONE", "FEEDBACK"}
+PARK_EXEMPT = {"MERGED", "RESTACK", "CLOSED", "GONE", "FEEDBACK"}
 PICK_ROWS = {"PROPOSE"}
 NOTE_ROWS = {"UNCLONED", "STALE", "UNKNOWN"}
 REPORT_NEEDS = {"blocked", "failed", "stalled", "capped"}
@@ -698,6 +700,7 @@ class Model:
                 "quiet": quiet, "note": note, "needs": needs,
                 "pick_kind": pick_kind, "path": sinfo.get("path"),
                 "branch": it.get("branch"), "pr": pr,
+                "stack": len(it.get("stack") or []),
                 "pane": ag.get("pane"), "open": bool(sess and sess in sessions),
                 "why": why}
 
@@ -944,7 +947,10 @@ class Dashboard:
 
     def card(self, e, color, body):
         sel = e["key"] == self.sel_key
-        return Panel(Group(*body), title=Text(short(e["key"]), style="bold"),
+        # A stack's card shows its bottom PR and the layers above: #2022 +8.
+        layers = e.get("stack") or 0
+        name = short(e["key"]) + (f" +{layers - 1}" if layers > 1 else "")
+        return Panel(Group(*body), title=Text(name, style="bold"),
                      title_align="left", box=box.HEAVY if sel else box.ROUNDED,
                      border_style=f"bold {color}" if sel else color,
                      style="bold" if sel else "none", padding=(0, 1),
@@ -1094,7 +1100,7 @@ class Dashboard:
             keys += [("e", "re-review"), ("x", "ack")]
         if tracked:
             keys.append(("z", "detach"))
-            if kind != "MERGED":
+            if kind not in ("MERGED", "RESTACK"):
                 keys.append(("del", "remove"))
             keys.append(("d", "undone" if parked else "done"))
         if not repo:
@@ -1335,7 +1341,7 @@ class Dashboard:
             it = ((self.m.state or {}).get("items") or {}).get(e["key"])
             if it is None:
                 self.say("d only applies to tracked items")
-            elif e["kind"] in ("MERGED", "CLOSED", "GONE", "BOOTING"):
+            elif e["kind"] in ("MERGED", "RESTACK", "CLOSED", "GONE", "BOOTING"):
                 self.say(f"{e['kind']} rows can't be parked now")
             elif e["kind"] == "FEEDBACK":
                 # Its pending feedback would revive the card on the next tick.
@@ -1350,9 +1356,9 @@ class Dashboard:
         elif key == "\x1b[3~":
             if e["key"] not in ((self.m.state or {}).get("items") or {}):
                 self.say("remove only applies to tracked items")
-            elif e["kind"] == "MERGED":
-                # cleanup only prints SIBLINGS for the orchestrator to act on.
-                self.say("MERGED rows are cleaned up by the orchestrator")
+            elif e["kind"] in ("MERGED", "RESTACK"):
+                # MERGED needs the SIBLINGS fan-out, RESTACK a restack, not a removal.
+                self.say("the orchestrator handles MERGED and RESTACK rows")
             else:
                 busy = ("⚠ its agent is working -- " if e["kind"] in
                         ("WORKING", "BOOTING", "REVIEW", "FEEDBACK") else "")

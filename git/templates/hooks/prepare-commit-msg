@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BRANCH_NAME=$(git symbolic-ref --short HEAD)
+BRANCH_NAME=$(git symbolic-ref -q --short HEAD)
 BRANCH_NAME="${BRANCH_NAME##*/}"
 
 ISSUE_ID=$(echo $BRANCH_NAME | sed 's/^[a-z\-]*-//I')
