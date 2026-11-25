@@ -904,12 +904,16 @@ symlink_ai() {
 # Pi subagents are not an APM target: they sit in APM's module cache of the
 # elboletaire/skills package (alias elboletaire-skills). Runs after install_skills.
 link_pi_agents() {
-  local src=$HOME/.apm/apm_modules/elboletaire-skills/pi/agents
+  local src=$HOME/.apm/apm_modules/elboletaire-skills/pi/agents dest=~/.pi/agent/agents
   if [ ! -d "$src" ]; then
     echo "WARNING: $src not found; Pi subagents not linked" >&2
     return 0
   fi
-  link_ai "$src" ~/.pi/agent/agents
+  # A real dir here may hold the user's own agents: move it aside even with no_backup.
+  if [ -e "$dest" ] && [ ! -L "$dest" ]; then
+    _move_legacy "$dest" "$oldfiles"
+  fi
+  link_ai "$src" "$dest"
 }
 
 install_packages() {
@@ -1041,9 +1045,10 @@ do_update_ai() {
 }
 
 do_install_ai_config() {
-  # Config-only: relink prompts, instructions and agents from ai/ and install
-  # the pinned skills. No agents, node or tooling installs, no ref bumps, and
-  # no ~/old_dotfiles backups since everything relinked is tracked in git.
+  # Config-only: relink the global instructions, install the locked skills,
+  # subagents and hook, and link the Pi subagents. No node or tooling installs
+  # and no ref bumps. Links replace what is there without ~/old_dotfiles
+  # backups (no_backup), except a real ~/.pi/agent/agents dir, which is moved aside.
   no_backup=1
   cleanup_legacy
   symlink_ai || return 1
@@ -1059,7 +1064,11 @@ do_install_ai_config() {
 do_skills_bump() {
   # Moves every skill to the latest commit of its ref: the only path that does.
   install_apm || return 1
+  # skills_bump retires the old link, so it is put back even when the bump failed.
   skills_bump
+  local rc=$?
+  link_pi_agents
+  return $rc
 }
 
 do_herdr() {

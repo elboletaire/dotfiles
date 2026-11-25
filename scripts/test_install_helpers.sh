@@ -1489,6 +1489,22 @@ link_pi_agents >/dev/null
 rm -rf "$HOME/.pi" "$HOME/.apm/apm_modules"
 
 echo ""
+echo "=== Test 44c: link_pi_agents moves a real agents dir aside even with no_backup ==="
+rm -rf "$HOME/.pi" "$HOME/.apm/apm_modules" "$oldfiles"
+mkdir -p "$HOME/.pi/agent/agents" "$HOME/.apm/apm_modules/elboletaire-skills/pi/agents"
+echo "mine" > "$HOME/.pi/agent/agents/my-agent.md"
+no_backup=1
+link_pi_agents >/dev/null
+no_backup=0
+if [ "$(readlink "$HOME/.pi/agent/agents")" = "$HOME/.apm/apm_modules/elboletaire-skills/pi/agents" ] &&
+   [ -f "$oldfiles/.pi/agent/agents/my-agent.md" ]; then
+  pass "moves the user's dir to ~/old_dotfiles and links the Pi agents"
+else
+  fail "real agents dir was not moved aside under no_backup"
+fi
+rm -rf "$HOME/.pi" "$HOME/.apm/apm_modules" "$oldfiles"
+
+echo ""
 echo "=== Test 44b: symlink_ai links only the global instructions ==="
 rm -rf "$HOME/.claude" "$HOME/.pi" "$oldfiles"
 mkdir -p "$DOTFILES/ai/claude" "$DOTFILES/ai/pi"

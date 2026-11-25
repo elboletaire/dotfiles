@@ -1208,7 +1208,7 @@ SECTIONS = ("need", "working", "parked", "dormant")
 # approval, broken, or finished with nobody having looked yet (herdr's done).
 NEED_STATES = {"waiting", "error", "done"}
 AGENT_NAME = re.compile(r"^[a-z][a-z0-9_-]{0,31}$")
-# Branch prefixes the worktree title drops (herdr-orchestrator.md).
+# Branch prefixes the worktree title drops (herdr-orchestrator skill).
 TITLE_PREFIXES = ("feat", "fix", "chore", "docs", "refactor", "test", "ci",
                   "build", "perf", "style")
 WORKTREES = ".worktrees"
@@ -1453,7 +1453,7 @@ def check_branch(p, branch):
 
 
 def worktree_plan(p, branch, name, agent_args=(), focus=True):
-    """herdr-orchestrator.md's "create", without touching the main checkout:
+    """The herdr-orchestrator skill's "create", without touching the main checkout:
     fetch, a new branch in <repo>/.worktrees/<branch> off origin/<current
     branch> (untracked; the local one when origin has no such branch, so a
     stale local branch is never the base), opened in herdr as a workspace
