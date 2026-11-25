@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The GUI twin of open.sh: the Octopilot space in herdr-app, with three tabs:
-#   OCTOPILOT: the octopilot-dashboard mod on the left; on the right the
-#     octopilot-chat mod over the octopilot-kitchen mod (KITCHEN_PX tall)
+#   OCTOPILOT: the octopilot-chat mod on the left, over the octopilot-kitchen mod
+#     (KITCHEN_PX tall); on the right the octopilot-dashboard mod, full height
 #   engine: the orchestrator, the prompter and the headless dashboard, as hc
 #     terminals; parked after building (no pane, still running), so the tab goes away
 #   Octopilot (code changes): the code agent's own claude (a terminal, never parked)
@@ -280,20 +280,20 @@ record_label() {
 # mod (the prompter) beside it. The chat's pane is recorded on the orchestrator
 # (octopilot.chat=<tab>:<pane>) so the kitchen can split from it; herdr-app ls lists no mod panes.
 add_main_tab() {
-  local created pane chat tab
+  local created chat pane tab
   if [ -n "$(tab_named "$1" "$MAIN_TAB")" ]; then return 0; fi
   created=$(app do tab.new --space "$1" --name "$MAIN_TAB" \
-    --mod octopilot-dashboard --props "$DASH_PROPS" --focus false)
-  pane=$(jq -r '.pane // empty' <<<"$created")
-  if [ -z "$pane" ]; then
-    echo "open-gui.sh: the $MAIN_TAB tab has no pane to split the chat into" >&2
+    --mod octopilot-chat --props "$PROMPTER_PROPS" --focus false)
+  chat=$(jq -r '.pane // empty' <<<"$created")
+  if [ -z "$chat" ]; then
+    echo "open-gui.sh: the $MAIN_TAB tab has no pane to split the dashboard from" >&2
     exit 1
   fi
-  name_mod_pane "$pane" "$(pane_name "$DASHBOARD_PANE")"
-  created=$(app do pane.split --direction right --pane "$pane" \
-    --mod octopilot-chat --props "$PROMPTER_PROPS")
-  chat=$(jq -r '.pane // empty' <<<"$created")
   name_mod_pane "$chat" "$(pane_name "$PROMPTER_PANE")"
+  created=$(app do pane.split --direction right --pane "$chat" \
+    --mod octopilot-dashboard --props "$DASH_PROPS")
+  pane=$(jq -r '.pane // empty' <<<"$created")
+  name_mod_pane "$pane" "$(pane_name "$DASHBOARD_PANE")"
   tab=$(tab_named "$1" "$MAIN_TAB")
   if [ -n "$chat" ] && [ -n "$tab" ]; then record_label "$(find_orch)" octopilot.chat "$tab:$chat"; fi
 }
@@ -305,6 +305,7 @@ size_kitchen() {
   local out
   "$APP" do tab.select --id "$3" >/dev/null 2>&1 || true
   "$APP" do pane.resize --direction down --pane "$2" --px 10000 >/dev/null 2>&1 || true
+  sleep 0.5
   if ! out=$("$APP" do pane.resize --direction up --pane "$2" --px "$KITCHEN_PX" 2>&1); then
     echo "open-gui.sh: could not size pane $2 to $KITCHEN_PX px: $out" >&2
   fi
@@ -408,6 +409,7 @@ size_side() {
   local out
   "$APP" do tab.select --id "$1" >/dev/null 2>&1 || true
   "$APP" do pane.resize --direction right --pane "$2" --px 10000 >/dev/null 2>&1 || true
+  sleep 0.5
   if ! out=$("$APP" do pane.resize --direction left --pane "$2" --px "$SIDE_PX" 2>&1); then
     echo "open-gui.sh: could not size pane $2 to $SIDE_PX px: $out" >&2
   fi
