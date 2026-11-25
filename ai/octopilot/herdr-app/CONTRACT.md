@@ -151,5 +151,9 @@ that changed (unknown anchor, or no transcript yet) answers `"reset": true`.
   Exit 4 (`{"ok": false, "error": "agent_blocked"}`) when the prompter is blocked on a prompt; exit 3 when none runs.
 - `scan.sh chat-keys <keys…>` → `hc keys` to the prompter, only while it is blocked (answering permission prompts:
   `1`, `2`, `esc`). Exit 4 `{"ok": false, "error": "prompter is not blocked"}` otherwise; exit 3 when none runs.
+- `--agent <name>` on `chat`, `chat-send` and `chat-keys` picks the agent: `octopilot-prompter` (the default, as above)
+  or `octopilot-code` (the "Octopilot (code changes)" tab's claude, labelled `octopilot.agent=octopilot-code`).
+  Any other name is refused: `{"ok": false, "error": "unknown agent <name>", "agents": [...]}`, exit 2, nothing sent.
+  `send-code` is unchanged: it queues the orchestrator's requests for the code agent.
 - `--json` is accepted; the output is always JSON. Under the TUI backend, or with nothing running, speech and chat
   report `"status": "offline"` and no text or messages.

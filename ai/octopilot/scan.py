@@ -2434,6 +2434,8 @@ def inbox(state):
 # and chat"). open-gui.sh labels each claude octopilot.session=<uuid>.
 
 PROMPTER_AGENT = "octopilot-prompter"
+# The agents the chat commands can address with --agent (the chat's panels).
+CHAT_AGENTS = (PROMPTER_AGENT, CODE_AGENT)
 PROJECTS_DIR = os.path.expanduser("~/.claude/projects")
 SESSIONS_DIR = os.path.expanduser("~/.claude/sessions")
 # A transcript can run to hundreds of MB: only this tail is parsed.
@@ -2691,8 +2693,31 @@ def chat_page(path, after, limit):
     return tail[-limit:], True
 
 
+def agent_name(agent):
+    """What a chat's messages call its agent: the prompter, else its label."""
+    return "prompter" if agent == PROMPTER_AGENT else agent
+
+
+def chat_agent(args):
+    """-> (agent, args without --agent): the agent the chat commands address, the
+    prompter unless --agent names another of CHAT_AGENTS. Any other name is
+    refused (exit 2), so no stray text reaches an arbitrary terminal."""
+    if "--agent" not in args:
+        return PROMPTER_AGENT, args
+    i = args.index("--agent")
+    if i + 1 >= len(args):
+        raise SystemExit("--agent needs a value")
+    agent = args[i + 1]
+    if agent not in CHAT_AGENTS:
+        print(json.dumps({"ok": False, "error": f"unknown agent {agent}",
+                          "agents": list(CHAT_AGENTS)}))
+        raise SystemExit(2)
+    return agent, args[:i] + args[i + 2:]
+
+
 def chat_cmd(args):
-    """The prompter's conversation (see chat_page) and its state."""
+    """The agent's conversation (see chat_page) and its state."""
+    agent, args = chat_agent(args)
     after = flag_value(args, "--after")
     try:
         limit = int(flag_value(args, "--limit") or CHAT_LIMIT)
@@ -2701,7 +2726,7 @@ def chat_cmd(args):
     limit = max(1, limit)
     out = {"terminal": None, "session": None, "status": "offline", "blocked": None,
            "reset": False, "messages": []}
-    address = agent_address(PROMPTER_AGENT)
+    address = agent_address(agent)
     info = terminal_info(address) if address else None
     if info is None:
         return out
@@ -2724,15 +2749,17 @@ def chat_result(ok, error=None):
 
 
 def chat_send(args):
-    """chat-send <text...>: type it into the prompter. Exit 4 when the prompter
-    is blocked on a prompt (answer that with chat-keys), 3 when none runs."""
+    """chat-send [--agent <name>] <text...>: type it into the prompter (or the
+    code agent). Exit 4 when it is blocked on a prompt (answer that with
+    chat-keys), 3 when none runs."""
+    agent, args = chat_agent(args)
     text = " ".join(args[1:]).strip()
     if not text:
-        print("usage: scan.sh chat-send <text...>", file=sys.stderr)
+        print("usage: scan.sh chat-send [--agent <name>] <text...>", file=sys.stderr)
         return 1
-    address = agent_address(PROMPTER_AGENT)
+    address = agent_address(agent)
     if address is None:
-        print(json.dumps({"ok": False, "error": "no prompter running"}))
+        print(json.dumps({"ok": False, "error": f"no {agent_name(agent)} running"}))
         return 3
     ok, error = HC.send(address, text)
     code, out = chat_result(ok, error)
@@ -2741,20 +2768,21 @@ def chat_send(args):
 
 
 def chat_keys(args):
-    """chat-keys <keys...>: press keys in the prompter, e.g. 1, 2 or esc to
-    answer a permission prompt. Exit 4 when it is not blocked on a prompt, so
-    no stray keystrokes reach it."""
+    """chat-keys [--agent <name>] <keys...>: press keys in the prompter (or the
+    code agent), e.g. 1, 2 or esc to answer a permission prompt. Exit 4 when it
+    is not blocked on a prompt, so no stray keystrokes reach it."""
+    agent, args = chat_agent(args)
     keys = args[1:]
     if not keys:
-        print("usage: scan.sh chat-keys <keys...>", file=sys.stderr)
+        print("usage: scan.sh chat-keys [--agent <name>] <keys...>", file=sys.stderr)
         return 1
-    address = agent_address(PROMPTER_AGENT)
+    address = agent_address(agent)
     info = terminal_info(address) if address else None
     if info is None:
-        print(json.dumps({"ok": False, "error": "no prompter running"}))
+        print(json.dumps({"ok": False, "error": f"no {agent_name(agent)} running"}))
         return 3
     if status_of(info) != "blocked":
-        print(json.dumps({"ok": False, "error": "prompter is not blocked"}))
+        print(json.dumps({"ok": False, "error": f"{agent_name(agent)} is not blocked"}))
         return 4
     code, data, raw = hc(["keys", address, *keys])
     result_code, out = chat_result(code == 0, None if code == 0 else (error_code(data) or raw))
@@ -3198,7 +3226,8 @@ def dispatch(cmd, args, state):
           "mark-merged|restack|"
           "render|spawn|"
           "investigate|snapshot|report|inbox|request|send|send-code|reboot|read|focus|wind-down|"
-          "speech|chat|chat-send|chat-keys]", file=sys.stderr)
+          "speech|chat|chat-send|chat-keys] [--agent octopilot-prompter|octopilot-code]",
+          file=sys.stderr)
     return 1
 
 

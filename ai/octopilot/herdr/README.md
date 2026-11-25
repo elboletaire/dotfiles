@@ -33,8 +33,9 @@ command = "elboletaire.octopilot.peek"
 ```
 
 The workspace has two tabs: **OCTOPILOT**, described below, and **Octopilot
-(code changes)**, a claude started in the dotfiles for changing octopilot
-itself. In OCTOPILOT, the dashboard pane is titled `dashboard`.
+(code changes)**, the chat over a claude started in the dotfiles for changing
+octopilot itself (`octopilot-code`). In OCTOPILOT, the dashboard pane is titled
+`dashboard`.
 
 `open` starts the orchestrator as a fresh claude in `OCTOPILOT_ORCH_CWD`
 (`~/src`) in a small **messenger** pane, which starts ticking by itself
@@ -84,10 +85,10 @@ terminals run in herdr-core) as one space with three tabs:
 | Tab | Holds |
 |---|---|
 | **OCTOPILOT** | the `octopilot-dashboard` mod (the table below) and, beside it, the `octopilot-chat` mod: the prompter as a chat |
-| **engine** | the orchestrator (`octopilot`, `/octopilot:messenger`), the prompter (`octopilot-prompter`) and `dashboard.sh --headless` (`octopilot-headless`), each an hc terminal. Parked after building: they keep running with no pane, so the tab goes away (see below) |
-| **Octopilot (code changes)** | a claude for changing octopilot itself |
+| **engine** | the orchestrator (`octopilot`, `/octopilot:messenger`), the prompter (`octopilot-prompter`), `dashboard.sh --headless` (`octopilot-headless`) and the code agent (`octopilot-code`, a claude in the dotfiles root), each an hc terminal. Parked after building: they keep running with no pane, so the tab goes away (see below) |
+| **Octopilot (code changes)** | the `octopilot-chat` mod over the code agent: the same chat as the prompter's, with its own title, subject and chips (`props`: `agent`, `title`, `subject`, `chips`) |
 
-The engine is hidden on purpose. After building, `open-gui.sh` parks its three
+The engine is hidden on purpose. After building, `open-gui.sh` parks its four
 terminals (`herdr-app do terminal.park`): the pane goes, the process keeps
 running and core keep is off, so the empty engine tab goes too. They are found
 by their `octopilot.agent` labels, not by panes, so a rerun finds them parked.
@@ -106,8 +107,18 @@ named `Octopilot` (or the code agent's), in a new tab that the run parks. An
 engine or code agent not running its claude (or the headless's uv) is ended
 and started again.
 
+The code tab's chat talks to the code agent through `scan.sh chat --agent
+octopilot-code` (`chat-send` and `chat-keys` take `--agent` too; the default is the
+prompter, and any other name is refused). The orchestrator's `send-code` still
+queues requests for it. A code agent started by an earlier run, in an old-style
+"Octopilot (code changes)" terminal tab, is converted on a rerun: its claude is
+parked (not killed) and the tab becomes the mod tab. With `--show-engine` the
+code agent stays shown in the engine tab, and a conversion still parks it, to be
+shown with `terminal.keep` like the other parked terminals.
+
 In the `--terminals` layout, the dashboard's `a` peeks the prompter (or the
-orchestrator), as the GUI layout does.
+orchestrator), as the GUI layout does, and the code agent stays a terminal in its
+own "Octopilot (code changes)" tab.
 
 Every engine terminal starts through the user's interactive shell (`$SHELL -ic
 'exec "$@"'`), so the gateway env in `~/.zshrc.local` reaches claude. herdr-app
@@ -129,7 +140,8 @@ is found from the claude in the terminal's foreground, through its
 fallback when no claude runs there. `scan.sh speech --json` reads the
 orchestrator's last message, `scan.sh chat --json [--after <id>]` the prompter's
 conversation, and `scan.sh chat-send <text>` / `chat-keys <keys>` type into the
-prompter. Under the TUI backend, or with nothing running, they report
+prompter. `--agent octopilot-code` on those three reads and types into the code
+agent instead. Under the TUI backend, or with nothing running, they report
 `"status": "offline"`.
 
 **Launch and install.** `herdr-app/install.sh` links each
@@ -163,7 +175,7 @@ changing `main.json`.
 
 **Fallback.** `open-gui.sh --terminals` builds the TUI-style layout instead:
 one OCTOPILOT tab with the messenger, the curses dashboard and the prompter as
-terminal panes, plus the code-changes tab. On a space that already has the GUI
+terminal panes, plus the code-changes tab as a terminal tab. On a space that already has the GUI
 layout it refuses, and a rerun on a space with the curses dashboard of that
 layout refuses too, so two dashboard loops never run.
 
