@@ -33,8 +33,8 @@ command = "elboletaire.octopilot.peek"
 ```
 
 The workspace has two tabs: **OCTOPILOT**, described below, and **Octopilot
-(code changes)**, the chat over a claude started in the dotfiles for changing
-octopilot itself (`octopilot-code`). In OCTOPILOT, the dashboard pane is titled
+(code changes)**, a claude started in the dotfiles for changing octopilot itself
+(`octopilot-code`). In OCTOPILOT, the dashboard pane is titled
 `dashboard`.
 
 `open` starts the orchestrator as a fresh claude in `OCTOPILOT_ORCH_CWD`
@@ -86,7 +86,7 @@ terminals run in herdr-core) as one space with three tabs:
 |---|---|
 | **OCTOPILOT** | the `octopilot-chat` mod (the prompter as a chat) on the left, over the `octopilot-kitchen` mod, a pane 300 px tall; on the right the `octopilot-dashboard` mod (the table below), full height (`props`: `dir`, `state_dir`; its pane is named by `pane.rename`, the mod reads no name) |
 | **engine** | the orchestrator (`octopilot`, `/octopilot:messenger`), the prompter (`octopilot-prompter`) and `dashboard.sh --headless` (`octopilot-headless`), each an hc terminal. Parked after building: they keep running with no pane, so the tab goes away (see below) |
-| **Octopilot (code changes)** | the code agent's own claude (`octopilot-code`, a claude in the dotfiles root, an hc terminal that is never parked) and, beside it, the `octopilot-side` mod: the agent's status, its sub-agents, the model and the commands (`props`: `dir`, `state_dir`, `agent`, `title`) |
+| **Octopilot (code changes)** | the code agent's own claude (`octopilot-code`, a claude in the dotfiles root, an hc terminal that is never parked) |
 
 The engine is hidden on purpose. After building, `open-gui.sh` parks its three
 terminals (`herdr-app do terminal.park`): the pane goes, the process keeps
@@ -114,32 +114,20 @@ The launcher never ends the code agent: it is your own claude session.
 
 The code agent is not an engine terminal: its claude is the terminal of the code
 tab, so its pickers and sub-agents are Claude's own, and `--show-engine` does not
-touch it. The `octopilot-side` mod beside it shows the agent's status (herdr's
-`terminals()`), its sub-agents (the terminals whose `parent` it is, and Claude's own
-from `hc get`'s `records`, read-only), and sends `/model opus|sonnet|haiku`,
-`/compact`, `/clear` (confirmed) and `/resume` through `scan.sh chat-send --agent
-octopilot-code`. It sends one at a time and never while the agent waits on a prompt
-(the answer is typed in its terminal). `/resume` opens its picker in that terminal,
-which the panel then focuses; every send then waits until the agent's status or
-title changes, or you click "Picker done", so no click types into the picker. A
-notice goes when the agent's status changes, or after 8 s. The run sizes the panel
-to 280 px when it creates it (`size_side`, as the kitchen: `pane.resize` right, then left);
-the mod lays out whatever width it gets, and a rerun keeps the panel as it is. `chat`,
-`chat-send` and `chat-keys` take `--agent octopilot-code` too; the orchestrator's `send-code` still
-queues requests for the code agent.
+touch it.
 
 A code agent from an earlier run is converted on a rerun. A parked agent (the
 previous version's chat tab) is labelled with the space and, if that does not show
 it, given a tab with `terminal.keep`; a shown agent is never moved. Only when it is
-then alone in a tab of this space does that tab take the name, the old chat tab go
-and the panel go beside it; otherwise the run warns and leaves it. The panel is
-recorded on the agent (`octopilot.side=<tab>:<pane>`) and kept while that pane
-exists in the agent's tab. A tab that holds a terminal other than the agent's is
-refused, never closed.
+then alone in a tab of this space does that tab take the name and the old chat tab
+go; otherwise the run warns and leaves it. A side panel an earlier run put beside the
+agent (its label `octopilot.side=<tab>:<pane>`) is closed when that label names this
+tab and `pane.rename` finds the pane, and the label is removed. A tab that holds a
+terminal other than the agent's is refused, never closed.
 
 In the `--terminals` layout, the dashboard's `a` peeks the prompter (or the
 orchestrator), as the GUI layout does, and the code agent stays a terminal in its
-own "Octopilot (code changes)" tab (no side panel: the TUI layout has no mods).
+own "Octopilot (code changes)" tab (the TUI layout has no mods).
 
 Every engine terminal starts through the user's interactive shell (`$SHELL -ic
 'exec "$@"'`), so the gateway env in `~/.zshrc.local` reaches claude. herdr-app
@@ -155,7 +143,7 @@ split down from the chat (`pane.split`), then sized to 300 px with `pane.resize`
 The run records the chat's pane on the orchestrator (`octopilot.chat=<tab>:<pane>`)
 and the kitchen's (`octopilot.kitchen=<tab>:<pane>`). A record counts only when its
 tab is this space's OCTOPILOT tab, and a rerun keeps the kitchen while its pane
-exists (a `pane.rename` probe, as the side panel's), else splits a new one. The
+exists (a `pane.rename` probe), else splits a new one. The
 steps are best effort: a failure is warned about and the run goes on. A tab from
 an earlier run has no `octopilot.chat` record, so a rerun cannot split its kitchen:
 it says so and leaves the tab as it is. Add it once by hand: focus the chat pane,
@@ -170,8 +158,7 @@ is found from the claude in the terminal's foreground, through its
 fallback when no claude runs there. `scan.sh speech --json` reads the
 orchestrator's last message, `scan.sh chat --json [--after <id>]` the prompter's
 conversation, and `scan.sh chat-send <text>` / `chat-keys <keys>` type into the
-prompter. `--agent octopilot-code` on those three reads and types into the code
-agent instead. Under the TUI backend, or with nothing running, they report
+prompter. Under the TUI backend, or with nothing running, they report
 `"status": "offline"`.
 
 **Launch and install.** `herdr-app/install.sh` links each

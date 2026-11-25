@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Installs Octopilot's herdr-app parts: each mod folder in herdr-app/mods is
-# symlinked into the app's mods (edits here take effect at once), and programs.json
-# gets an Octopilot entry (what the menus start). The kitchen is a pane of the
+# symlinked into the app's mods (edits here take effect at once; links of mods dropped
+# since are removed), and programs.json gets an Octopilot entry (what the menus start). The kitchen is a pane of the
 # OCTOPILOT tab, built by herdr/open-gui.sh, so no layout is written: a
 # layouts/octopilot.json of ours from an earlier version is removed. The launcher
 # mod's palette entry runs its own hard-coded path, not this entry.
@@ -127,6 +127,26 @@ link_mods() {
   done < <(mod_folders)
 }
 
+# Removes the links into this checkout's mods whose mod folder is gone (one dropped
+# since it was linked): a dangling link is ours when it points into MODS_SRC. Other
+# links and real folders are left alone.
+unlink_dangling_mods() {
+  local link target
+  [ -d "$MODS_DST" ] || return 0
+  for link in "$MODS_DST"/*; do
+    [ -L "$link" ] || continue
+    if [ -e "$link" ]; then continue; fi
+    target="$(readlink "$link")"
+    case "$target" in
+      "$MODS_SRC"/*)
+        if [ "$DRY" -eq 1 ]; then echo "would unlink dangling mod $(basename "$link")"; continue; fi
+        rm "$link"
+        echo "unlinked dangling mod $(basename "$link")"
+        ;;
+    esac
+  done
+}
+
 unlink_mods() {
   local link target
   [ -d "$MODS_DST" ] || return 0
@@ -223,6 +243,7 @@ if [ "$UNINSTALL" -eq 1 ]; then
   unlink_mods
 else
   link_mods
+  unlink_dangling_mods
 fi
 set_program
 retire_layout

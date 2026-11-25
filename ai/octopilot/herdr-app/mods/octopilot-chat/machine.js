@@ -2,22 +2,20 @@
 // name. A remote space's folders and terminals are that machine's, so its commands run there.
 // Each mod has a copy of this file (a mod folder stands alone); keep them identical.
 
-// The machine of the mod's space, from its tab: the tab given (the side panel's agent tab), else
-// the tab of the mod's pane (paneOf). A copy that should have a pane but finds none gets
-// undefined: not known yet. Only a floating copy (no pane at all) falls back to the shown tab.
-// Remote tab ids may carry the machine's prefix. -> the machine (null here), or undefined.
-export function resolveMachine(panes, spaces, { mod, name = null, tab = null, floating = false }) {
-  let id = tab;
-  if (id == null) {
-    const mine = panes.filter((p) => p.mod === mod);
-    if (mine.length === 0) {
-      if (!floating) return undefined;
-      id = spaces.find((s) => s.active)?.tabs.find((t) => t.active)?.id ?? null;
-    } else {
-      const pane = paneOf(mine, name);
-      if (!pane) return undefined;
-      id = pane.tab;
-    }
+// The machine of the mod's space, from the tab of the mod's pane (paneOf). A copy that should
+// have a pane but finds none gets undefined: not known yet. Only a floating copy (no pane at
+// all) falls back to the shown tab. Remote tab ids may carry the machine's prefix.
+// -> the machine (null here), or undefined.
+export function resolveMachine(panes, spaces, { mod, name = null, floating = false }) {
+  let id;
+  const mine = panes.filter((p) => p.mod === mod);
+  if (mine.length === 0) {
+    if (!floating) return undefined;
+    id = spaces.find((s) => s.active)?.tabs.find((t) => t.active)?.id ?? null;
+  } else {
+    const pane = paneOf(mine, name);
+    if (!pane) return undefined;
+    id = pane.tab;
   }
   if (id == null) return undefined;
   const space = spaces.find((s) => s.tabs.some((t) => t.id === id || (s.machine != null && t.id === `${s.machine}/${id}`)));

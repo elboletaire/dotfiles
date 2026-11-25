@@ -66,13 +66,9 @@ test("a floating copy with no pane of its mod uses the shown tab", () => {
   assert.equal(resolveMachine(panes, remoteShown, { mod: MOD, floating: true }), undefined);
 });
 
-test("a tab hint (the side panel's agent tab) wins over the pane", () => {
-  assert.equal(resolveMachine(panes, spaces, { mod: MOD, name: "octopilot-dashboard", tab: "bolt/t9" }), "bolt");
-});
-
 test("undefined while no tab can be found", () => {
   assert.equal(resolveMachine([], [], { mod: MOD, floating: true }), undefined);
-  assert.equal(resolveMachine([], [{ id: "x", active: false, machine: "bolt", tabs: [] }], { mod: MOD, tab: "t1" }), undefined);
+  assert.equal(resolveMachine([], [{ id: "x", active: false, machine: "bolt", tabs: [] }], { mod: MOD, floating: true }), undefined);
 });
 
 test("machineCache recomputes when spaces or the mod's panes change, and never keeps an unknown", () => {

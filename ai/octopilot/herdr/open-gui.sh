@@ -5,7 +5,6 @@
 #   engine: the orchestrator, the prompter and the headless dashboard, as hc
 #     terminals; parked after building (no pane, still running), so the tab goes away
 #   Octopilot (code changes): the code agent's own claude (a terminal, never parked)
-#     beside the octopilot-side panel
 # Each claude is labelled octopilot.agent=<name> and octopilot.session=<uuid>
 # (its transcript, read by scan.py speech and chat). --terminals builds the
 # TUI-style layout instead. --show-engine keeps the engine tab visible (no park).
@@ -27,10 +26,8 @@ CODE_AGENT="octopilot-code"            # scan.py's CODE_AGENT
 # and its mod finds it in panes() by the name given in props.pane_name.
 DASHBOARD_PANE="octopilot-dashboard"
 PROMPTER_PANE="octopilot-prompter"
-SIDE_PANE="octopilot-side"
 KITCHEN_PANE="octopilot-kitchen"
 KITCHEN_PX=300                         # the kitchen's height under the chat
-SIDE_PX=280                            # the side panel's width beside the agent's terminal
 MAIN_TAB="OCTOPILOT"
 ENGINE_TAB="engine"
 CODE_TAB="Octopilot (code changes)"
@@ -88,10 +85,6 @@ DASH_PROPS="$(jq -nc --argjson mod "$MOD_PROPS" --arg name "$(pane_name "$DASHBO
   '$mod + {pane_name: $name}')"
 PROMPTER_PROPS="$(jq -nc --argjson mod "$MOD_PROPS" --arg name "$(pane_name "$PROMPTER_PANE")" \
   '$mod + {pane_name: $name}')"
-# The code tab's side panel: the code agent it shows, and its title. Its pane has the
-# hashed name too, but no pane_name prop: the side mod finds the agent's terminal, not its pane.
-SIDE_PROPS="$(jq -nc --argjson mod "$MOD_PROPS" --arg agent "$CODE_AGENT" \
-  '$mod + {agent: $agent, title: "Code changes"}')"
 # The kitchen's pane is named by pane.rename to the same name, which its mod finds by pane_name.
 KITCHEN_PROPS="$(jq -nc --argjson mod "$MOD_PROPS" --arg name "$(pane_name "$KITCHEN_PANE")" \
   '$mod + {pane_name: $name}')"
@@ -399,47 +392,29 @@ show_code_tab() {
   if [ "$(cut -f1 <<<"$located")" != "$space" ] \
     || [ "$(tab_terminals "$(cut -f2 <<<"$located")")" != "$code" ]; then
     echo "open-gui.sh: the $CODE_AGENT terminal ($code) is not alone in a tab of" \
-      "this space; left as it is, with no side panel" >&2
+      "this space; left as it is" >&2
     return 1
   fi
   echo "$located"
 }
 
-# Sizes the side panel (pane $2, in tab $1) to its minimum plus SIDE_PX: as size_kitchen,
-# the tab is shown first, "right" on the panel shrinks it and "left" grows it. Best effort.
-size_side() {
-  local out
-  "$APP" do tab.select --id "$1" >/dev/null 2>&1 || true
-  "$APP" do pane.resize --direction right --pane "$2" --px 10000 >/dev/null 2>&1 || true
-  sleep 0.5
-  if ! out=$("$APP" do pane.resize --direction left --pane "$2" --px "$SIDE_PX" 2>&1); then
-    echo "open-gui.sh: could not size pane $2 to $SIDE_PX px: $out" >&2
-  fi
-}
-
-# The octopilot-side panel beside the agent's terminal, once per tab: the agent's label
-# octopilot.side=<tab>:<pane> is kept while it names this tab and that pane still exists.
-add_side_panel() {
-  local code=$1 tab=$2 pane=$3 side created
+# Closes the octopilot-side panel an earlier run put beside the code agent in tab $2, and
+# removes the agent's octopilot.side label. The panel is closed only when the label names
+# this tab and pane.rename finds that pane (a mod pane, so pane.close is safe).
+drop_side_panel() {
+  local code=$1 tab=$2 side
   side=$(recorded_pane "$code" octopilot.side "$tab")
   if [ -n "$side" ] \
-    && "$APP" do pane.rename --pane "$side" --name "$(pane_name "$SIDE_PANE")" >/dev/null 2>&1; then
-    return 0
+    && "$APP" do pane.rename --pane "$side" --name "$(pane_name octopilot-side)" >/dev/null 2>&1; then
+    app do pane.close --pane "$side" >/dev/null
   fi
-  created=$(app do pane.split --direction right --pane "$pane" --mod octopilot-side --props "$SIDE_PROPS")
-  side=$(jq -r '.pane // empty' <<<"$created")
-  if [ -z "$side" ]; then
-    echo "open-gui.sh: no pane came back for the $SIDE_PANE panel" >&2
-    return 0
+  if "$HC" get "$code" --json | jq -e '.labels["octopilot.side"]' >/dev/null 2>&1; then
+    "$HC" label "$code" octopilot.side= >/dev/null
   fi
-  name_mod_pane "$side" "$(pane_name "$SIDE_PANE")"
-  size_side "$tab" "$side"
-  record_label "$code" octopilot.side "$tab:$side"
 }
 
-# The code-changes tab: the code agent's claude, with the side panel beside it. A rerun
-# converts the chat tab, a panel-less terminal tab or a parked agent, never ending its
-# claude; a tab holding another terminal is refused.
+# The code-changes tab: the code agent's claude. A rerun converts the previous chat tab
+# or a parked agent, never ending its claude; a tab holding another terminal is refused.
 add_code_tab() {
   local space=$1 old code located t
   old=$(tab_named "$space" "$CODE_TAB")
@@ -454,7 +429,7 @@ add_code_tab() {
     done
   fi
   if [ -z "$code" ]; then
-    # What is left of the old tab holds no terminal: the panel or the chat only.
+    # What is left of the old tab holds no terminal: mods only, at most an earlier panel.
     if [ -n "$old" ]; then app do tab.close --id "$old" >/dev/null; old=""; fi
     code=$(start_code_tab "$space")
   fi
@@ -463,7 +438,7 @@ add_code_tab() {
   # The old tab holds no terminal now (checked above, and the agent is in $t): mods only.
   if [ -n "$old" ] && [ "$old" != "$t" ]; then app do tab.close --id "$old" >/dev/null; fi
   app do tab.rename --id "$t" --name "$CODE_TAB" >/dev/null
-  add_side_panel "$code" "$t" "$(cut -f3 <<<"$located")"
+  drop_side_panel "$code" "$t"
 }
 
 # The --terminals code tab: a terminal tab with its claude in the dotfiles root,
