@@ -17,7 +17,7 @@ actions. `$DIR` is the octopilot code dir (`props().dir`, else
 | `octopilot-octopus` mod | floating window (`openOverlay` kind window, key `octopilot-octopus`, keep) | the messenger: what the orchestrator last said + kitchen log |
 | `herdr/open-gui.sh` | launcher | builds the space, starts terminals with `--session-id`, opens the mods |
 | `octopilot-launcher` mod | palette entry "Open Octopilot" (no view) | runs `herdr/open-gui.sh --close-launcher` in a new tab |
-| `herdr-app/install.sh` | installer | symlinks mods into `~/.config/herdr-app/mods/`, adds the `octopilot` program to `programs.json`; `--key` also binds ctrl-alt-o |
+| `herdr-app/install.sh` | installer | symlinks mods into `~/.config/herdr-app/mods/`, adds the `octopilot` program to `programs.json`, writes `layouts/octopilot.json` (`main.json` + a floating `octopilot-kitchen` block, which open-gui.sh switches to); `--key` also binds ctrl-alt-o |
 
 ## view.json (written atomically by `dashboard.sh --headless`, on change and at least every 5 s)
 
@@ -86,11 +86,16 @@ Focus/peek/shell on hc rows may be done by the mod directly with `run()` using `
 ## Speech and chat (scan.py)
 
 Both agents are started by open-gui.sh with `claude --session-id <uuid>` and labelled
-`octopilot.session=<uuid>`; the transcript is `~/.claude/projects/*/<uuid>.jsonl`.
-A `/clear` starts a new transcript and leaves the label stale: when the labelled
-file is gone, the newest transcript of the terminal's folder that is no older
-than the terminal is used (no SessionStart hook; the plugin's hooks are takoyaki
-modules). The chat reports the session it read, so the mod sees the change.
+`octopilot.session=<uuid>`. The transcript is found from the claude running in the
+terminal: `hc get <t> --json` gives `foreground.pid` (when `foreground.name` is
+`claude`), `~/.claude/sessions/<pid>.json` gives its `sessionId` (used only when its
+`pid` matches, and its `procStart` when it matches /proc), and the transcript is
+`~/.claude/projects/*/<sessionId>.jsonl`. A `/clear` starts a new session, so this
+follows it; the `octopilot.session` label is only the fallback when no claude is in
+the foreground (a live session with no transcript yet gives none, not the stale
+label). There is no guess from the terminal's folder (the orchestrator and the
+prompter share one). The chat reports the session it read; with `--after`, a session
+that changed (unknown anchor, or no transcript yet) answers `"reset": true`.
 
 - `scan.sh speech --json` → `{"agent": "hc:t7", "terminal": "t7", "status": "working|blocked|idle|done|offline",
   "paused": false, "text": "<last orchestrator assistant message, markdown>", "at": "<ISO>", "seq": 41}`

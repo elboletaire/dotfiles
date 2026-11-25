@@ -2435,6 +2435,7 @@ def inbox(state):
 
 PROMPTER_AGENT = "octopilot-prompter"
 PROJECTS_DIR = os.path.expanduser("~/.claude/projects")
+SESSIONS_DIR = os.path.expanduser("~/.claude/sessions")
 # A transcript can run to hundreds of MB: only this tail is parsed.
 TRANSCRIPT_TAIL_BYTES = 5 * 1024 * 1024
 CHAT_LIMIT = 50
@@ -2474,24 +2475,49 @@ def orchestrator_terminal(state):
     return (address, info) if info else (None, None)
 
 
-def transcript_path(info):
-    """The transcript of a terminal's claude: its octopilot.session label's, or
-    (after a /clear, the label is stale) the newest one in its folder, claude's
-    name for which maps every character but [A-Za-z0-9-] to -."""
-    session = (info.get("labels") or {}).get("octopilot.session") or ""
-    if UUID_RE.match(session):
-        hits = glob.glob(os.path.join(PROJECTS_DIR, "*", f"{session}.jsonl"))
-        if hits:
-            return hits[0]
-    fg = info.get("foreground") or {}
-    folder = fg.get("cwd") if fg.get("name") == "claude" else info.get("cwd")
-    if not folder:
+def proc_start(pid):
+    """/proc/<pid>/stat's start time (field 22) as a string, else None."""
+    try:
+        with open(f"/proc/{pid}/stat") as fh:
+            return fh.read().rsplit(")", 1)[1].split()[19]
+    except (OSError, IndexError):
         return None
-    project = os.path.join(PROJECTS_DIR, re.sub(r"[^A-Za-z0-9-]", "-", folder))
-    since = (info.get("created_ms") or 0) / 1000 - 1
-    files = [f for f in glob.glob(os.path.join(project, "*.jsonl"))
-             if os.path.getmtime(f) >= since]
-    return max(files, key=os.path.getmtime) if files else None
+
+
+def live_session_id(info):
+    """The session id of the claude in a terminal's foreground, from claude's own
+    ~/.claude/sessions/<pid>.json (rewritten when /clear starts a new session),
+    or None when no claude runs there or the file is not that process's."""
+    fg = info.get("foreground") or {}
+    pid = fg.get("pid")
+    if fg.get("name") != "claude" or not isinstance(pid, int):
+        return None
+    try:
+        with open(os.path.join(SESSIONS_DIR, f"{pid}.json")) as fh:
+            data = json.load(fh)
+    except (OSError, ValueError):
+        return None
+    if not isinstance(data, dict) or data.get("pid") != pid:
+        return None
+    start = data.get("procStart")
+    now = proc_start(pid)
+    if start is not None and now is not None and str(start) != now:
+        return None  # a recycled pid: the file is an earlier process's
+    sid = data.get("sessionId")
+    return sid if isinstance(sid, str) and UUID_RE.match(sid) else None
+
+
+def transcript_path(info):
+    """The transcript of a terminal's claude: the session of the claude running
+    in its foreground (claude's sessions/<pid>.json, which follows /clear), else
+    the octopilot.session label's, else None. A live session whose transcript is
+    not written yet gives None, never the stale label. No guess from the folder:
+    the orchestrator and the prompter share one."""
+    session = live_session_id(info) or (info.get("labels") or {}).get("octopilot.session") or ""
+    if not UUID_RE.match(session):
+        return None
+    hits = glob.glob(os.path.join(PROJECTS_DIR, "*", f"{session}.jsonl"))
+    return hits[0] if hits else None
 
 
 def parse_line(raw):
@@ -2684,6 +2710,9 @@ def chat_cmd(args):
     if path:
         out["session"] = os.path.basename(path)[:-len(".jsonl")]
         out["messages"], out["reset"] = chat_page(path, after, limit)
+    elif after is not None:
+        # A new session that has no transcript yet: what the mod holds is stale.
+        out["reset"] = True
     return out
 
 
