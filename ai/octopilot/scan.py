@@ -7,6 +7,7 @@ rows are acted on.
 """
 import copy
 import fcntl
+import glob
 import json
 import os
 import re
@@ -14,6 +15,7 @@ import shutil
 import subprocess
 import sys
 import time
+import zlib
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 
@@ -2425,7 +2427,293 @@ def inbox(state):
     return 0
 
 
-READ_ONLY = {"render", "status", "siblings", "snapshot", "wind-down", "plugin-settings"}
+# ------------------------------------------------------------ speech and chat
+#
+# The herdr-app GUI's two chats, read from the claudes' transcripts: speech is
+# the orchestrator's last message (the octopus window), chat the prompter's
+# conversation. herdr/open-gui.sh starts both with --session-id and labels
+# them octopilot.session=<uuid>, which names the transcript.
+
+PROMPTER_AGENT = "octopilot-prompter"
+PROJECTS_DIR = os.path.expanduser("~/.claude/projects")
+# A transcript can run to hundreds of MB: only this tail is parsed.
+TRANSCRIPT_TAIL_BYTES = 5 * 1024 * 1024
+CHAT_LIMIT = 50
+TOOL_INPUT_KEYS = ("command", "file_path", "path", "pattern", "url", "query",
+                   "description", "skill")
+TOOL_SUMMARY_MAX = 100
+# User entries the harness writes for itself: command output, notifications,
+# other sessions' messages, interrupts. Nothing a person typed starts with them.
+INJECTED_PREFIXES = ("<", "[Request interrupted", "Another Claude session sent a message")
+UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+
+
+def agent_address(agent):
+    """The address of the hc terminal labelled octopilot.agent=<agent>, or None."""
+    found = HC.find(agent)
+    return found[len(HC.prefix):] if found else None
+
+
+def terminal_info(address):
+    """`hc get --json` of a terminal, or None when it is gone."""
+    code, info, _ = hc(["get", address, "--json"], timeout=10)
+    return info if code == 0 and isinstance(info, dict) else None
+
+
+def orchestrator_terminal(state):
+    """-> (address, info) of the orchestrator's terminal, the one labelled
+    octopilot.agent=octopilot else the one the last scan recorded; (None, None)
+    when there is none (the TUI backend, or nothing running)."""
+    address = agent_address(ORCH_AGENT)
+    recorded = state.get("orch") or ""
+    if address is None and recorded.startswith(HC.prefix):
+        address = recorded[len(HC.prefix):]
+    info = terminal_info(address) if address else None
+    return (address, info) if info else (None, None)
+
+
+def transcript_path(info):
+    """The transcript of the claude a terminal runs: the session it was labelled
+    with, else the newest one in the folder claude runs in (claude names that
+    folder after the path, with every character but letters, digits and - as -)."""
+    session = (info.get("labels") or {}).get("octopilot.session") or ""
+    if UUID_RE.match(session):
+        hits = glob.glob(os.path.join(PROJECTS_DIR, "*", f"{session}.jsonl"))
+        return hits[0] if hits else None
+    fg = info.get("foreground") or {}
+    folder = fg.get("cwd") if fg.get("name") == "claude" else info.get("cwd")
+    if not folder:
+        return None
+    project = os.path.join(PROJECTS_DIR, re.sub(r"[^A-Za-z0-9-]", "-", folder))
+    files = glob.glob(os.path.join(project, "*.jsonl"))
+    return max(files, key=os.path.getmtime) if files else None
+
+
+def parse_line(raw):
+    try:
+        entry = json.loads(raw)
+    except ValueError:
+        return None
+    return entry if isinstance(entry, dict) else None
+
+
+def tail_entries(path):
+    """The entries in the last TRANSCRIPT_TAIL_BYTES of a transcript, oldest
+    first. The line the window cuts is dropped."""
+    with open(path, "rb") as fh:
+        fh.seek(0, os.SEEK_END)
+        start = max(0, fh.tell() - TRANSCRIPT_TAIL_BYTES)
+        fh.seek(start)
+        lines = fh.read().split(b"\n")
+    if start:
+        lines = lines[1:]
+    return [e for e in map(parse_line, lines) if e]
+
+
+def stream_entries(path):
+    """Every entry of a transcript, oldest first, one line at a time."""
+    with open(path, "rb") as fh:
+        for raw in fh:
+            entry = parse_line(raw)
+            if entry:
+                yield entry
+
+
+def typed_text(entry):
+    """The text a person typed in a user entry, else None: tool results, meta
+    entries and the harness's own messages are not the person's."""
+    if entry.get("isMeta"):
+        return None
+    content = (entry.get("message") or {}).get("content")
+    if isinstance(content, str):
+        text = content
+    elif isinstance(content, list):
+        blocks = [b for b in content if isinstance(b, dict)]
+        if any(b.get("type") == "tool_result" for b in blocks):
+            return None
+        text = "\n".join(b.get("text") or "" for b in blocks if b.get("type") == "text")
+    else:
+        return None
+    text = text.strip()
+    if not text or text.startswith(INJECTED_PREFIXES):
+        return None
+    return text
+
+
+def tool_summary(block):
+    """'<name>: <short input>' for a tool_use block."""
+    name = block.get("name") or "tool"
+    inp = block.get("input") if isinstance(block.get("input"), dict) else {}
+    short = next((str(inp[k]) for k in TOOL_INPUT_KEYS if inp.get(k)), "")
+    if not short and inp:
+        short = json.dumps(inp, ensure_ascii=False)
+    short = " ".join(short.split())
+    if len(short) > TOOL_SUMMARY_MAX:
+        short = short[:TOOL_SUMMARY_MAX - 3] + "..."
+    return f"{name}: {short}" if short else name
+
+
+def finish_turn(turn):
+    return {"id": turn["id"], "role": "assistant",
+            "text": "\n\n".join(turn["texts"]).strip(), "at": turn["at"],
+            "tools": turn["tools"]}
+
+
+def chat_messages(entries):
+    """Chat messages, oldest first: what a person typed, and each assistant
+    turn. Claude writes one entry per content block of an API response, all
+    with the same message id, so those entries merge into one turn."""
+    turn = None
+    for e in entries:
+        if e.get("isSidechain"):
+            continue
+        if e.get("type") == "user":
+            text = typed_text(e)
+            if text is None:
+                continue
+            if turn is not None:
+                yield finish_turn(turn)
+                turn = None
+            yield {"id": e.get("uuid"), "role": "user", "text": text,
+                   "at": e.get("timestamp"), "tools": []}
+        elif e.get("type") == "assistant":
+            msg = e.get("message") or {}
+            api_id = msg.get("id") or e.get("uuid")
+            if turn is None or turn["api"] != api_id:
+                if turn is not None:
+                    yield finish_turn(turn)
+                turn = {"api": api_id, "id": e.get("uuid"), "at": e.get("timestamp"),
+                        "texts": [], "tools": []}
+            content = msg.get("content")
+            for block in content if isinstance(content, list) else []:
+                if not isinstance(block, dict):
+                    continue
+                if block.get("type") == "text" and block.get("text"):
+                    turn["texts"].append(block["text"])
+                elif block.get("type") == "tool_use":
+                    turn["tools"].append(tool_summary(block))
+    if turn is not None:
+        yield finish_turn(turn)
+
+
+def status_of(info):
+    return (info.get("status") or {}).get("state") or "idle"
+
+
+def blocked_of(info):
+    status = info.get("status") or {}
+    if status.get("state") != "blocked":
+        return None
+    return {"kind": status.get("kind"), "msg": status.get("msg")}
+
+
+def speech_cmd(state):
+    """The orchestrator's last message with text, and its state."""
+    out = {"agent": None, "terminal": None, "status": "offline",
+           "paused": bool(state.get("paused")), "text": "", "at": None, "seq": 0}
+    address, info = orchestrator_terminal(state)
+    if info is None:
+        return out
+    out.update(agent=HC.prefix + address, terminal=address, status=status_of(info))
+    path = transcript_path(info)
+    last = None
+    for m in (chat_messages(tail_entries(path)) if path else []):
+        if m["role"] == "assistant" and m["text"]:
+            last = m
+    if last:
+        # seq moves with the text, so a re-read of the same message is a no-op.
+        out.update(text=last["text"], at=last["at"],
+                   seq=zlib.crc32(f"{last['id']}\n{last['text']}".encode()))
+    return out
+
+
+def chat_page(path, after, limit):
+    """The messages after `after`, at most `limit`. With no `after`, or one
+    that is no longer in the transcript, the newest `limit` messages. When
+    nothing follows `after`, it comes back alone: an assistant turn still being
+    written keeps its id while its text grows."""
+    tail = list(chat_messages(tail_entries(path)))
+    if after is None:
+        return tail[-limit:]
+    ids = [m["id"] for m in tail]
+    if after in ids:
+        at = ids.index(after)
+        return tail[at + 1:at + 1 + limit] or tail[at:at + 1]
+    # Older than the tail: stream from the start, up to the anchor and then
+    # `limit` messages.
+    page, seen = [], False
+    for m in chat_messages(stream_entries(path)):
+        if seen:
+            page.append(m)
+            if len(page) == limit:
+                break
+        elif m["id"] == after:
+            seen = True
+    return page if seen else tail[-limit:]
+
+
+def chat_cmd(args):
+    """The prompter's conversation (see chat_page) and its state."""
+    after = flag_value(args, "--after")
+    try:
+        limit = int(flag_value(args, "--limit") or CHAT_LIMIT)
+    except ValueError:
+        raise SystemExit("--limit needs a number")
+    limit = max(1, limit)
+    out = {"terminal": None, "status": "offline", "blocked": None, "messages": []}
+    address = agent_address(PROMPTER_AGENT)
+    info = terminal_info(address) if address else None
+    if info is None:
+        return out
+    path = transcript_path(info)
+    out.update(terminal=address, status=status_of(info), blocked=blocked_of(info),
+               messages=chat_page(path, after, limit) if path else [])
+    return out
+
+
+def chat_result(ok, error=None):
+    """-> (exit code, the JSON to print) for chat-send and chat-keys."""
+    if ok:
+        return 0, {"ok": True}
+    return (4 if error == "agent_blocked" else 1), {"ok": False, "error": error}
+
+
+def chat_send(args):
+    """chat-send <text...>: type it into the prompter. Exit 4 when the prompter
+    is blocked on a prompt (answer that with chat-keys), 3 when none runs."""
+    text = " ".join(args[1:]).strip()
+    if not text:
+        print("usage: scan.sh chat-send <text...>", file=sys.stderr)
+        return 1
+    address = agent_address(PROMPTER_AGENT)
+    if address is None:
+        print(json.dumps({"ok": False, "error": "no prompter running"}))
+        return 3
+    ok, error = HC.send(address, text)
+    code, out = chat_result(ok, error)
+    print(json.dumps(out))
+    return code
+
+
+def chat_keys(args):
+    """chat-keys <keys...>: press keys in the prompter, e.g. 1, 2 or esc to
+    answer a permission prompt. Sent even while it is blocked."""
+    keys = args[1:]
+    if not keys:
+        print("usage: scan.sh chat-keys <keys...>", file=sys.stderr)
+        return 1
+    address = agent_address(PROMPTER_AGENT)
+    if address is None:
+        print(json.dumps({"ok": False, "error": "no prompter running"}))
+        return 3
+    code, data, raw = hc(["keys", address, *keys])
+    result_code, out = chat_result(code == 0, None if code == 0 else (error_code(data) or raw))
+    print(json.dumps(out))
+    return result_code
+
+
+READ_ONLY = {"render", "status", "siblings", "snapshot", "wind-down", "plugin-settings",
+             "speech", "chat", "chat-send", "chat-keys"}
 
 
 def plugin_settings():
@@ -2533,6 +2821,16 @@ def dispatch(cmd, args, state):
         print(f"sent to {CODE_AGENT}" + (f" ({sent} with earlier queued)"
                                          if sent > 1 else ""))
         return 0
+    if cmd == "speech":
+        print(json.dumps(speech_cmd(state)))
+        return 0
+    if cmd == "chat":
+        print(json.dumps(chat_cmd(args)))
+        return 0
+    if cmd == "chat-send":
+        return chat_send(args)
+    if cmd == "chat-keys":
+        return chat_keys(args)
     if cmd == "reboot":
         return reboot(state, args[1])
     if cmd in ("read", "focus") and len(args) < 2:
