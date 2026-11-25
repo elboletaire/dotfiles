@@ -63,7 +63,7 @@ Entry:
 Action:
 ```jsonc
 {"id": "remove", "key": "Delete", "label": "remove",
- "confirm": "⚠ its agent is working -- remove repo#12? (workspace and worktree deleted, untracked)" /* null = no confirm */,
+ "confirm": "⚠ its agent is working -- press del again to remove owner/repo#12 (workspace and worktree deleted, untracked)" /* null = no confirm */,
  "args": ["repo", "question", "read_only"] /* investigate only */}
 ```
 Row action ids (TUI key): `focus` (Enter), `peek` (v), `shell` (t), `browser` (o), `go` (g), `no` (n), `grant` (R),

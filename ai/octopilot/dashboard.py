@@ -18,12 +18,14 @@ tick` doorbell when the table has Next tick work the orchestrator has not
 been woken for.
 Run it through dashboard.sh so config.sh is loaded.
 """
+import argparse
 import collections
 import fcntl
 import json
 import os
 import select
 import shutil
+import signal
 import subprocess
 import sys
 import termios
@@ -90,6 +92,31 @@ KITCHEN_GRACE = 0.5    # a g this soon after the alert opened is a typed-ahead
 PROMPTER_AGENT = "octopilot-prompter"   # herdr/open.sh's prompter pane
 # Appended to a request the user already confirmed past WIND_DOWN_AT.
 CONFIRMED = "(confirmed past wind-down)"
+
+# The headless dashboard writes its view here; a `refresh` action touches
+# KICK_FILE to ask it for a forced GitHub refresh.
+VIEW_FILE = os.path.join(STATE_DIR, "view.json")
+VIEW_EVERY = 5         # rewrite at least this often, even when unchanged
+KICK_FILE = os.path.join(STATE_DIR, "kick")
+# Clock-relative fields move every second: left out of the change check.
+VIEW_VOLATILE = ("generated_at", "quiet_s", "age_s", "last_tick_s")
+INVESTIGATE_ARGS = ["repo", "question", "read_only"]
+# Row actions: id, the TUI key that runs it, and its footer label. The order
+# is the order the mods list them in.
+ROW_ACTIONS = (
+    ("focus", "\r", "open"), ("peek", "v", "agent"), ("shell", "t", "shell"),
+    ("browser", "o", "browser"), ("go", "g", "go"), ("no", "n", "no"),
+    ("grant", "R", "another round"), ("rereview", "e", "re-review"),
+    ("ack", "x", "ack"), ("detach", "z", "detach"), ("park", "d", "done"),
+    ("unpark", "d", "undone"), ("remove", "\x1b[3~", "remove"),
+)
+ROW_KEYS = {aid: key for aid, key, _ in ROW_ACTIONS}
+ROW_IDS = set(ROW_KEYS)
+# The TUI keys that map straight to a row action (d picks park or unpark).
+KEY_ROW = {"\r": "focus", "\n": "focus", "v": "peek", "t": "shell",
+           "o": "browser", "g": "go", "n": "no", "R": "grant", "e": "rereview",
+           "x": "ack", "z": "detach", "\x1b[3~": "remove"}
+KEY_NAMES = {"\r": "Enter", "\x1b[3~": "Delete"}
 
 # Rows by who has the next move. Agent reports and blocked agents are moved
 # into NEEDS on top of these; see build().
@@ -308,6 +335,8 @@ class Model:
         self.sessions = {}
         self.kick = threading.Event()
         self.changed = threading.Event()
+        # Set by a headless refresh: the GitHub loop then skips its debounce.
+        self.urgent = threading.Event()
 
     # -- sources
 
@@ -397,8 +426,9 @@ class Model:
                 if self.kick.wait(timeout=max(0.1, deadline - time.time())):
                     self.kick.clear()
                     wait = KICK_DEBOUNCE - (time.time() - self.snap_started)
-                    if wait > 0:
+                    if wait > 0 and not self.urgent.is_set():
                         time.sleep(wait)
+                    self.urgent.clear()
                     force = True
                     break
 
@@ -736,6 +766,545 @@ def sidebar_tokens(e, section):
             "ap_note": (e["note"] or "")[:48]}
 
 
+# ---------------------------------------------------------------- actions
+#
+# What a key does, and what --action does: the TUI and the headless dashboard
+# both come here. A row action is checked with row_refusal() and, when it
+# asks, confirmed with row_confirm(); perform() then runs it.
+
+Result = collections.namedtuple("Result", "ok message kitchen",
+                                defaults=(False,))
+
+
+def truthy(value):
+    return str(value or "").lower() in ("1", "y", "yes", "true")
+
+
+def tracked_item(model, key):
+    return ((model.state or {}).get("items") or {}).get(key)
+
+
+def kitchen_message():
+    return f"🍳 The kitchen is closed (past {scan.WIND_DOWN_AT})"
+
+
+def to_orch(text):
+    """Queue a command in the orchestrator's inbox. Typing it into its pane
+    would also send whatever the user is half-way through there."""
+    code, out, err = sh([sys.executable, os.path.join(DIR, "scan.py"),
+                         "request", text])
+    if code == 0:
+        return Result(True, f"queued '{text}' for the orchestrator")
+    return Result(False, f"queue failed: {(err or out)[:100]}")
+
+
+def go_orch(key, confirmed=False):
+    """`go KEY`. Past wind-down it needs confirmed: the kitchen-closed alert's
+    second press."""
+    if scan.wind_down() != "yes":
+        return to_orch(f"go {key}")
+    if not confirmed:
+        return Result(False, kitchen_message(), kitchen=True)
+    return to_orch(f"go {key} {CONFIRMED}")
+
+
+def investigate_orch(repo, question, read_only, confirmed=False):
+    """`/investigate`, which past wind-down needs confirmed like go_orch."""
+    cmd = f"/investigate {'--read-only ' if read_only else ''}{repo} {question}"
+    if scan.wind_down() == "yes":
+        if not confirmed:
+            return Result(False, kitchen_message(), kitchen=True)
+        cmd += f" {CONFIRMED}"
+    return to_orch(cmd)
+
+
+def set_paused(verb):
+    """`pause` or `resume` through scan.py; its output is the message."""
+    code, out, err = sh([sys.executable, os.path.join(DIR, "scan.py"), verb])
+    return Result(code == 0, out or err)
+
+
+def scan_run(args, timeout=30):
+    """A scan.py command that needs no judgement, as its one-line outcome."""
+    code, out, err = sh([sys.executable, os.path.join(DIR, "scan.py"), *args],
+                        timeout=timeout)
+    lines = (out or err).splitlines()
+    # cleanup ends with its SIBLINGS output; show a failed removal first,
+    # else its "cleaned up" line.
+    removed = (f"{scan.HERDR.remove_label} ", f"{scan.HC.remove_label} ")
+    failed = next((l for l in lines if not l.endswith(": ok")
+                   and l.startswith(removed)), None)
+    done = next((l for l in lines if l.startswith("cleaned up")), None)
+    message = failed or done or (lines[-1] if lines
+                                 else f"{args[0]} exit {code}")
+    return Result(code == 0 and failed is None, message)
+
+
+def popup(entrypoint, env, cwd=None):
+    """Open one of the plugin's popups -> (opened, error). Nothing opens
+    outside herdr."""
+    if not IN_HERDR:
+        return False, ""
+    args = ["herdr", "plugin", "pane", "open", "--plugin", PLUGIN_ID,
+            "--entrypoint", entrypoint, "--placement", "popup",
+            "--width", "92%", "--height", "88%"]
+    for k, v in env.items():
+        args += ["--env", f"{k}={v}"]
+    if cwd:
+        args += ["--cwd", cwd]
+    code, out, err = sh(args, timeout=20)
+    if code != 0:
+        return False, f"herdr popup failed: {(err or out)[:100]}"
+    return True, ""
+
+
+def focus_hc(pane=None, name=None):
+    """Show a herdr-app agent, by its terminal address or its
+    octopilot.agent label -> bool."""
+    if name:
+        found = scan.HC.find(name)
+        pane = found[len(scan.HC.prefix):] if found else None
+    if not pane:
+        return False
+    _, info, _ = scan.hc(["get", pane, "--json"], timeout=10)
+    session = ((info or {}).get("labels") or {}).get("herdr.space")
+    return bool(session) and scan.HC.focus(session, pane, timeout=10)[0]
+
+
+def focus_agent(backend, name):
+    """Show the agent called name in the given backend -> bool."""
+    if backend is scan.HC:
+        return focus_hc(name=name)
+    return scan.herdr(["agent", "focus", name], timeout=10)[0] == 0
+
+
+def open_prompter(model):
+    """The prompter when there is one (that is where the user types), else the
+    orchestrator itself. The prompter is looked up only in the dashboard's own
+    backend; the orchestrator wherever its address points."""
+    own = scan.HC if scan.OCTOPILOT_BACKEND == "hc" else scan.HERDR
+    if focus_agent(own, PROMPTER_AGENT):
+        return Result(True, "")
+    _, hdr = model.build()
+    backend, target = scan.split_address(hdr["orch"][0])
+    if backend is scan.HC:
+        ok = focus_hc(pane=target)
+    else:
+        ok = scan.herdr(["agent", "focus", target], timeout=10)[0] == 0
+    return Result(ok, "" if ok else f"no agent named {target}")
+
+
+def focus_row(model, e):
+    """Bring the row's agent forward in its own backend."""
+    with model.lock:
+        live = dict(model.live)
+    if model.backend.focus(e["session"], live):
+        return Result(True, "")
+    return Result(False, f"could not focus workspace {e['session']}")
+
+
+def peek_row(model, e):
+    """The row's agent in a popup over the dashboard, without leaving it.
+    `ctrl+b q` detaches herdr's attach client, which closes the popup."""
+    if scan.backend_for(e["session"]) is scan.HC:
+        # Only a live terminal can be peeked: a stored agent name cannot.
+        if not e["pane"]:
+            return Result(False, "no live agent for this row")
+        # herdr-app's peek is its popup: the terminal over this tab.
+        code, _, raw = scan.app_do("terminal.peek",
+                                   ["--terminal", e["pane"]], timeout=10)
+        if code != 0:
+            return Result(False, f"peek failed: {raw[:100]}")
+        return Result(True, "")
+    target = e["pane"] or (tracked_item(model, e["key"]) or {}).get("agent")
+    if not target:
+        return Result(False, "no live agent for this row")
+    opened, err = popup("agent", {"AP_AGENT": target})
+    if opened:
+        return Result(True, "ctrl+b q closes the popup")
+    return Result(False, err or "peek needs herdr")
+
+
+def shell_row(model, e, suspend=None):
+    """A shell in the row's worktree: a herdr-app tab in its space, or the
+    herdr popup, or else `suspend` runs one in the dashboard's own terminal."""
+    path = e["path"]
+    if scan.backend_for(e["session"]) is scan.HC:
+        code, _, raw = scan.app_do("tab.new", ["--space", e["session"],
+                                               "--folder", path], timeout=10)
+        if code != 0:
+            return Result(False, f"new tab failed: {raw[:100]}")
+        return Result(True, "")
+    opened, err = popup("shell", {}, cwd=path)
+    if opened:
+        return Result(True, "")
+    if suspend is None:
+        return Result(False, err or "shell needs herdr or a terminal")
+    suspend([os.environ.get("SHELL", "sh")])
+    return Result(True, err)
+
+
+def browse_row(e):
+    """The row's issue or PR on GitHub, in the browser (gh --web)."""
+    slug, num, kind = split_key(e["key"])
+    if kind not in ("pr", "issue"):
+        return Result(False, "nothing to open for an investigation")
+    args = ["gh", "pr" if kind == "pr" else "issue", "view", num, "-R",
+            slug, "--web"]
+    subprocess.Popen(args, stdout=subprocess.DEVNULL,
+                     stderr=subprocess.DEVNULL, start_new_session=True)
+    return Result(True, f"opening {short(e['key'])} in the browser")
+
+
+def row_refusal(model, aid, e):
+    """Why the TUI refuses aid on this row, as its message; None when it runs."""
+    kind = e["kind"]
+    it = tracked_item(model, e["key"])
+    if aid == "focus":
+        return None if e["session"] else "no session for this row"
+    if aid == "shell":
+        return (None if e["path"] and os.path.isdir(e["path"])
+                else "no worktree for this row")
+    if aid in ("go", "no"):
+        return None if kind == "PROPOSE" else \
+            "go/no only applies to Pick next rows"
+    if aid == "grant":
+        return None if kind == "CAPPED" else "R only applies to CAPPED rows"
+    if aid in ("rereview", "ack"):
+        return None if kind == "PUSHED" else \
+            "e/x only apply to PUSHED (stale) rows"
+    if aid == "detach":
+        return None if it is not None else \
+            "detach only applies to tracked items"
+    if aid in ("park", "unpark"):
+        if it is None:
+            return "d only applies to tracked items"
+        if kind in ("MERGED", "RESTACK", "CLOSED", "GONE", "BOOTING"):
+            return f"{kind} rows can't be parked now"
+        # Its pending feedback would revive the card on the next tick.
+        if kind == "FEEDBACK":
+            return "FEEDBACK rows can't be parked: the feedback is pending"
+        if (aid == "unpark") != bool(it.get("parked")):
+            return (f"{e['key']} is {'not in' if aid == 'unpark' else 'already in'}"
+                    " Done")
+        return None
+    if aid == "remove":
+        if it is None:
+            return "remove only applies to tracked items"
+        # MERGED needs the SIBLINGS fan-out, RESTACK a restack, not a removal.
+        if kind in ("MERGED", "RESTACK"):
+            return "the orchestrator handles MERGED and RESTACK rows"
+    return None
+
+
+def row_confirm(model, aid, e):
+    """The prompt shown before aid runs here (a second press confirms), or
+    None when it runs at once."""
+    key = e["key"]
+    it = tracked_item(model, key) or {}
+    if aid == "go":
+        if scan.wind_down() == "yes":
+            return f"🍳 kitchen closed -- press g again to start {key} anyway"
+        return f"press g again to send 'go {key}' to the orchestrator"
+    if aid == "no":
+        return f"press n again to send 'no {key}' to the orchestrator"
+    if aid == "grant":
+        return (f"press R again to grant {key} another "
+                f"{MAX_REVIEW_ROUNDS} review rounds")
+    if aid == "rereview":
+        return f"press e again to ask for a re-review of {key}"
+    if aid == "ack":
+        return f"press x again to ack the new commits on {key}"
+    if aid == "detach":
+        return f"press z again to detach {key} (worktree kept, untracked)"
+    if aid == "park":
+        return f"press d again to move {key} to Done (session kept, slot freed)"
+    if aid == "unpark":
+        return f"press d again to move {key} out of Done"
+    if aid == "remove":
+        busy = ("⚠ its agent is working -- " if e["kind"] in
+                ("WORKING", "BOOTING", "REVIEW", "FEEDBACK") else "")
+        # An item without a workspace is only untracked by cleanup.
+        gone = ("workspace and worktree deleted" if it.get("session")
+                else "worktree kept")
+        return f"{busy}press del again to remove {key} ({gone}, untracked)"
+    return None
+
+
+def perform(model, aid, e, confirmed=False, suspend=None):
+    """Run the row action aid on e; the caller has checked row_refusal().
+    `confirmed` lets go past wind-down through. `suspend` runs a shell in the
+    dashboard's own terminal when no popup can."""
+    key = e["key"]
+    if aid == "focus":
+        return focus_row(model, e)
+    if aid == "peek":
+        return peek_row(model, e)
+    if aid == "shell":
+        return shell_row(model, e, suspend)
+    if aid == "browser":
+        return browse_row(e)
+    if aid == "go":
+        return go_orch(key, confirmed)
+    if aid == "no":
+        return to_orch(f"no {key}")
+    if aid == "grant":
+        return scan_run(["reset-rounds", key])
+    if aid == "rereview":
+        return to_orch(f"re-review {key}")
+    if aid == "ack":
+        return scan_run(["ack-push", key])
+    if aid == "detach":
+        return scan_run(["detach", key])
+    if aid in ("park", "unpark"):
+        return scan_run([aid, key])
+    if aid == "remove":
+        return scan_run(["cleanup", key], timeout=400)
+    return Result(False, f"unknown action {aid}")
+
+
+def pick_groups(rows):
+    """[(repo slug, [(#, entry)])], repos in order of first appearance. The #
+    is the row's place in rows, which `go N` and the orchestrator both count
+    by, so rows are not re-sorted, even when a repo's rows are not together."""
+    groups = {}
+    for i, e in enumerate(rows):
+        groups.setdefault(split_key(e["key"])[0], []).append((i, e))
+    return list(groups.items())
+
+
+# -------------------------------------------------------------- view.json
+
+def event_detail(e):
+    return " ".join(str(e[f]) for f in ("state", "round", "phase", "branch",
+                                        "msg", "note")
+                    if e.get(f) not in (None, ""))
+
+
+def activity_rows(model):
+    """The last six events but ticks, newest first, as the activity panel
+    shows them."""
+    with model.lock:
+        evs = [e for e in model.events if e.get("kind") != "tick"][-6:]
+    return [{"at": e.get("at", 0), "kind": e.get("kind", ""),
+             "key": short(e.get("key", "")), "detail": event_detail(e)}
+            for e in reversed(evs)]
+
+
+def kitchen_line(ev):
+    """An event as takoyaki's feed.ts reacts to it: a mood and a log line."""
+    kind = ev.get("kind") or ""
+    k = short(ev.get("key") or "")
+
+    def text(name):
+        v = ev.get(name)
+        return v if isinstance(v, str) else ""
+
+    mood, line, good = "idle", "", False
+    if kind == "tick":
+        active = ev.get("active")
+        active = int(active) if isinstance(active, (int, float)) else 0
+        mood, line = "flip", f"tick · {active} cooking"
+    elif kind == "spawn":
+        mood, line, good = "pour", f"new order {k} {text('title')}".strip(), True
+    elif kind == "sent":
+        mood, line = "flip", f"→ {k} {text('text')}".strip()
+    elif kind == "report":
+        state, msg = text("state"), text("msg")
+        mood = {"ready": "happy", "capped": "happy",
+                "stalled": "worried"}.get(state, "sad")
+        line = f"{state} {k}" + (f": {msg}" if msg else "")
+        good = state == "ready"
+    elif kind == "request":
+        mood, line = "surprised", f"asked: {text('text')}"
+    elif kind in ("cleanup", "merged"):
+        mood, line, good = "serve", f"served {k} (merged)", True
+    elif kind == "pause":
+        mood, line = "sleep", "paused"
+    elif kind == "resume":
+        mood, line = "surprised", "resumed"
+    elif kind in ("round", "reviewed"):
+        mood, line = "flip", f"review round {k}"
+    elif kind == "capped":
+        mood, line = "worried", f"out of review rounds {k}"
+    elif kind == "feedback":
+        mood, line = "flip", f"feedback {k}"
+    elif kind == "heartbeat":
+        mood = "idle"
+    elif kind == "reboot":
+        mood, line = "surprised", f"reboot {k}"
+    elif kind in ("decline", "untrack", "detach"):
+        mood, line = "worried", f"{kind} {k}".strip()
+    elif kind == "track":
+        mood, line = "pour", f"track {k}"
+    else:
+        line = f"{kind} {k}".strip()
+    return {"at": ev.get("at", 0), "kind": kind, "mood": mood,
+            "text": line, "good": good}
+
+
+def kitchen_view(model):
+    with model.lock:
+        evs = model.events[-20:]
+    return [kitchen_line(ev) for ev in evs]
+
+
+def row_actions(model, e):
+    """The row's actions, the ones the TUI would run on its keys."""
+    out = []
+    for aid, key, label in ROW_ACTIONS:
+        if row_refusal(model, aid, e) is None:
+            out.append({"id": aid, "key": KEY_NAMES.get(key, key),
+                        "label": label,
+                        "confirm": row_confirm(model, aid, e)})
+    return out
+
+
+def global_actions(model):
+    verb = "resume" if (model.state or {}).get("paused") else "pause"
+    return [
+        {"id": "refresh", "key": "r", "label": "refresh", "confirm": None},
+        {"id": verb, "key": "P", "label": verb,
+         "confirm": f"press P again to {verb} octopilot"},
+        {"id": "investigate", "key": "i", "label": "investigate",
+         "confirm": None, "args": INVESTIGATE_ARGS},
+        {"id": "toggle_done", "key": "D", "label": "done", "confirm": None},
+        {"id": "prompter", "key": "a", "label": "prompter", "confirm": None},
+    ]
+
+
+def entry_view(model, e, section, index=None):
+    """A row as view.json has it: what the TUI draws, plus what a mod needs
+    to show it and act on it."""
+    it = tracked_item(model, e["key"])
+    layers = e.get("stack") or 0
+    backend = scan.backend_for(e["session"])
+    pr = e["pr"]
+    view = {
+        "key": e["key"],
+        "label": short(e["key"]) + (f" +{layers - 1}" if layers > 1 else ""),
+        "kind": e["kind"], "section": section, "title": e["title"],
+        "draft": bool(e["draft"]), "url": e["url"], "checks": e["checks"],
+        "agent": e["agent"], "rounds": e["rounds"],
+        "max_rounds": MAX_REVIEW_ROUNDS,
+        "quiet_s": None if e["quiet"] is None else int(e["quiet"]),
+        "stalled": e["stalled"], "needs": e["needs"], "why": e["why"],
+        "note": e["note"], "pick_kind": e["pick_kind"],
+        "session": e["session"],
+        "backend": backend.name if backend else None,
+        "pane": e["pane"], "path": e["path"], "branch": e["branch"],
+        "pr": int(pr) if str(pr or "").isdigit() else None,
+        "stack": layers, "open": e["open"],
+        "parked": bool((it or {}).get("parked")),
+        "tracked": it is not None, "actions": row_actions(model, e),
+    }
+    if index is not None:
+        view["index"] = index
+    return view
+
+
+def view_for(model):
+    """The document view.json holds: the board the TUI draws, read from the
+    same build()."""
+    data, hdr = model.build()
+    now = time.time()
+    gen = hdr["generated_at"]
+    if model.snap_running:
+        github = "refreshing"
+    elif not gen:
+        github = "none"
+    else:
+        age = now - gen
+        github = ("ok" if age < REFRESH_SECS * 1.5 else
+                  "stale" if age < REFRESH_SECS * 4 else "old")
+    done_open = [e for e in data["done"] if e["open"]]
+    last_tick = hdr["last_tick"]
+
+    def column(cid, title, section, rows, **extra):
+        return {"id": cid, "title": title,
+                "entries": [entry_view(model, e, section) for e in rows],
+                **extra}
+
+    return {
+        "v": 1,
+        "generated_at": now,
+        "header": {
+            "needs": len(data["needs"]),
+            "running": len(data["running"]) + len(data["orch"]),
+            "pick": len(data["pick"]),
+            "active": hdr["active"], "max_active": hdr["max_active"],
+            "untracked": hdr["untracked"],
+            "github": {"state": github,
+                       "age_s": None if not gen else int(now - gen),
+                       "error": model.snap_err},
+            "last_tick_s": int(now - last_tick) if last_tick else None,
+            "orch_label": hdr["orch"][1],
+            "paused": hdr["paused"],
+            "wind_down": {"state": scan.wind_down() or "off",
+                          "at": scan.WIND_DOWN_AT or None},
+        },
+        "columns": [
+            column("running", "🟡 Running", "running", data["running"]),
+            column("orch", "⏭ Next tick", "orch", data["orch"]),
+            column("needs", "🔴 Needs you", "needs", data["needs"]),
+            column("done", "💤 Done", "done", data["done"],
+                   hidden=len(data["done"]) - len(done_open)),
+        ],
+        "pick": [{"repo": slug,
+                  "entries": [entry_view(model, e, "pick", i + 1)
+                              for i, e in grp]}
+                 for slug, grp in pick_groups(data["pick"])],
+        "notes": [{"kind": e["kind"], "key": e["key"]} for e in data["notes"]],
+        "activity": activity_rows(model),
+        "kitchen": kitchen_view(model),
+        "global_actions": global_actions(model),
+    }
+
+
+def find_row(model, key):
+    data, _ = model.build()
+    return next((e for rows in data.values() for e in rows
+                 if e["key"] == key), None)
+
+
+def run_action(model, aid, key, args):
+    """--action: the TUI key's code path for one action, by the id the mods
+    read from view.json. The mod asks for the second press itself (the
+    action's `confirm`), so this runs the action at once; confirmed=1 is the
+    kitchen alert's second press."""
+    if aid == "refresh":
+        # The headless dashboard watches this file's mtime (see headless()).
+        os.makedirs(STATE_DIR, exist_ok=True)
+        with open(KICK_FILE, "a"):
+            pass
+        os.utime(KICK_FILE)
+        return Result(True, "refreshing from GitHub…")
+    if aid in ("pause", "resume"):
+        return set_paused(aid)
+    if aid == "investigate":
+        repo = args.get("repo", "").strip()
+        question = args.get("question", "").strip()
+        if not (repo and question):
+            return Result(False, "investigate needs a repo and a question")
+        return investigate_orch(repo, question, truthy(args.get("read_only")),
+                                truthy(args.get("confirmed")))
+    if aid == "prompter":
+        return open_prompter(model)
+    if aid == "toggle_done":
+        return Result(False, "toggle_done is the mod's own: the mod filters "
+                             "Done")
+    if aid not in ROW_IDS:
+        return Result(False, f"unknown action {aid}")
+    e = find_row(model, key) if key else None
+    if e is None:
+        return Result(False, f"no row {key}" if key
+                      else f"{aid} needs a row key")
+    refused = row_refusal(model, aid, e)
+    if refused:
+        return Result(False, refused)
+    return perform(model, aid, e, confirmed=truthy(args.get("confirmed")))
+
+
 # -------------------------------------------------------------------- view
 
 class Dashboard:
@@ -783,7 +1352,7 @@ class Dashboard:
                     "green")]
         # The selection state first: the footer reads it, and it needs no
         # heights, so it is settled before anything is measured.
-        groups = self.pick_groups(data["pick"])
+        groups = pick_groups(data["pick"])
         self.repos = [slug for slug, _ in groups]
         self.repo_of = {e["key"]: repo_key(slug)
                         for slug, grp in groups for _, e in grp}
@@ -968,15 +1537,6 @@ class Dashboard:
                      style="bold" if sel else "none", padding=(0, 1),
                      expand=True)
 
-    def pick_groups(self, rows):
-        """[(repo slug, [(#, entry)])], repos in order of first appearance. The #
-        is the row's place in rows, which `go N` and the orchestrator both count
-        by, so rows are not re-sorted, even when a repo's rows are not together."""
-        groups = {}
-        for i, e in enumerate(rows):
-            groups.setdefault(split_key(e["key"])[0], []).append((i, e))
-        return list(groups.items())
-
     def pick_tree(self, groups, limit):
         """Pick next as a tree by repo. A collapsed repo is its header alone,
         with a summary of what it holds."""
@@ -1062,25 +1622,20 @@ class Dashboard:
         return t
 
     def activity(self, now):
-        with self.m.lock:
-            evs = [e for e in self.m.events if e.get("kind") != "tick"][-6:]
         tb = Table(title="Activity", title_justify="left", title_style="bold dim",
                    box=None, expand=True, show_header=False, pad_edge=False)
         tb.add_column(no_wrap=True, style="dim")
         tb.add_column(no_wrap=True)
         tb.add_column(no_wrap=True, style="bold")
         tb.add_column(ratio=1, no_wrap=True, overflow="ellipsis")
-        if not evs:
+        rows = activity_rows(self.m)
+        if not rows:
             tb.add_row("", Text("no events yet", style="dim"), "", "")
-        for e in reversed(evs):
-            kind = e.get("kind", "")
+        for r in rows:
             style = {"report": "magenta", "spawn": "cyan", "cleanup": "green",
-                     "capped": "red"}.get(kind, "")
-            detail = " ".join(str(e[f]) for f in ("state", "round", "phase",
-                                                  "branch", "msg", "note")
-                              if e.get(f) not in (None, ""))
-            tb.add_row(time.strftime("%H:%M", time.localtime(e.get("at", 0))),
-                       Text(kind, style=style), short(e.get("key", "")), detail)
+                     "capped": "red"}.get(r["kind"], "")
+            tb.add_row(time.strftime("%H:%M", time.localtime(r["at"])),
+                       Text(r["kind"], style=style), r["key"], r["detail"])
         return tb
 
     def footer(self, data, now):
@@ -1211,29 +1766,27 @@ class Dashboard:
         self.confirm = (action, key, now + CONFIRM_SECS, prompt)
         return False
 
-    def to_orch(self, text):
-        """Queue a command in the orchestrator's inbox. Typing it into its
-        pane would also send whatever the user is half-way through there."""
-        code, out, err = sh([sys.executable, os.path.join(DIR, "scan.py"),
-                             "request", text])
-        self.say(f"queued '{text}' for the orchestrator" if code == 0
-                 else f"queue failed: {(err or out)[:100]}")
+    def report(self, res):
+        """Show an action's outcome in the footer, when it has one."""
+        if res.message:
+            self.say(res.message)
 
-    def popup(self, entrypoint, env, cwd=None):
-        """Open one of the plugin's popups; False when not inside herdr."""
-        if not IN_HERDR:
-            return False
-        args = ["herdr", "plugin", "pane", "open", "--plugin", PLUGIN_ID,
-                "--entrypoint", entrypoint, "--placement", "popup",
-                "--width", "92%", "--height", "88%"]
-        for k, v in env.items():
-            args += ["--env", f"{k}={v}"]
-        if cwd:
-            args += ["--cwd", cwd]
-        code, out, err = sh(args, timeout=20)
-        if code != 0:
-            self.say(f"herdr popup failed: {(err or out)[:100]}")
-        return code == 0
+    def row_action(self, aid, e, live, term):
+        """A row key: refused with its message, or run once a second press
+        confirms it. Past wind-down, go opens the kitchen alert instead."""
+        refused = row_refusal(self.m, aid, e)
+        if refused:
+            self.say(refused)
+            return
+        prompt = row_confirm(self.m, aid, e)
+        if prompt and not self.ask(ROW_KEYS[aid], e["key"], prompt):
+            return
+        res = perform(self.m, aid, e, suspend=lambda cmd: term.suspend(
+            live, cmd, cwd=e["path"]))
+        if res.kitchen:
+            self.alert = (e["key"], e["title"], time.time() + KITCHEN_SECS)
+        else:
+            self.report(res)
 
     def handle(self, key, live, term):
         if self.alert:
@@ -1243,7 +1796,7 @@ class Dashboard:
             # Only g gets through the alert; anything else (q too) cancels.
             k, self.alert = self.alert[0], None
             if key == "g":
-                self.to_orch(f"go {k} {CONFIRMED}")
+                self.report(go_orch(k, confirmed=True))
             else:
                 self.say("start cancelled")
             return True
@@ -1277,11 +1830,9 @@ class Dashboard:
             paused = bool((self.m.state or {}).get("paused"))
             verb = "resume" if paused else "pause"
             if self.ask("P", "", f"press P again to {verb} octopilot"):
-                code, out, err = sh([sys.executable,
-                                     os.path.join(DIR, "scan.py"), verb])
-                self.say(out or err)
+                self.report(set_paused(verb))
         elif key == "a":
-            self.open_orch(live, term)
+            self.report(open_prompter(self.m))
         elif key == "i":
             self.investigate(live, term)
         elif key in (" ", "\r", "\n") and repo:
@@ -1299,103 +1850,13 @@ class Dashboard:
                                 "d", "\x1b[3~"):
                 self.say("select a row, not a repo header")
             return True
-        elif key in ("\r", "\n"):
-            if e["session"]:
-                self.attach(e["session"], live, term)
-            else:
-                self.say("no session for this row")
-        elif key == "v":
-            self.agent_popup(e)
-        elif key == "t":
-            if e["path"] and os.path.isdir(e["path"]):
-                self.shell(e, live, term)
-            else:
-                self.say("no worktree for this row")
-        elif key == "o":
-            self.browse(e)
-        elif key == "g" and e["kind"] == "PROPOSE" and scan.wind_down() == "yes":
-            # Past WIND_DOWN_AT a fast gg only opens the alert; the third g,
-            # pressed with it on screen, confirms. The orchestrator then never
-            # has to ask in its own pane.
-            if self.ask("g", e["key"], f"🍳 kitchen closed -- press g again to "
-                        f"start {e['key']} anyway"):
-                self.alert = (e["key"], e["title"],
-                              time.time() + KITCHEN_SECS)
-        elif key in ("g", "n") and e["kind"] == "PROPOSE":
-            verb = "go" if key == "g" else "no"
-            if self.ask(key, e["key"], f"press {key} again to send "
-                        f"'{verb} {e['key']}' to the orchestrator"):
-                self.to_orch(f"{verb} {e['key']}")
-        elif key in ("g", "n"):
-            self.say("go/no only applies to Pick next rows")
-        elif key == "R":
-            if e["kind"] != "CAPPED":
-                self.say("R only applies to CAPPED rows")
-            elif self.ask("R", e["key"], f"press R again to grant {e['key']} "
-                          f"another {MAX_REVIEW_ROUNDS} review rounds"):
-                self.run_scan("reset-rounds", e["key"])
-        elif key in ("e", "x"):
-            if e["kind"] != "PUSHED":
-                self.say("e/x only apply to PUSHED (stale) rows")
-            elif key == "e" and self.ask("e", e["key"], "press e again to ask "
-                                         f"for a re-review of {e['key']}"):
-                self.to_orch(f"re-review {e['key']}")
-            elif key == "x" and self.ask("x", e["key"], "press x again to ack "
-                                         f"the new commits on {e['key']}"):
-                self.run_scan("ack-push", e["key"])
-        elif key == "z":
-            if e["key"] not in ((self.m.state or {}).get("items") or {}):
-                self.say("detach only applies to tracked items")
-            elif self.ask("z", e["key"], f"press z again to detach {e['key']} "
-                          "(worktree kept, untracked)"):
-                self.run_scan("detach", e["key"])
         elif key == "d":
-            it = ((self.m.state or {}).get("items") or {}).get(e["key"])
-            if it is None:
-                self.say("d only applies to tracked items")
-            elif e["kind"] in ("MERGED", "RESTACK", "CLOSED", "GONE", "BOOTING"):
-                self.say(f"{e['kind']} rows can't be parked now")
-            elif e["kind"] == "FEEDBACK":
-                # Its pending feedback would revive the card on the next tick.
-                self.say("FEEDBACK rows can't be parked: the feedback is pending")
-            elif it.get("parked"):
-                if self.ask("d", e["key"], f"press d again to move {e['key']} "
-                            "out of Done"):
-                    self.run_scan("unpark", e["key"])
-            elif self.ask("d", e["key"], f"press d again to move {e['key']} to "
-                          "Done (session kept, slot freed)"):
-                self.run_scan("park", e["key"])
-        elif key == "\x1b[3~":
-            if e["key"] not in ((self.m.state or {}).get("items") or {}):
-                self.say("remove only applies to tracked items")
-            elif e["kind"] in ("MERGED", "RESTACK"):
-                # MERGED needs the SIBLINGS fan-out, RESTACK a restack, not a removal.
-                self.say("the orchestrator handles MERGED and RESTACK rows")
-            else:
-                busy = ("⚠ its agent is working -- " if e["kind"] in
-                        ("WORKING", "BOOTING", "REVIEW", "FEEDBACK") else "")
-                # An item without a workspace is only untracked by cleanup.
-                gone = ("workspace and worktree deleted" if
-                        (self.m.state or {}).get("items", {}).get(e["key"], {})
-                        .get("session") else "worktree kept")
-                if self.ask("\x1b[3~", e["key"], f"{busy}press del again to "
-                            f"remove {e['key']} ({gone}, untracked)"):
-                    self.run_scan("cleanup", e["key"], timeout=400)
+            it = tracked_item(self.m, e["key"])
+            self.row_action("unpark" if it and it.get("parked") else "park",
+                            e, live, term)
+        elif key in KEY_ROW:
+            self.row_action(KEY_ROW[key], e, live, term)
         return True
-
-    def run_scan(self, *args, timeout=30):
-        """A scan.py command that needs no judgement, run right here."""
-        code, out, err = sh([sys.executable, os.path.join(DIR, "scan.py"),
-                             *args], timeout=timeout)
-        lines = (out or err).splitlines()
-        # cleanup ends with its SIBLINGS output; show a failed removal first,
-        # else its "cleaned up" line.
-        removed = (f"{scan.HERDR.remove_label} ", f"{scan.HC.remove_label} ")
-        failed = next((l for l in lines if not l.endswith(": ok")
-                       and l.startswith(removed)), None)
-        done = next((l for l in lines if l.startswith("cleaned up")), None)
-        self.say(failed or done or (lines[-1] if lines else
-                                    f"{args[0]} exit {code}"))
 
     def investigate(self, live, term):
         """/investigate [--read-only] <repo> <question>, typed here and
@@ -1407,104 +1868,16 @@ class Dashboard:
             return
         ro = term.read_line(live, "Read-only (a report, no commits or PR)? "
                             "[y/N] ")
-        flag = "--read-only " if ro.lower() in ("y", "yes") else ""
-        cmd = f"/investigate {flag}{repo} {question}"
-        if scan.wind_down() == "yes":
+        read_only = ro.lower() in ("y", "yes")
+        res = investigate_orch(repo, question, read_only)
+        if res.kitchen:
             ok = term.read_line(live, f"🌇 Past {scan.WIND_DOWN_AT} -- start it "
                                 "anyway? [y/N] ")
             if ok.lower() not in ("y", "yes"):
                 self.say("investigation not started (wind-down)")
                 return
-            cmd += f" {CONFIRMED}"
-        self.to_orch(cmd)
-
-    def attach(self, session, live, term):
-        """Switch to the item's herdr agent, in its own workspace."""
-        with self.m.lock:
-            agents = dict(self.m.live)
-        if not self.m.backend.focus(session, agents):
-            self.say(f"could not focus workspace {session}")
-
-    def agent_popup(self, e):
-        """The row's agent in a popup over the dashboard, without leaving it.
-        `ctrl+b q` detaches herdr's attach client, which closes the popup."""
-        if scan.backend_for(e["session"]) is scan.HC:
-            # Only a live terminal can be peeked: a stored agent name cannot.
-            if not e["pane"]:
-                self.say("no live agent for this row")
-                return
-            # herdr-app's peek is its popup: the terminal over this tab.
-            code, _, raw = scan.app_do("terminal.peek",
-                                       ["--terminal", e["pane"]], timeout=10)
-            if code != 0:
-                self.say(f"peek failed: {raw[:100]}")
-            return
-        target = e["pane"] or (((self.m.state or {}).get("items") or {})
-                               .get(e["key"], {}).get("agent"))
-        if not target:
-            self.say("no live agent for this row")
-        elif self.popup("agent", {"AP_AGENT": target}):
-            self.say("ctrl+b q closes the popup")
-
-    def focus_hc(self, pane=None, name=None):
-        """Show a herdr-app agent, by its terminal address or its
-        octopilot.agent label -> bool."""
-        if name:
-            found = scan.HC.find(name)
-            pane = found[len(scan.HC.prefix):] if found else None
-        if not pane:
-            return False
-        _, info, _ = scan.hc(["get", pane, "--json"], timeout=10)
-        session = ((info or {}).get("labels") or {}).get("herdr.space")
-        return bool(session) and scan.HC.focus(session, pane, timeout=10)[0]
-
-    def focus_agent(self, backend, name):
-        """Show the agent called name in the given backend -> bool."""
-        if backend is scan.HC:
-            return self.focus_hc(name=name)
-        return scan.herdr(["agent", "focus", name], timeout=10)[0] == 0
-
-    def open_orch(self, live, term):
-        """The prompter when there is one (that is where the user types),
-        else the orchestrator itself. The prompter is looked up only in the
-        dashboard's own backend; the orchestrator wherever its address points."""
-        own = scan.HC if scan.OCTOPILOT_BACKEND == "hc" else scan.HERDR
-        if self.focus_agent(own, PROMPTER_AGENT):
-            return
-        _, hdr = self.m.build()
-        backend, target = scan.split_address(hdr["orch"][0])
-        if backend is scan.HC:
-            ok = self.focus_hc(pane=target)
-        else:
-            ok = scan.herdr(["agent", "focus", target], timeout=10)[0] == 0
-        if not ok:
-            self.say(f"no agent named {target}")
-
-    def shell(self, e, live, term):
-        """A shell in the row's worktree: a herdr-app tab in its space, or the
-        herdr popup, or else the dashboard's own terminal."""
-        path = e["path"]
-        if scan.backend_for(e["session"]) is scan.HC:
-            code, _, raw = scan.app_do("tab.new", ["--space", e["session"],
-                                                   "--folder", path],
-                                       timeout=10)
-            if code != 0:
-                self.say(f"new tab failed: {raw[:100]}")
-            return
-        if self.popup("shell", {}, cwd=path):
-            return
-        term.suspend(live, [os.environ.get("SHELL", "sh")], cwd=path)
-
-    def browse(self, e):
-        slug, num, kind = split_key(e["key"])
-        if kind not in ("pr", "issue"):
-            self.say("nothing to open for an investigation")
-            return
-        args = ["gh", "pr" if kind == "pr" else "issue", "view", num, "-R",
-                slug, "--web"]
-        subprocess.Popen(args, stdout=subprocess.DEVNULL,
-                         stderr=subprocess.DEVNULL, start_new_session=True)
-        self.say(f"opening {short(e['key'])} in the browser")
+            res = investigate_orch(repo, question, read_only, confirmed=True)
+        self.report(res)
 
 
 # --------------------------------------------------------------- terminal
@@ -1574,16 +1947,114 @@ class Terminal:
             live.start(refresh=True)
 
 
+# ---------------------------------------------------------------- headless
+
+def log(msg):
+    print(f"{time.strftime('%H:%M:%S')} {msg}", file=sys.stderr, flush=True)
+
+
+def kick_mtime():
+    try:
+        return os.stat(KICK_FILE).st_mtime
+    except OSError:
+        return 0
+
+
+def write_json_atomic(path, doc):
+    tmp = f"{path}.tmp.{os.getpid()}"
+    with open(tmp, "w") as fh:
+        json.dump(doc, fh)
+    os.replace(tmp, path)
+
+
+def stable(node):
+    """The view without its clock-relative fields, for the change check."""
+    if isinstance(node, dict):
+        return {k: stable(v) for k, v in node.items()
+                if k not in VIEW_VOLATILE}
+    if isinstance(node, list):
+        return [stable(v) for v in node]
+    return node
+
+
+def headless(model):
+    """dashboard.sh --headless: the TUI's loops with no screen, and the view
+    written to view.json for the herdr-app mods."""
+    stop = threading.Event()
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        signal.signal(sig, lambda *_: stop.set())
+    model.poll_files()
+    model.start()
+    log(f"headless dashboard: writing {VIEW_FILE}")
+    kick_seen = kick_mtime()
+    last_sig, last_write, last_err = None, 0, None
+    while not stop.is_set():
+        try:
+            model.poll_files()
+            mtime = kick_mtime()
+            if mtime != kick_seen:
+                # A refresh action: skip the GitHub loop's debounce.
+                kick_seen = mtime
+                model.urgent.set()
+                model.kick.set()
+            view = view_for(model)
+            sig = json.dumps(stable(view), sort_keys=True)
+            if sig != last_sig or time.time() - last_write >= VIEW_EVERY:
+                write_json_atomic(VIEW_FILE, view)
+                last_sig, last_write = sig, time.time()
+        except Exception as e:
+            # Once per distinct error, not once a second while it lasts.
+            if repr(e) != last_err:
+                last_err = repr(e)
+                log(f"view failed: {last_err}")
+        # Half a second: a refresh action starts its scan within a second.
+        stop.wait(0.5)
+    log("headless dashboard: stopped")
+    return 0
+
+
 # ------------------------------------------------------------------- main
 
 def main():
-    args = sys.argv[1:]
+    ap = argparse.ArgumentParser(
+        description="Octopilot live dashboard (run it through dashboard.sh).")
+    ap.add_argument("--once", action="store_true",
+                    help="one frame on stdout, for checking the layout")
+    ap.add_argument("--refresh", action="store_true",
+                    help="with --once: refresh GitHub first")
+    ap.add_argument("--headless", action="store_true",
+                    help="run the loops and write view.json, no screen")
+    ap.add_argument("--action", metavar="ID",
+                    help="run one action and print its result as JSON")
+    ap.add_argument("key", nargs="?",
+                    help="with --action: the row it acts on")
+    ap.add_argument("--arg", action="append", default=[], metavar="NAME=VALUE",
+                    help="with --action: an argument")
+    opts = ap.parse_args()
     backend = Hosts()
     model = Model(backend)
 
-    if "--once" in args:
+    if opts.action:
+        args = {}
+        for pair in opts.arg:
+            name, _, value = pair.partition("=")
+            args[name] = value
+        model.poll_files()
+        model.live = backend.live()
+        model.sessions = backend.sessions()
+        res = run_action(model, opts.action, opts.key, args)
+        out = {"ok": res.ok, "message": res.message}
+        if res.kitchen:
+            out["kitchen"] = True
+        print(json.dumps(out))
+        return 0
+
+    if opts.headless:
+        return headless(model)
+
+    if opts.once:
         # One frame on stdout, for checking the layout without a TTY.
-        if "--refresh" in args:
+        if opts.refresh:
             model.refresh_snapshot(force=True)
         model.poll_files()
         model.live = backend.live()
