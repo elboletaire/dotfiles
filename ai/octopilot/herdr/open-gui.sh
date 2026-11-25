@@ -44,7 +44,8 @@ TEE_PID=""
 # The terminal's stdout and stderr, kept on fds 3 and 4 while the log tee runs.
 exec 3>&1 4>&2
 # Puts stdout and stderr back on the terminal, then ends the log tee once it has drained the
-# pipe. A bash fd still holding the pipe keeps the tee alive, so it is ended after 5 s.
+# pipe. The 5 s cap is for a daemon that inherited the pipe: on_exit closes the saved fds
+# that bash keeps for a failing function run with a redirection (fd 10 and up).
 flush_log() {
   exec 1>&3 2>&4
   if [ -n "$TEE_PID" ]; then
@@ -59,6 +60,7 @@ flush_log() {
 on_exit() {
   local status=$?
   trap - EXIT
+  exec 10>&- 11>&- 12>&- || true
   if [ "$status" -ne 0 ] && [ "$CLOSE_LAUNCHER" = 1 ]; then
     if [ -n "$LOG" ]; then echo "open-gui.sh: failed (status $status); the log is $LOG" >&2; fi
     flush_log
@@ -576,9 +578,12 @@ unpark_engine() {
       keep+=(--place right)
       "$APP" do agent.focus --terminal "$(find_orch)" >/dev/null 2>&1 || true
     fi
-    if ! out=$("$APP" do terminal.keep "${keep[@]}" 2>&1); then
-      echo "open-gui.sh: could not show the $label terminal ($t): $out" >&2
-      continue
+    # Kept only when still not listed: a lagging listing may show it by now (as show_code_tab).
+    if [ -z "$(locate "$t")" ]; then
+      if ! out=$("$APP" do terminal.keep "${keep[@]}" 2>&1); then
+        echo "open-gui.sh: could not show the $label terminal ($t): $out" >&2
+        continue
+      fi
     fi
     if ! located=$(await_shown "$t"); then continue; fi
     IFS=$'\t' read -r lspace ltab _ <<<"$located"
@@ -771,11 +776,11 @@ fi
 orch=$(jq -r '.terminal' <<<"$created")
 "$HC" label "$orch" "octopilot.agent=$ORCH_AGENT" "octopilot.dir=$DIR" \
   "octopilot.session=$session" >/dev/null
-name_space "$space"
 if ! located=$(await_shown "$orch"); then
   echo "open-gui.sh: the new $ORCH_AGENT terminal ($orch) is not in a Herdr space" >&2
   exit 1
 fi
+name_space "$space"
 root=$(cut -f3 <<<"$located")
 
 if [ "$TERMINALS" = 1 ]; then
