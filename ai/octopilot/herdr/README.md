@@ -164,8 +164,9 @@ prompter. Under the TUI backend, or with nothing running, they report
 
 **Launch and install.** `herdr-app/install.sh` links each
 `herdr-app/mods/<name>` into `~/.config/herdr-app/mods/` (a real file or folder
-there is refused, never replaced), removes our links whose mod folder is gone
-(dangling links into this checkout's mods; a foreign link is kept), and adds an
+there is refused, never replaced), removes our links whose mod is gone
+(links into this checkout's mods whose folder has no `mod.json`; a foreign link is kept;
+a folder holding only herdr's generated files is deleted too), and adds an
 `octopilot` entry to
 `programs.json` that runs `herdr/open-gui.sh --close-launcher`. The
 `octopilot-launcher` mod's palette entry, "Open Octopilot" (ctrl-shift-p), runs
