@@ -115,32 +115,54 @@ session_argv() {
   argv_json "${args[@]}"
 }
 
-# The octopilot dir an agent runs from. Labels are global, so one from before
-# octopilot.dir existed belongs to the live checkout.
-owner_dir() {
-  "$HC" get "$1" --json | jq -r --arg d "$LIVE_DIR" '.labels["octopilot.dir"] // $d'
+# True when the terminal is labelled as run from this checkout. An unlabelled
+# one is never ours: only labelled terminals are ever killed or reused.
+is_mine() {
+  local d
+  d=$("$HC" get "$1" --json | jq -r '.labels["octopilot.dir"] // empty')
+  [ -n "$d" ] && [ "$(realpath -m "$d")" = "$DIR" ]
 }
 
-# The address of the hc terminal labelled as an octopilot agent, if any. One of
-# this checkout that is not running its program (a shell herdr kept after claude
-# exited, a dead headless) is ended here, so its agent starts again.
-agent_term() {
+# The address of this checkout's terminal labelled as an octopilot agent, if
+# any. Pure lookup: it never kills (see reap_dead).
+find_agent() {
+  local t
+  for t in $("$HC" ls --json --label "octopilot.agent=$1" | jq -r '.terminals[].address'); do
+    if is_mine "$t"; then echo "$t"; return 0; fi
+  done
+}
+
+# The orchestrator: this checkout's, or on the live checkout one from before
+# octopilot.dir existed (unlabelled), which is only ever reused, never killed.
+find_orch() {
+  local t d
+  t=$(find_agent "$ORCH_AGENT")
+  if [ -n "$t" ] || [ "$DIR" != "$LIVE_DIR" ]; then echo "$t"; return 0; fi
+  for t in $("$HC" ls --json --label "octopilot.agent=$ORCH_AGENT" | jq -r '.terminals[].address'); do
+    d=$("$HC" get "$t" --json | jq -r '.labels["octopilot.dir"] // empty')
+    if [ -z "$d" ]; then echo "$t"; return 0; fi
+  done
+}
+
+# Ends this checkout's terminals of an agent that are not running its program (a
+# shell herdr kept after claude exited, a dead headless), so it starts again.
+reap_dead() {
   local t info fg created want=claude
-  t=$("$HC" ls --json --label "octopilot.agent=$1" | jq -r '.terminals[0].address // empty')
-  if [ -z "$t" ]; then return 0; fi
-  if [ "$(owner_dir "$t")" != "$DIR" ]; then echo "$t"; return 0; fi
   if [ "$1" = "$HEADLESS_AGENT" ]; then want=uv; fi
-  info=$("$HC" get "$t" --json)
-  fg=$(jq -r '.foreground.name // empty' <<<"$info")
-  if [ "$fg" = "$want" ]; then echo "$t"; return 0; fi
-  # Still starting: its shell has not exec'd the program yet (created_ms, epoch ms).
-  created=$(jq -r '.created_ms // 0' <<<"$info")
-  case "$fg" in
-    zsh|bash|sh|fish)
-      if [ $(( $(date +%s%3N) - created )) -lt 30000 ]; then echo "$t"; return 0; fi ;;
-  esac
-  "$HC" kill "$t" >/dev/null || true
-  "$HC" rm "$t" >/dev/null || true
+  for t in $("$HC" ls --json --label "octopilot.agent=$1" | jq -r '.terminals[].address'); do
+    is_mine "$t" || continue
+    info=$("$HC" get "$t" --json)
+    fg=$(jq -r '.foreground.name // empty' <<<"$info")
+    if [ "$fg" = "$want" ]; then continue; fi
+    # Still starting: its shell has not exec'd the program yet (created_ms, epoch ms).
+    created=$(jq -r '.created_ms // 0' <<<"$info")
+    case "$fg" in
+      zsh|bash|sh|fish)
+        if [ $(( $(date +%s%3N) - created )) -lt 30000 ]; then continue; fi ;;
+    esac
+    "$HC" kill "$t" >/dev/null || true
+    "$HC" rm "$t" >/dev/null || true
+  done
 }
 
 # "space tab pane" of a terminal as herdr-app shows it, if it shows it.
@@ -202,8 +224,8 @@ add_headless() {
 
 # The engine tab's helpers beside the orchestrator (space, pane), those that are missing.
 add_engine_agents() {
-  if [ -z "$(agent_term "$HEADLESS_AGENT")" ]; then add_headless "$1" "$2"; fi
-  if [ -z "$(agent_term "$PROMPTER_AGENT")" ]; then add_prompter "$1" "$2" right; fi
+  if [ -z "$(find_agent "$HEADLESS_AGENT")" ]; then add_headless "$1" "$2"; fi
+  if [ -z "$(find_agent "$PROMPTER_AGENT")" ]; then add_prompter "$1" "$2" right; fi
 }
 
 # The OCTOPILOT tab, unless the space has one: the dashboard mod, and the chat
@@ -226,7 +248,7 @@ add_main_tab() {
 # already (another checkout's is left alone).
 add_code_tab() {
   local created
-  if [ -n "$(agent_term "$CODE_AGENT")" ]; then return 0; fi
+  if [ -n "$(find_agent "$CODE_AGENT")" ]; then return 0; fi
   created=$(app do tab.new --space "$1" --name "$CODE_TAB" --folder "$CODE_CWD" \
     --argv "$(session_argv "" "")" --focus false)
   name_agent "$(jq -r '.terminal' <<<"$created")" "$CODE_AGENT"
@@ -276,7 +298,7 @@ space_of() {
 parked_engine() {
   local label t
   for label in "$ORCH_AGENT" "$PROMPTER_AGENT" "$HEADLESS_AGENT"; do
-    t=$(agent_term "$label")
+    t=$(find_agent "$label")
     if [ -n "$t" ] && [ -z "$(locate "$t")" ]; then echo "$label $t"; fi
   done
 }
@@ -288,7 +310,7 @@ park_engine() {
   local space=$1 label t
   if [ "$SHOW_ENGINE" = 1 ]; then return 0; fi
   for label in "$ORCH_AGENT" "$PROMPTER_AGENT" "$HEADLESS_AGENT"; do
-    t=$(agent_term "$label")
+    t=$(find_agent "$label")
     if [ -z "$t" ] || [ -z "$(locate "$t")" ]; then continue; fi
     if [ "$label" = "$ORCH_AGENT" ]; then "$HC" label "$t" "octopilot.space=$space" >/dev/null; fi
     app do terminal.park --terminal "$t" >/dev/null
@@ -301,7 +323,7 @@ stop_engine() {
   local label t
   for label in "$ORCH_AGENT" "$PROMPTER_AGENT" "$HEADLESS_AGENT" "$CODE_AGENT"; do
     for t in $("$HC" ls --json --label "octopilot.agent=$label" | jq -r '.terminals[].address'); do
-      if [ "$(owner_dir "$t")" = "$DIR" ]; then
+      if is_mine "$t"; then
         "$HC" kill "$t" >/dev/null || true
         "$HC" rm "$t" >/dev/null || true
       fi
@@ -309,18 +331,17 @@ stop_engine() {
   done
 }
 
-# The space a new orchestrator starts in: the one named $LABEL with an OCTOPILOT
-# tab, else the space of this checkout's code agent (after a restart, the
-# parked engine is gone but the spaces are back). Empty: a new space.
+# The space a new orchestrator starts in: the one of a terminal labelled with
+# this checkout's dir (after a restart the parked engine is gone but the spaces
+# are back), never a match by name. Empty: a new space.
 existing_space() {
-  local s t
-  s=$("$APP" ls | jq -r --arg n "$LABEL" --arg t "$MAIN_TAB" \
-    '.spaces[] | select(.name == $n and any(.tabs[]; .name == $t)) | .id' | head -n1)
-  if [ -z "$s" ]; then
-    t=$(agent_term "$CODE_AGENT")
-    if [ -n "$t" ] && [ "$(owner_dir "$t")" = "$DIR" ]; then s=$(space_of "$t"); fi
-  fi
-  if [ -n "$s" ] && space_exists "$s"; then echo "$s"; fi
+  local label t s
+  for label in "$CODE_AGENT" "$ORCH_AGENT" "$PROMPTER_AGENT" "$HEADLESS_AGENT"; do
+    t=$(find_agent "$label")
+    if [ -z "$t" ]; then continue; fi
+    s=$(space_of "$t")
+    if [ -n "$s" ] && space_exists "$s"; then echo "$s"; return 0; fi
+  done
 }
 
 # Runs at the end of every path that did its work: the engine parked (the GUI
@@ -346,13 +367,19 @@ focus_main() {
   app do tab.select --id "$(tab_named "$1" "$MAIN_TAB")" >/dev/null
 }
 
-orch=$(agent_term "$ORCH_AGENT")
-if [ -n "$orch" ]; then
-  if [ "$(owner_dir "$orch")" != "$DIR" ]; then
-    echo "open-gui.sh: the $ORCH_AGENT agent ($orch) runs from another octopilot" \
+# The space is found before the reap, which may end the terminals that prove it.
+known_space=$(existing_space)
+for a in "$ORCH_AGENT" "$PROMPTER_AGENT" "$HEADLESS_AGENT" "$CODE_AGENT"; do reap_dead "$a"; done
+orch=$(find_orch)
+if [ -z "$orch" ]; then
+  other=$("$HC" ls --json --label "octopilot.agent=$ORCH_AGENT" | jq -r '.terminals[0].address // empty')
+  if [ -n "$other" ]; then
+    echo "open-gui.sh: the $ORCH_AGENT agent ($other) runs from another octopilot" \
       "(not $DIR). Close it, or run this from its own checkout." >&2
     exit 1
   fi
+fi
+if [ -n "$orch" ]; then
   located=$(locate "$orch")
   if [ -n "$located" ]; then
     IFS=$'\t' read -r space tab pane <<<"$located"
@@ -372,6 +399,7 @@ if [ -n "$orch" ]; then
         "octopilot and building it again" >&2
       stop_engine
       orch=""
+      known_space=""
     fi
   fi
 fi
@@ -393,7 +421,7 @@ if [ -n "$orch" ]; then
       exit 1
     fi
     app do tab.rename --id "$tab" --name "$MAIN_TAB" >/dev/null
-    if [ -z "$(agent_term "$PROMPTER_AGENT")" ]; then add_prompter "$space" "$pane" down; fi
+    if [ -z "$(find_agent "$PROMPTER_AGENT")" ]; then add_prompter "$space" "$pane" down; fi
     add_code_tab "$space"
     app do agent.focus --terminal "$orch" >/dev/null
   else
@@ -418,7 +446,7 @@ fi
 session=$(new_session)
 tab_name="$ENGINE_TAB"
 if [ "$TERMINALS" = 1 ]; then tab_name="$MAIN_TAB"; fi
-space=$(existing_space)
+space="$known_space"
 if [ -n "$space" ]; then
   if [ "$TERMINALS" = 1 ] && [ -n "$(tab_named "$space" "$MAIN_TAB")" ]; then
     echo "open-gui.sh: the space already has an $MAIN_TAB tab (the GUI layout);" \
