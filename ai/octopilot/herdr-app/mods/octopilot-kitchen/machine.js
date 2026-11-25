@@ -2,10 +2,9 @@
 // name. A remote space's folders and terminals are that machine's, so its commands run there.
 // Each mod has a copy of this file (a mod folder stands alone); keep them identical.
 
-// The machine of the mod's space, from the tab of the mod's pane (paneOf). A copy that should
-// have a pane but finds none gets undefined: not known yet. Only a floating copy (no pane at
-// all) falls back to the shown tab. Remote tab ids may carry the machine's prefix.
-// -> the machine (null here), or undefined.
+// The machine of the mod's space, from the tab of its pane (paneOf), or for a floating copy with
+// no pane of its mod, the shown tab. undefined while unknown; a remote tab id may carry the
+// machine's prefix. -> the machine (null here), or undefined.
 export function resolveMachine(panes, spaces, { mod, name = null, floating = false }) {
   let id;
   const mine = panes.filter((p) => p.mod === mod);

@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Installs Octopilot's herdr-app parts: each mod folder in herdr-app/mods is
-# symlinked into the app's mods (edits here take effect at once; links of mods dropped
-# since are removed), and programs.json gets an Octopilot entry (what the menus start). The kitchen is a pane of the
-# OCTOPILOT tab, built by herdr/open-gui.sh, so no layout is written: a
-# layouts/octopilot.json of ours from an earlier version is removed. The launcher
-# mod's palette entry runs its own hard-coded path, not this entry.
+# symlinked into the app's mods (edits here take effect at once), and links of ours
+# to mods dropped since are removed. programs.json gets an Octopilot entry (what the
+# menus start). The kitchen is a pane of the OCTOPILOT tab, built by
+# herdr/open-gui.sh, so no layout is written: a layouts/octopilot.json of ours from
+# an earlier version is removed. The launcher mod's palette entry runs its own
+# hard-coded path, not this entry.
 #
 #   install.sh [--dir <octopilot dir>] [--key] [--dry-run] [--uninstall]
 #

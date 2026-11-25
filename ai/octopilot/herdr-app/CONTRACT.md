@@ -17,17 +17,18 @@ actions. `$DIR` is the octopilot code dir (`props().dir`, else
 | `octopilot-kitchen` mod | pane above the `octopilot-chat` mod, in the Octopilot tab, 300 px tall (split down from the chat, then swapped above it by open-gui.sh) | the takoyaki kitchen chef: reads view.json `pan` and `kitchen`, and `scan.sh speech` for the orchestrator's last message. Props: `dir`, `state_dir`, `pane_name`. Its pane is named (role and checkout hash) by open-gui.sh with `pane.rename`, and the mod finds its pane by `pane_name` (its machine, see Remote spaces) |
 | `herdr/open-gui.sh` | launcher | builds the space, starts terminals with `--session-id` (through the user's shell, so the gateway env reaches claude), parks the engine terminals (`--show-engine` keeps them shown), gives the code agent its own tab (its claude, never parked), opens the mods: the OCTOPILOT tab is the kitchen over the chat on the left, the dashboard on the right |
 | `octopilot-launcher` mod | palette entry "Open Octopilot" (no view) | runs `herdr/open-gui.sh --close-launcher` in a new tab |
-| `herdr-app/install.sh` | installer | symlinks mods into `~/.config/herdr-app/mods/`, adds the `octopilot` program to `programs.json`, removes a `layouts/octopilot.json` of ours (older versions wrote one; no layout is written now); `--key` also binds ctrl-alt-o |
+| `herdr-app/install.sh` | installer | symlinks mods into `~/.config/herdr-app/mods/`, removes links of ours that point into this checkout's mods but whose mod folder is gone (dangling; never a foreign link or a real folder), adds the `octopilot` program to `programs.json`, removes a `layouts/octopilot.json` of ours (older versions wrote one; no layout is written now); `--key` also binds ctrl-alt-o |
 
 ## Remote spaces
 
 The Octopilot space can sit on another machine (herdr-app shows it from this
 computer's core). Each mod finds its space's machine: its pane's tab, then the
-space, `spaces()[i].machine` (null: here). Its `exec` and `readTextFile` calls take `{ on: machine }`, so `$DIR`,
-`$STATE_DIR`, `scan.sh`, `dashboard.sh` and `view.json` are that machine's. A
-remote space uses its props only: the dashboard and the kitchen need `dir` and
-`state_dir`, the chat needs `dir` (a missing one shows "no
-octopilot dir for <machine>"). home() and shared paths are this computer's.
+space, `spaces()[i].machine` (null: here). Its `exec` and `readTextFile` calls
+take `{ on: machine }`, so `$DIR`, `$STATE_DIR`, `scan.sh`, `dashboard.sh` and
+`view.json` are that machine's. A remote space uses its props only: the
+dashboard and the kitchen need `dir` and `state_dir`, the chat needs `dir` (a
+missing one shows "no octopilot dir for <machine>"). home() and shared paths are
+this computer's.
 Until the machine is known (no pane or tab found, or a name not matched), a mod
 reads nothing and refuses its sends with a notice. `watchFolder` is local only:
 a remote copy polls `view.json` every 2 s. A bare terminal from `scan.sh` (`t7`)
