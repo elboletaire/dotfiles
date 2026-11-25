@@ -89,7 +89,6 @@ CONFIRM_SECS = 4       # window for the second press of g / n / P
 KITCHEN_SECS = 15      # the kitchen-closed alert cancels itself after this
 KITCHEN_GRACE = 0.5    # a g this soon after the alert opened is a typed-ahead
                        # ggg, not a confirmation of something seen
-PROMPTER_AGENT = "octopilot-prompter"   # herdr/open.sh's prompter pane
 # Appended to a request the user already confirmed past WIND_DOWN_AT.
 CONFIRMED = "(confirmed past wind-down)"
 
@@ -866,8 +865,7 @@ def focus_hc(pane=None, name=None):
     """Show a herdr-app agent, by its terminal address or its
     octopilot.agent label -> bool."""
     if name:
-        found = scan.HC.find(name)
-        pane = found[len(scan.HC.prefix):] if found else None
+        pane = scan.agent_address(name)
     if not pane:
         return False
     _, info, _ = scan.hc(["get", pane, "--json"], timeout=10)
@@ -887,7 +885,7 @@ def open_prompter(model):
     orchestrator itself. The prompter is looked up only in the dashboard's own
     backend; the orchestrator wherever its address points."""
     own = scan.HC if scan.OCTOPILOT_BACKEND == "hc" else scan.HERDR
-    if focus_agent(own, PROMPTER_AGENT):
+    if focus_agent(own, scan.PROMPTER_AGENT):
         return Result(True, "")
     _, hdr = model.build()
     backend, target = scan.split_address(hdr["orch"][0])
@@ -1284,13 +1282,17 @@ def entry_view(model, e, section, index=None):
     layers = e.get("stack") or 0
     backend = scan.backend_for(e["session"])
     pr = e["pr"]
+    # The TUI card shows 0/3 for an agent-driven row whose count is not set yet.
+    rounds = e["rounds"]
+    if rounds is None and e["driver"] == "agent":
+        rounds = 0
     view = {
         "key": e["key"],
         "label": short(e["key"]) + (f" +{layers - 1}" if layers > 1 else ""),
         "kind": e["kind"], "section": section, "title": e["title"],
         "draft": bool(e["draft"]), "url": e["url"], "checks": e["checks"],
-        "agent": e["agent"], "rounds": e["rounds"],
-        "max_rounds": MAX_REVIEW_ROUNDS,
+        "agent": e["agent"], "rounds": rounds,
+        "max_rounds": MAX_REVIEW_ROUNDS, "driver": e["driver"],
         "quiet_s": None if e["quiet"] is None else int(e["quiet"]),
         "stalled": e["stalled"], "needs": e["needs"], "why": e["why"],
         "note": e["note"], "pick_kind": e["pick_kind"],

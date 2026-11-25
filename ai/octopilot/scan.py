@@ -3197,7 +3197,8 @@ def dispatch(cmd, args, state):
           "reset-rounds|review-base|"
           "mark-merged|restack|"
           "render|spawn|"
-          "investigate|snapshot|report|inbox|request|send|send-code|reboot|read|focus|wind-down]", file=sys.stderr)
+          "investigate|snapshot|report|inbox|request|send|send-code|reboot|read|focus|wind-down|"
+          "speech|chat|chat-send|chat-keys]", file=sys.stderr)
     return 1
 
 

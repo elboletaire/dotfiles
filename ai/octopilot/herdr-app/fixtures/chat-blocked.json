@@ -1,31 +1,38 @@
 {
   "terminal": "t8",
+  "session": "3c9e5f21-7a4d-4b8e-9f12-6d0a1c2b3e47",
   "status": "blocked",
   "blocked": {
     "kind": "permission",
     "msg": "Claude wants to run `gh pr merge 402 --squash`\n\nAllow this command?"
   },
+  "reset": false,
   "messages": [
     {
       "id": "7f1c2a10-0201",
       "role": "user",
-      "text": "go vocdoni/dashboard#402",
+      "text": "go acme/widgets#402",
       "at": "2026-11-25T11:40:02Z",
       "tools": []
     },
     {
       "id": "7f1c2a10-0202",
       "role": "assistant",
-      "text": "Queued **go vocdoni/dashboard#402**. The orchestrator started the worker, and it reports the PR is ready.",
+      "text": "Queued **go acme/widgets#402**. The orchestrator started the worker, and it reports the PR is ready.",
       "at": "2026-11-25T11:40:09Z",
-      "tools": ["Bash: $A wind-down", "Bash: $A request \"go vocdoni/dashboard#402\""]
+      "tools": [
+        "Bash: $A wind-down",
+        "Bash: $A request \"go acme/widgets#402\""
+      ]
     },
     {
       "id": "7f1c2a10-0203",
       "role": "assistant",
       "text": "The prompter is waiting on a permission prompt in its own session, so I can't answer it from here. Use **Allow** below, or open the terminal to read the prompt.",
       "at": "2026-11-25T11:41:30Z",
-      "tools": ["Bash: $A status"]
+      "tools": [
+        "Bash: $A status"
+      ]
     }
   ]
 }
