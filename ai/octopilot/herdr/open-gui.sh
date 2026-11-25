@@ -7,12 +7,12 @@
 # Each claude is labelled octopilot.agent=<name> and octopilot.session=<uuid>
 # (its transcript, read by scan.py speech and chat). --terminals builds the
 # TUI-style layout instead. --show-engine keeps the engine tab visible (no park).
-# After building it switches to the `octopilot`
-# layout (the kitchen corner) when herdr-app/install.sh made one and the
-# shown layout is `main` (a layout you picked stays); --no-layout
-# skips that. --close-launcher closes this terminal's own pane at the end (the
-# tab goes with its last pane), for the key or the palette (programs.json).
-# From a worktree it needs OCTOPILOT_STATE_DIR (see herdr/README.md).
+# After building it switches to the `octopilot` layout (the kitchen corner) when
+# herdr-app/install.sh made one and the shown layout is `main` (a layout you
+# picked stays); --no-layout skips that. --close-launcher closes this terminal's
+# own pane at the end (the tab goes with its last pane), for the key or the
+# palette (programs.json). From a worktree it needs OCTOPILOT_STATE_DIR (see
+# herdr/README.md).
 set -euo pipefail
 APP="herdr-app"
 HC="hc"
@@ -87,10 +87,9 @@ argv_json() {
   jq -nc '$ARGS.positional' --args -- "$@"
 }
 
-# A JSON argv run in the user's interactive shell, so ~/.zshrc.local's gateway
-# env reaches claude. herdr-app wraps tab.new and space.new argv itself, but runs
-# pane.split argv as given. exec: the terminal ends with its program, so a dead
-# engine agent is not kept alive by a shell and found by its label.
+# A JSON argv run in the user's interactive shell (the gateway env of
+# ~/.zshrc.local). pane.split runs its argv as given; exec ends the terminal
+# with its program.
 shell_argv() {
   local sh="${SHELL:-}"
   if [ -z "$sh" ]; then sh=$(getent passwd "$(id -un)" | cut -d: -f7); fi
@@ -116,9 +115,25 @@ session_argv() {
   argv_json "${args[@]}"
 }
 
-# The address of the live hc terminal labelled as an octopilot agent, if any.
+# The octopilot dir an agent runs from. Labels are global, so one from before
+# octopilot.dir existed belongs to the live checkout.
+owner_dir() {
+  "$HC" get "$1" --json | jq -r --arg d "$LIVE_DIR" '.labels["octopilot.dir"] // $d'
+}
+
+# The address of the hc terminal labelled as an octopilot agent, if any. One of
+# this checkout that is not running its program (a shell herdr kept after claude
+# exited, a dead headless) is ended here, so its agent starts again.
 agent_term() {
-  "$HC" ls --json --label "octopilot.agent=$1" | jq -r '.terminals[0].address // empty'
+  local t fg want=claude
+  t=$("$HC" ls --json --label "octopilot.agent=$1" | jq -r '.terminals[0].address // empty')
+  if [ -z "$t" ]; then return 0; fi
+  if [ "$(owner_dir "$t")" != "$DIR" ]; then echo "$t"; return 0; fi
+  if [ "$1" = "$HEADLESS_AGENT" ]; then want=uv; fi
+  fg=$("$HC" get "$t" --json | jq -r '.foreground.name // empty')
+  if [ "$fg" = "$want" ]; then echo "$t"; return 0; fi
+  "$HC" kill "$t" >/dev/null || true
+  "$HC" rm "$t" >/dev/null || true
 }
 
 # "space tab pane" of a terminal as herdr-app shows it, if it shows it.
@@ -133,49 +148,49 @@ tab_named() {
     '.spaces[] | select(.id == $s) | .tabs[] | select(.name == $n) | .id' | head -n1
 }
 
-# Labels a terminal as an agent: its name, and for a claude its session id.
+# True when herdr-app shows a space with this id.
+space_exists() {
+  "$APP" ls | jq -e --arg s "$1" '.spaces[] | select(.id == $s)' >/dev/null
+}
+
+# Labels a terminal as an agent of this checkout: its name, its dir, and for a
+# claude its session id.
 name_agent() {
-  local labels=("octopilot.agent=$2")
+  local labels=("octopilot.agent=$2" "octopilot.dir=$DIR")
   if [ -n "${3:-}" ]; then labels+=("octopilot.session=$3"); fi
   "$HC" label "$1" "${labels[@]}" >/dev/null
 }
 
-# The octopilot dir an orchestrator runs from. Labels are global, so one from
-# before octopilot.dir existed belongs to the live checkout.
-owner_dir() {
-  "$HC" get "$1" --json | jq -r --arg d "$LIVE_DIR" '.labels["octopilot.dir"] // $d'
-}
-
-# Starts a terminal with argv (JSON, unwrapped) beside the orchestrator's pane
-# (direction: right or down) and names its pane. While the orchestrator is parked
-# (pane empty) it gets a tab of its own in the space, which park_engine parks.
-# Prints herdr-app's answer: its terminal and pane.
+# Starts a terminal with argv (JSON, unwrapped) beside the orchestrator's pane,
+# or in a tab of the space while it is parked (pane empty). Prints its address.
 start_engine_term() {
-  local space=$1 pane=$2 direction=$3 argv=$4 name=$5 created
+  local space=$1 pane=$2 direction=$3 argv=$4 name=$5 created term p
   if [ -n "$pane" ]; then
     created=$(app do pane.split --direction "$direction" --pane "$pane" \
       --argv "$(shell_argv "$argv")")
   else
     created=$(app do tab.new --space "$space" --argv "$argv" --focus false)
   fi
-  app do pane.rename --pane "$(jq -r '.pane' <<<"$created")" --name "$name" >/dev/null
-  printf '%s\n' "$created"
+  term=$(jq -r '.terminal' <<<"$created")
+  p=$(locate "$term" | cut -f3)
+  if [ -n "$p" ]; then app do pane.rename --pane "$p" --name "$name" >/dev/null; fi
+  echo "$term"
 }
 
 # Starts the prompter, labelled with its claude's session.
 add_prompter() {
-  local session created
+  local session term
   session=$(new_session)
-  created=$(start_engine_term "$1" "$2" "$3" "$(session_argv "$session" "/octopilot:prompter")" prompter)
-  name_agent "$(jq -r '.terminal' <<<"$created")" "$PROMPTER_AGENT" "$session"
+  term=$(start_engine_term "$1" "$2" "$3" "$(session_argv "$session" "/octopilot:prompter")" prompter)
+  name_agent "$term" "$PROMPTER_AGENT" "$session"
 }
 
 # Starts the headless dashboard: the loops that feed view.json, which the mods show.
 add_headless() {
-  local created
-  created=$(start_engine_term "$1" "$2" down \
+  local term
+  term=$(start_engine_term "$1" "$2" down \
     "$(argv_json env "${envs[@]}" bash "$DIR/dashboard.sh" --headless)" headless)
-  name_agent "$(jq -r '.terminal' <<<"$created")" "$HEADLESS_AGENT"
+  name_agent "$term" "$HEADLESS_AGENT"
 }
 
 # The engine tab's helpers beside the orchestrator (space, pane), those that are missing.
@@ -200,10 +215,11 @@ add_main_tab() {
     --mod octopilot-chat --props "$MOD_PROPS" >/dev/null
 }
 
-# The code-changes tab, unless the space has one; a claude starts in it.
+# The code-changes tab with its claude, unless this checkout's code agent runs
+# already (another checkout's is left alone).
 add_code_tab() {
   local created
-  if [ -n "$(tab_named "$1" "$CODE_TAB")" ]; then return 0; fi
+  if [ -n "$(agent_term "$CODE_AGENT")" ]; then return 0; fi
   created=$(app do tab.new --space "$1" --name "$CODE_TAB" --folder "$CODE_CWD" \
     --argv "$(session_argv "" "")" --focus false)
   name_agent "$(jq -r '.terminal' <<<"$created")" "$CODE_AGENT"
@@ -249,6 +265,15 @@ space_of() {
   "$HC" get "$1" --json | jq -r '.labels["herdr.space"] // .labels["octopilot.space"] // empty'
 }
 
+# This checkout's engine terminals that have no pane, as "label address" lines.
+parked_engine() {
+  local label t
+  for label in "$ORCH_AGENT" "$PROMPTER_AGENT" "$HEADLESS_AGENT"; do
+    t=$(agent_term "$label")
+    if [ -n "$t" ] && [ -z "$(locate "$t")" ]; then echo "$label $t"; fi
+  done
+}
+
 # Parks the engine's terminals (--show-engine keeps them shown): their panes go,
 # their processes keep running, and the engine tab empties and goes away. The
 # orchestrator also keeps its space in a label, for space_of.
@@ -261,6 +286,34 @@ park_engine() {
     if [ "$label" = "$ORCH_AGENT" ]; then "$HC" label "$t" "octopilot.space=$space" >/dev/null; fi
     app do terminal.park --terminal "$t" >/dev/null
   done
+}
+
+# Ends this checkout's engine and code agents, by label: their space is gone, so
+# octopilot is stopped and built again.
+stop_engine() {
+  local label t
+  for label in "$ORCH_AGENT" "$PROMPTER_AGENT" "$HEADLESS_AGENT" "$CODE_AGENT"; do
+    for t in $("$HC" ls --json --label "octopilot.agent=$label" | jq -r '.terminals[].address'); do
+      if [ "$(owner_dir "$t")" = "$DIR" ]; then
+        "$HC" kill "$t" >/dev/null || true
+        "$HC" rm "$t" >/dev/null || true
+      fi
+    done
+  done
+}
+
+# The space a new orchestrator starts in: the one named $LABEL with an OCTOPILOT
+# tab, else the space of this checkout's code agent (after a restart, the
+# parked engine is gone but the spaces are back). Empty: a new space.
+existing_space() {
+  local s t
+  s=$("$APP" ls | jq -r --arg n "$LABEL" --arg t "$MAIN_TAB" \
+    '.spaces[] | select(.name == $n and any(.tabs[]; .name == $t)) | .id' | head -n1)
+  if [ -z "$s" ]; then
+    t=$(agent_term "$CODE_AGENT")
+    if [ -n "$t" ] && [ "$(owner_dir "$t")" = "$DIR" ]; then s=$(space_of "$t"); fi
+  fi
+  if [ -n "$s" ] && space_exists "$s"; then echo "$s"; fi
 }
 
 # Runs at the end of every path that did its work: the engine parked (the GUI
@@ -297,19 +350,34 @@ if [ -n "$orch" ]; then
   if [ -n "$located" ]; then
     IFS=$'\t' read -r space tab pane <<<"$located"
   else
-    # Parked by an earlier run: no pane, but its space is still known.
+    # Parked by an earlier run: no pane. Its space must still be shown, else
+    # octopilot was closed with it and is stopped here.
     space=$(space_of "$orch")
-    tab=""
-    pane=""
     if [ -z "$space" ]; then
       echo "open-gui.sh: the $ORCH_AGENT agent ($orch) is not in a Herdr space" >&2
       exit 1
     fi
+    if space_exists "$space"; then
+      tab=""
+      pane=""
+    else
+      echo "open-gui.sh: the space of the $ORCH_AGENT agent is closed; stopping" \
+        "octopilot and building it again" >&2
+      stop_engine
+      orch=""
+    fi
   fi
-  if [ -z "$pane" ] && { [ "$TERMINALS" = 1 ] || [ "$SHOW_ENGINE" = 1 ]; }; then
-    echo "open-gui.sh: the $ORCH_AGENT agent ($orch) is parked (no pane);" \
-      "show it with: herdr-app do terminal.keep --terminal $orch" >&2
-    exit 1
+fi
+
+if [ -n "$orch" ]; then
+  if [ "$TERMINALS" = 1 ] || [ "$SHOW_ENGINE" = 1 ]; then
+    parked=$(parked_engine)
+    if [ -n "$parked" ]; then
+      echo "open-gui.sh: these engine terminals are parked (no pane); show each with" \
+        "herdr-app do terminal.keep --terminal <address>:" >&2
+      sed 's/^/  /' <<<"$parked" >&2
+      exit 1
+    fi
   fi
   if [ "$TERMINALS" = 1 ]; then
     if [ -n "$(tab_named "$space" "$MAIN_TAB")" ] && [ "$(tab_named "$space" "$MAIN_TAB")" != "$tab" ]; then
@@ -338,13 +406,25 @@ if [ -n "$orch" ]; then
   exit 0
 fi
 
-# The orchestrator in its own space, in its folder, started ticking straight away.
+# No orchestrator running: it starts in this checkout's space, or in a new one,
+# started ticking straight away.
 session=$(new_session)
 tab_name="$ENGINE_TAB"
 if [ "$TERMINALS" = 1 ]; then tab_name="$MAIN_TAB"; fi
-created=$(app do space.new --name "$LABEL" --folder "$OCTOPILOT_ORCH_CWD" \
-  --tab "$tab_name" --argv "$(session_argv "$session" "/octopilot:messenger")" --focus false)
-space=$(jq -r '.space' <<<"$created")
+space=$(existing_space)
+if [ -n "$space" ]; then
+  if [ "$TERMINALS" = 1 ] && [ -n "$(tab_named "$space" "$MAIN_TAB")" ]; then
+    echo "open-gui.sh: the space already has an $MAIN_TAB tab (the GUI layout);" \
+      "run without --terminals" >&2
+    exit 1
+  fi
+  created=$(app do tab.new --space "$space" --name "$tab_name" \
+    --argv "$(session_argv "$session" "/octopilot:messenger")" --focus false)
+else
+  created=$(app do space.new --name "$LABEL" --folder "$OCTOPILOT_ORCH_CWD" \
+    --tab "$tab_name" --argv "$(session_argv "$session" "/octopilot:messenger")" --focus false)
+  space=$(jq -r '.space' <<<"$created")
+fi
 orch=$(jq -r '.terminal' <<<"$created")
 "$HC" label "$orch" "octopilot.agent=$ORCH_AGENT" "octopilot.dir=$DIR" \
   "octopilot.session=$session" >/dev/null

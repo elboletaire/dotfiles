@@ -861,25 +861,6 @@ def popup(entrypoint, env, cwd=None):
     return True, ""
 
 
-def focus_hc(pane=None, name=None):
-    """Show a herdr-app agent, by its terminal address or its
-    octopilot.agent label -> bool."""
-    if name:
-        pane = scan.agent_address(name)
-    if not pane:
-        return False
-    _, info, _ = scan.hc(["get", pane, "--json"], timeout=10)
-    session = ((info or {}).get("labels") or {}).get("herdr.space")
-    return bool(session) and scan.HC.focus(session, pane, timeout=10)[0]
-
-
-def focus_agent(backend, name):
-    """Show the agent called name in the given backend -> bool."""
-    if backend is scan.HC:
-        return focus_hc(name=name)
-    return scan.herdr(["agent", "focus", name], timeout=10)[0] == 0
-
-
 def peek_hc(terminal):
     """Peek at an hc terminal over its tab (herdr-app's terminal.peek), which
     works on a parked one: agent.focus needs a pane -> bool."""
@@ -896,7 +877,7 @@ def open_prompter(model):
         prompter = scan.agent_address(scan.PROMPTER_AGENT)
         if prompter and peek_hc(prompter):
             return Result(True, "")
-    elif focus_agent(own, scan.PROMPTER_AGENT):
+    elif scan.herdr(["agent", "focus", scan.PROMPTER_AGENT], timeout=10)[0] == 0:
         return Result(True, "")
     _, hdr = model.build()
     backend, target = scan.split_address(hdr["orch"][0])

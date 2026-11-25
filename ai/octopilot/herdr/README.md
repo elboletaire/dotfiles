@@ -93,12 +93,21 @@ running and core keep is off, so the empty engine tab goes too. They are found
 by their `octopilot.agent` labels, not by panes, so a rerun finds them parked.
 A parked orchestrator keeps its space in an `octopilot.space` label (parking
 removes `herdr.space`). A parked terminal is shown with `terminal.peek` (the
-chef in the kitchen, the chat's Terminal button, the dashboard's `v`), which
-works on it; the dashboard's `a` uses `agent.focus`, which is not checked for a
-parked one. `--show-engine`
-keeps the engine tab visible (no park, for debugging); on a rerun it refuses
-with the `terminal.keep` command for a parked orchestrator, and `--terminals`
-does the same.
+chef in the kitchen, the chat's Terminal button, the dashboard's `v` and `a`),
+which works on it. `--show-engine` keeps the engine tab visible (no park, for
+debugging). On a rerun, `--terminals` and `--show-engine` refuse and list the
+parked engine terminals, each to show with `herdr-app do terminal.keep`.
+
+Rerunning finds what is there. A parked orchestrator whose space is closed means
+octopilot was closed with it: its engine and code agents of this checkout are
+ended, and it is built again. After a core restart the parked engine is gone,
+but the space and its code agent are back: the orchestrator starts in the space
+named `Octopilot` (or the code agent's), in a new tab that the run parks. An
+engine or code agent not running its claude (or the headless's uv) is ended
+and started again.
+
+In the `--terminals` layout, the dashboard's `a` peeks the prompter (or the
+orchestrator), as the GUI layout does.
 
 Every engine terminal starts through the user's interactive shell (`$SHELL -ic
 'exec "$@"'`), so the gateway env in `~/.zshrc.local` reaches claude. herdr-app
