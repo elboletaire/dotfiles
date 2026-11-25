@@ -17,6 +17,7 @@ trap 'rm -rf "$TESTDIR"' EXIT
 FAKE_HOME="$TESTDIR/home"
 mkdir -p "$FAKE_HOME/.apm"
 export HOME="$FAKE_HOME"
+unset OCTOPILOT_DIR
 
 DOTFILES="$TESTDIR/dotfiles"
 mkdir -p "$DOTFILES/ai"
@@ -85,6 +86,8 @@ sed "s|declare -r dotfiles=~/.dotfiles|declare -r dotfiles=$DOTFILES|" \
 
 source "$TESTDIR/install_patched.sh"
 REAL_OS=$OS
+# Test 24b reassigns MODULES, so keep the sourced default for Test 27c.
+DEFAULT_MODULE_ENTRY="${MODULES[0]}"
 
 # Writes the tracked manifest and lock that install_skills and skills_bump read.
 seed_ai() {
@@ -625,6 +628,44 @@ else
   fail "unreachable remote was not tolerated: rc=$rc $out"
 fi
 
+git -C "$MOD_DIR" remote set-head origin -d >/dev/null
+out=$(install_modules update 2>&1) && rc=0 || rc=$?
+if [ "$rc" -eq 0 ] && [ "$(git -C "$MOD_DIR" log -1 --format=%s)" = v3 ]; then
+  pass "update finds the default branch without origin/HEAD and fast-forwards"
+else
+  fail "update skipped a checkout without origin/HEAD: rc=$rc $out"
+fi
+
+publish v4
+git -C "$MOD_DIR" remote set-head origin -d >/dev/null
+git -C "$MOD_DIR" remote set-url origin "$MOD/gone.git"
+out=$(install_modules update 2>&1) && rc=0 || rc=$?
+git -C "$MOD_DIR" remote set-url origin "$MOD_REMOTE"
+if [ "$rc" -eq 0 ] && [[ "$out" == *"could not fast-forward"* ]] && [[ "$out" != *"default branch"* ]]; then
+  pass "without origin/HEAD and offline, falls back to the upstream and keeps the checkout"
+else
+  fail "upstream fallback did not pick main: rc=$rc $out"
+fi
+
+NOGIT_DIR="$MOD/nogit"
+mkdir -p "$NOGIT_DIR"
+out=$(install_module nogit "$MOD_REMOTE" "$NOGIT_DIR" update 2>&1) && rc=0 || rc=$?
+if [ "$rc" -eq 0 ] && [[ "$out" == *"not a git checkout"* ]]; then
+  pass "warns about a module dir that is not a git checkout and does not touch it"
+else
+  fail "non-git dir not flagged: rc=$rc $out"
+fi
+
+NOEXEC_DIR="$MOD/noexec"
+git init -q "$NOEXEC_DIR"
+printf '#!/bin/bash\necho ran\n' > "$NOEXEC_DIR/install.sh"
+out=$(install_module noexec "$MOD_REMOTE" "$NOEXEC_DIR" 2>&1) && rc=0 || rc=$?
+if [ "$rc" -eq 0 ] && [[ "$out" == *"not executable"* ]]; then
+  pass "warns about a module install.sh that is not executable, and skips it"
+else
+  fail "non-executable install.sh not flagged: rc=$rc $out"
+fi
+
 FAIL_DIR="$MOD/failing"
 mkdir -p "$FAIL_DIR"
 printf '#!/bin/bash\nexit 3\n' > "$FAIL_DIR/install.sh"
@@ -637,7 +678,7 @@ else
 fi
 
 PLAIN_DIR="$MOD/plain"
-mkdir -p "$PLAIN_DIR"
+git init -q "$PLAIN_DIR"
 out=$(install_module plain "$MOD_REMOTE" "$PLAIN_DIR" 2>&1) && rc=0 || rc=$?
 if [ "$rc" -eq 0 ] && [ -z "$out" ]; then
   pass "a module without install.sh is skipped quietly"
@@ -868,6 +909,43 @@ merge_claude_settings >/dev/null
 python3 -c 'import json,sys; assert "enabledPlugins" not in json.load(open(sys.argv[1]))' "$SETTINGS" \
   && pass "drops a parent object left empty by the retirement" \
   || fail "left an empty enabledPlugins object behind"
+rm -rf "$HOME/.claude" "$DOTFILES/ai/claude/settings.json"
+
+echo ""
+echo "=== Test 27d: OCTOPILOT_DIR elsewhere rewrites the Octopilot plugin entry only ==="
+cat > "$DOTFILES/ai/claude/settings.json" <<'JSON'
+{"env": {"CLAUDE_CODE_PLUGIN_DIRS": "~/src/octopilot/plugin:~/x/y"}}
+JSON
+rm -rf "$HOME/.claude"
+merge_claude_settings >/dev/null
+got=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["env"]["CLAUDE_CODE_PLUGIN_DIRS"])' "$HOME/.claude/settings.json")
+if [ "$got" = "~/src/octopilot/plugin:~/x/y" ] &&
+   [ "$DEFAULT_MODULE_ENTRY" = "octopilot|git@github.com:elboletaire/octopilot.git|$FAKE_HOME/src/octopilot" ]; then
+  pass "the default dir keeps ~/src/octopilot/plugin and the default MODULES entry"
+else
+  fail "default OCTOPILOT_DIR changed the settings: $got $DEFAULT_MODULE_ENTRY"
+fi
+
+octopilot_dir="$FAKE_HOME/work/octopilot"
+rm -rf "$HOME/.claude"
+merge_claude_settings >/dev/null
+got=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["env"]["CLAUDE_CODE_PLUGIN_DIRS"])' "$HOME/.claude/settings.json")
+if [ "$got" = "~/work/octopilot/plugin:~/x/y" ]; then
+  pass "a dir under HOME is written with ~ and only its entry changes"
+else
+  fail "home-relative OCTOPILOT_DIR not written: $got"
+fi
+
+octopilot_dir="/opt/octopilot"
+rm -rf "$HOME/.claude"
+merge_claude_settings >/dev/null
+got=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["env"]["CLAUDE_CODE_PLUGIN_DIRS"])' "$HOME/.claude/settings.json")
+if [ "$got" = "/opt/octopilot/plugin:~/x/y" ]; then
+  pass "a dir outside HOME is written as an absolute path"
+else
+  fail "absolute OCTOPILOT_DIR not written: $got"
+fi
+octopilot_dir="$HOME/src/octopilot"
 rm -rf "$HOME/.claude" "$DOTFILES/ai/claude/settings.json"
 
 echo ""

@@ -546,9 +546,11 @@ install_uv() {
 }
 
 # External modules: separate repos with their own install.sh. Each entry is
-# "name|git-url|dir"; Octopilot's dir is where its checkout lives.
+# "name|git-url|dir". OCTOPILOT_DIR must be exported in the shell that runs this
+# (e.g. from a local ~/.zshenv override) or the settings rewrite misses it.
+octopilot_dir=${OCTOPILOT_DIR:-$HOME/src/octopilot}
 MODULES=(
-  "octopilot|git@github.com:elboletaire/octopilot.git|${OCTOPILOT_DIR:-$HOME/src/octopilot}"
+  "octopilot|git@github.com:elboletaire/octopilot.git|$octopilot_dir"
 )
 
 install_modules() {
@@ -568,17 +570,26 @@ install_module() {
     [ "$mode" = relink ] && return 0
     echo "Cloning $name into $dir"
     mkdir -p "$(dirname "$dir")"
-    if ! git clone --quiet "$url" "$dir"; then
+    if ! _module_git clone --quiet "$url" "$dir"; then
       echo "WARNING: could not clone $name from $url" >&2
       return 0
     fi
+  elif [ ! -e "$dir/.git" ]; then
+    echo "WARNING: $dir is not a git checkout; $name is not updated" >&2
   elif [ "$mode" = update ]; then
     _pull_module "$name" "$dir"
   fi
   if [ -x "$dir/install.sh" ]; then
     "$dir/install.sh" || echo "WARNING: $name's install.sh failed (see above)" >&2
+  elif [ -e "$dir/install.sh" ]; then
+    echo "WARNING: $name's install.sh is not executable; not running it" >&2
   fi
   return 0
+}
+
+_module_git() {
+  # Never prompts: a clone or pull that needs a password or a host key fails at once.
+  env GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-ssh -o BatchMode=yes -o ConnectTimeout=10}" git "$@"
 }
 
 _pull_module() {
@@ -586,8 +597,7 @@ _pull_module() {
   # never touched. Offline or diverged just keeps the current checkout.
   local name=$1 dir=$2 branch default
   branch=$(git -C "$dir" symbolic-ref --short -q HEAD 2>/dev/null || true)
-  default=$(git -C "$dir" symbolic-ref --short -q refs/remotes/origin/HEAD 2>/dev/null || true)
-  default=${default#origin/}
+  default=$(_module_default_branch "$dir")
   if [ -z "$branch" ] || [ "$branch" != "$default" ]; then
     echo "$name: not on its default branch; not updating it"
     return 0
@@ -596,9 +606,26 @@ _pull_module() {
     echo "$name: uncommitted changes; not updating it"
     return 0
   fi
-  git -C "$dir" pull --ff-only --quiet ||
+  _module_git -C "$dir" pull --ff-only --quiet ||
     echo "$name: could not fast-forward (offline or diverged); keeping this checkout"
   return 0
+}
+
+_module_default_branch() {
+  # A checkout made with init and remote add has no origin/HEAD: ask the remote for
+  # it, else take the current branch's upstream when that is main or master.
+  local dir=$1 head upstream
+  head=$(git -C "$dir" symbolic-ref --short -q refs/remotes/origin/HEAD 2>/dev/null || true)
+  if [ -z "$head" ]; then
+    _module_git -C "$dir" remote set-head origin --auto >/dev/null 2>&1 || true
+    head=$(git -C "$dir" symbolic-ref --short -q refs/remotes/origin/HEAD 2>/dev/null || true)
+  fi
+  if [ -z "$head" ]; then
+    upstream=$(git -C "$dir" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)
+    case "$upstream" in origin/main|origin/master) head=$upstream ;; esac
+  fi
+  head=${head#origin/}
+  echo "$head"
 }
 
 link_herdr_plugin() {
@@ -689,12 +716,25 @@ merge_claude_settings() {
   local src="$dotfiles/ai/claude/settings.json" dest="$HOME/.claude/settings.json"
   [ -f "$src" ] || return 0
   mkdir -p "$HOME/.claude"
-  python3 - "$src" "$dest" <<'PY'
+  python3 - "$src" "$dest" "$octopilot_dir" <<'PY'
 import json, os, re, shutil, sys
 
-src, dest = sys.argv[1], os.path.realpath(sys.argv[2])
+src, dest, octopilot_dir = sys.argv[1], os.path.realpath(sys.argv[2]), sys.argv[3]
 with open(src) as fh:
     base = json.load(fh)
+
+# OCTOPILOT_DIR elsewhere: point its plugin entry there, written with ~ as the repo has it.
+home = os.path.expanduser("~")
+if os.path.normpath(octopilot_dir) != os.path.join(home, "src", "octopilot"):
+    plugin = os.path.join(octopilot_dir, "plugin")
+    if plugin.startswith(home + os.sep):
+        plugin = "~" + plugin[len(home):]
+    env = base.get("env", {})
+    if "CLAUDE_CODE_PLUGIN_DIRS" in env:
+        entries = env["CLAUDE_CODE_PLUGIN_DIRS"].split(":")
+        env["CLAUDE_CODE_PLUGIN_DIRS"] = ":".join(
+            plugin if e == "~/src/octopilot/plugin" else e for e in entries)
+        base["env"] = env
 try:
     with open(dest) as fh:
         cur = json.load(fh)

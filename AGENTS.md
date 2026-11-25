@@ -83,10 +83,10 @@ Nothing is copied: `scripts/install.sh` creates symlinks.
 |---|---|
 | `install` | Full setup of a new machine: system packages, nvm, Claude Code and Pi, APM, herdr with herdr-app and herdr-core, uv, submodules, symlinks, AI config, herdr links, external modules, login shell, vim plugins. Files it replaces go to `~/old_dotfiles`. |
 | `update` | Refreshes the same pieces without system packages or submodule ref bumps, and fast-forwards the external modules. Reinstalls herdr-app only when its version changed. |
-| `ai` | Refreshes only the AI stack: agents, herdr, rtk, skills, AI links, settings, herdr links. |
-| `ai-config` | Relinks prompts, instructions, agents and the locked skills. Installs no agents or tooling and makes no backups, except the legacy cleanup below. |
+| `ai` | Refreshes only the AI stack: agents, herdr, rtk, skills, AI links, settings, herdr links, and fast-forwards the external modules. |
+| `ai-config` | Relinks prompts, instructions, agents and the locked skills, and runs the external modules' `install.sh` when already cloned. Installs no agents or tooling, clones and pulls nothing, and makes no backups, except the legacy cleanup below. |
 | `skills-bump` | Moves every skill to the latest commit of its branch (`apm update -g`), copies `ai/apm.yml` and `ai/apm.lock.yaml` back and shows `git diff --stat -- ai/`. The only command that changes skill versions; `install`, `update`, `ai` and `ai-config` install the locked commits. |
-| `herdr` | Repairs the herdr setup: installs herdr if missing, its agent integrations, config and plugin links. Does not upgrade herdr or touch herdr-app (`install`, `update` and `ai` do). |
+| `herdr` | Repairs the herdr setup: installs herdr if missing, its agent integrations, config and plugin links, and clones missing external modules and runs their `install.sh`. Does not pull modules, upgrade herdr or touch herdr-app (`install`, `update` and `ai` do). |
 
 `install`, `update`, `ai` and `ai-config` all start with the legacy cleanup: agent-deck and aoe are uninstalled (Homebrew or pacman), their binaries, hooks in `~/.claude/settings.json` and skills are removed, and their state moves to `~/old_dotfiles/legacy-session-managers-<date>/`.
 
@@ -119,11 +119,25 @@ keep project detail there rather than in this file:
 Some tools live in their own repos. `MODULES` in `scripts/install.sh` lists them
 as `name|git-url|dir`, and `install_modules` handles each one:
 
-- **Clone**: when `dir` is missing, it is cloned from `git-url` (`install`, `herdr`).
-- **Update**: `update` fast-forwards a clean checkout on its default branch. A dirty
-  tree, another branch, or an offline or diverged remote is left alone with a note.
-- **Run**: its `install.sh`, when executable, runs last (`install`, `update`,
-  `herdr`, `ai`). `ai-config` runs it only when the module is already cloned.
+- **Clone**: when `dir` is missing, it is cloned from `git-url` (`install`,
+  `update`, `ai`, `herdr`).
+- **Update**: `update` and `ai` fast-forward a clean checkout on its default
+  branch (from `origin/HEAD`, or the upstream when that is main or master). A
+  dirty tree, another branch, or an offline or diverged remote is left alone with
+  a note. `install` and `herdr` do not pull.
+- **Run**: its `install.sh`, when executable, runs last. A missing module
+  checkout with no `.git` or a non-executable `install.sh` gets a warning.
+  `ai-config` runs it only when the module is already cloned, and never clones or
+  pulls.
+- **Non-interactive**: git runs with `GIT_TERMINAL_PROMPT=0` and an ssh with
+  `BatchMode=yes`, so a clone or pull never waits for a password.
+
+Octopilot's dir is `${OCTOPILOT_DIR:-~/src/octopilot}`. When it is not the
+default, `merge_claude_settings` rewrites its `CLAUDE_CODE_PLUGIN_DIRS` entry
+(`~/src/octopilot/plugin` in `ai/claude/settings.json`) to `<dir>/plugin`.
+`OCTOPILOT_DIR` must be exported in every shell that runs `install.sh`, for
+instance from a machine-local `~/.zshenv` override, or the settings keep the
+default path.
 
 A failure warns and the install carries on. Octopilot is the only entry; add
 arxiu or taller there when they move out.
