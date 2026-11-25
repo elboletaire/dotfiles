@@ -24,7 +24,7 @@ const PENDING_MS = 15000;
 const ANSWER_MS = 5000;
 const MAX_MESSAGES = 200;
 // How close to the end still counts as "at the bottom", in px.
-const BOTTOM_SLACK = 8;
+const BOTTOM_SLACK = 1;
 
 // scan.sh under the hc backend, with the dashboard's folder and state dir, set by env(1)
 // (exec() has no env option). The agent prop goes right after the verb, where scan.sh reads it.
@@ -48,9 +48,19 @@ function typedChar(e) {
 }
 
 // The only pane of a mod in the window, else null (several copies cannot be told apart).
-function soloPanes(mod) {
-  const mine = panes().filter((p) => p.mod === mod);
+function soloPane(all, mod) {
+  const mine = all.filter((p) => p.mod === mod);
   return mine.length === 1 ? mine[0] : null;
+}
+
+// The id of the shown tab, from spaces().
+function shownTab(all) {
+  return all.find((s) => s.active)?.tabs.find((t) => t.active)?.id ?? null;
+}
+
+// Whether a pane may take the keyboard: nothing has it, or no terminal and no other pane does.
+function keyboardFree(f, pane) {
+  return !f || (f.terminal == null && (f.pane == null || f.pane === pane));
 }
 
 // Sentence start: "the prompter" -> "The prompter".
@@ -100,6 +110,7 @@ export default class Chat extends View {
     this.expanded = new Set();
     this.unseen = 0;
     this.scrollEnd = true;
+    this.following = true;     // the reader is at the end: see log
     this.reading = false;
     this.last = 0;
     this.focusWanted = false;  // the composer should take the keyboard once the agent is online
@@ -133,19 +144,25 @@ export default class Chat extends View {
     else this.handle.focus();
   }
 
+  // This copy's pane: the one open-gui.sh named for it (props.pane_name), else the window's
+  // only chat pane. Null when neither can be told.
+  chatPane(all) {
+    const name = props()?.pane_name ?? props()?.agent ?? "octopilot-prompter";
+    return all.find((p) => p.mod === "octopilot-chat" && p.name === name) ?? soloPane(all, "octopilot-chat");
+  }
+
   // On the clock tick: when this pane's tab becomes the shown one, the composer takes the
-  // keyboard, once, unless a terminal or another pane of that tab has it.
+  // keyboard, once, unless a terminal or another pane of that tab has it. In a tab with the
+  // dashboard (the OCTOPILOT tab) only the dashboard answers this; the chat there takes "focus".
   followTab() {
-    // open-gui.sh names each chat pane after its agent (the code chat's) or the prompter.
-    const name = props()?.agent ?? "octopilot-prompter";
-    const me = panes().find((p) => p.mod === "octopilot-chat" && p.name === name)
-      ?? soloPanes("octopilot-chat");
-    const active = spaces().find((s) => s.active)?.tabs.find((t) => t.active)?.id ?? null;
-    const shown = me !== null && me.tab === active;
+    const all = panes();
+    const me = this.chatPane(all);
+    const shown = me !== null && me.tab === shownTab(all);
     const was = this.tabShown;
     this.tabShown = shown;
-    const f = focused();
-    if (!shown || was === true || (f && (f.terminal != null || (f.pane != null && f.pane !== me.pane)))) return;
+    if (!shown || was === true) return;
+    if (all.some((p) => p.mod === "octopilot-dashboard" && p.tab === me.tab)) return;
+    if (!keyboardFree(focused(), me.pane)) return;
     if (this.online()) this.input.focus();
     else this.handle.focus();
   }
@@ -153,10 +170,18 @@ export default class Chat extends View {
   tick(cx) {
     if (window()?.visible === false) return;
     this.followTab();
-    if (this.focusWanted && this.online()) {
-      this.focusWanted = false;
-      this.input.focus();
-      cx.notify();
+    // A pending "focus" lands on the composer only while this copy's tab is shown and the keyboard
+    // is still free here; once the user has moved on, it is dropped.
+    if (this.focusWanted) {
+      const all = panes();
+      const me = this.chatPane(all);
+      const shown = me !== null && me.tab === shownTab(all);
+      if (!shown || this.focused || !keyboardFree(focused(), me.pane)) this.focusWanted = false;
+      else if (this.online()) {
+        this.focusWanted = false;
+        this.input.focus();
+        cx.notify();
+      }
     }
     if (this.answering && Date.now() - this.answeredAt > ANSWER_MS) {
       this.answering = false;
@@ -226,6 +251,7 @@ export default class Chat extends View {
       this.pending = [];
       // A fresh transcript lands at its end, wherever the reader had scrolled.
       this.scrollEnd = true;
+      this.following = true;
     }
     const atBottom = this.atBottom();
     let added = 0;
@@ -256,6 +282,7 @@ export default class Chat extends View {
     this.rev += 1;
     if (atBottom) {
       this.scrollEnd = true;
+      this.following = true;
       this.unseen = 0;
     } else {
       this.unseen += added;
@@ -303,6 +330,7 @@ export default class Chat extends View {
     const bubble = { id: `pending-${Date.now()}`, role: "user", text, at: new Date().toISOString(), tools: [], pending: true };
     this.pending.push(bubble);
     this.scrollEnd = true;
+    this.following = true;
     this.notice = null;
     cx.notify();
     const err = this.sendNotice(await this.say(["chat-send", text]));
@@ -360,7 +388,7 @@ export default class Chat extends View {
     } else if (e.key === "tab") {
       // Tab takes the list to the composer; Shift+Tab brings it back. In the composer Tab is left alone.
       if (!this.focused) {
-        if (!this.online()) return;
+        if (m.shift || !this.online()) return;
         this.input.focus();
       } else if (m.shift) {
         this.handle.focus();
@@ -542,9 +570,9 @@ export default class Chat extends View {
       // The last child is the scroll target: it keeps the bottom padding in view.
       div().h(8).flex_none(),
     ];
-    // The request runs after this frame's layout, so a reader at the end is followed on every
+    // The request runs after this frame's layout, so a reader who follows the end gets it on every
     // frame: a message that grows after the request is brought in by the next one.
-    if (this.scrollEnd || this.atBottom()) {
+    if (this.scrollEnd || this.following) {
       this.scroll.scroll_to_item(items.length - 1);
       this.scrollEnd = false;
     }
@@ -559,7 +587,9 @@ export default class Chat extends View {
       .track_scroll(this.scroll)
       .on_scroll_wheel((_e, cx) => cx.timer.after(60, (cx) => {
         const was = this.unseen;
-        if (this.atBottom()) this.unseen = 0;
+        // Only a wheel scroll that lands decides whether the transcript follows its end.
+        this.following = this.atBottom();
+        if (this.following) this.unseen = 0;
         if (was > 0 && this.unseen === 0) cx.notify();
       }))
       .children(items);
@@ -588,6 +618,7 @@ export default class Chat extends View {
         .hover((s) => s.bg(t.hover))
         .on_click((_e, cx) => {
           this.scrollEnd = true;
+          this.following = true;
           this.unseen = 0;
           cx.notify();
         })

@@ -20,7 +20,7 @@ import {
 import { kitchenDialog, investigateDialog } from "./dialogs.js";
 
 const MOD = "octopilot-dashboard";
-// The name open-gui.sh gives this pane (pane.rename), so it is found among the mod's panes.
+// The name open-gui.sh gives this pane when props.pane_name is not given (pane.rename).
 const PANE_NAME = "octopilot-dashboard";
 // The kitchen corner: the octopilot layout's floating kitchen block.
 const KITCHEN_LAYOUT = "octopilot";
@@ -492,7 +492,7 @@ export default class OctopilotDashboard extends View {
   // On the clock tick: when this pane's tab becomes the shown one, take the keyboard, once,
   // unless a terminal or another pane of that tab has it.
   followTab() {
-    const me = ownPane(panes(), MOD, PANE_NAME);
+    const me = ownPane(panes(), MOD, props()?.pane_name ?? PANE_NAME);
     const shown = me !== null && me.tab === shownTab(spaces());
     const was = this.tabShown;
     this.tabShown = shown;

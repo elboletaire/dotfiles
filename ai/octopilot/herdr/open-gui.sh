@@ -24,7 +24,8 @@ ORCH_AGENT="octopilot"                 # scan.py's ORCH_AGENT
 PROMPTER_AGENT="octopilot-prompter"    # scan.py's PROMPTER_AGENT
 HEADLESS_AGENT="octopilot-headless"    # the engine tab's dashboard.sh --headless
 CODE_AGENT="octopilot-code"            # scan.py's CODE_AGENT
-# The names of the mod panes: each mod finds its own in panes() by these (see ownPane in the mods).
+# The roles of the mod panes. Each pane is named role-<hash of the checkout's dir> (pane_name),
+# and its mod finds it in panes() by the name given in props.pane_name.
 DASHBOARD_PANE="octopilot-dashboard"
 PROMPTER_PANE="octopilot-prompter"
 MAIN_TAB="OCTOPILOT"
@@ -72,11 +73,22 @@ envs=(OCTOPILOT_BACKEND=hc "OCTOPILOT_DIR=$DIR")
 if [ -n "${OCTOPILOT_STATE_DIR:-}" ]; then envs+=("OCTOPILOT_STATE_DIR=$OCTOPILOT_STATE_DIR"); fi
 envs+=("${scope[@]+"${scope[@]}"}")
 
+# The name of a mod pane: its role and a short hash of this checkout's dir, so two
+# checkouts in one window each find their own.
+DIR_HASH=$(printf '%s' "$DIR" | sha1sum | cut -c1-8)
+pane_name() {
+  printf '%s-%s' "$1" "$DIR_HASH"
+}
+
 # The props of the mods, which read their octopilot from them.
 MOD_PROPS="$(jq -nc --arg dir "$DIR" --arg state "$STATE_DIR" '{dir: $dir, state_dir: $state}')"
+DASH_PROPS="$(jq -nc --argjson mod "$MOD_PROPS" --arg name "$(pane_name "$DASHBOARD_PANE")" \
+  '$mod + {pane_name: $name}')"
+PROMPTER_PROPS="$(jq -nc --argjson mod "$MOD_PROPS" --arg name "$(pane_name "$PROMPTER_PANE")" \
+  '$mod + {pane_name: $name}')"
 # The code tab's chat mod: the code agent it talks to, and its copy.
-CODE_PROPS="$(jq -nc --argjson mod "$MOD_PROPS" --arg agent "$CODE_AGENT" \
-  '$mod + {agent: $agent, title: "Code changes", subject: "the code changes agent",
+CODE_PROPS="$(jq -nc --argjson mod "$MOD_PROPS" --arg agent "$CODE_AGENT" --arg name "$(pane_name "$CODE_AGENT")" \
+  '$mod + {agent: $agent, pane_name: $name, title: "Code changes", subject: "the code changes agent",
     chips: ["status of the last change", "what did you change?", "run the checks"]}')"
 
 # `herdr-app ...` with its output on stdout; a failure stops here with the
@@ -208,9 +220,17 @@ start_engine_term() {
   echo "$term"
 }
 
-# Names a mod pane after its role, so its copy finds its own pane in panes().
+# Names a mod pane (its id, then its name). Best effort: a pane that cannot be named
+# is warned about, and its copy falls back to the only pane of its mod.
 name_mod_pane() {
-  app do pane.rename --pane "$1" --name "$2" >/dev/null
+  local out
+  if [ -z "$1" ]; then
+    echo "open-gui.sh: no pane to name $2" >&2
+    return 0
+  fi
+  if ! out=$("$APP" do pane.rename --pane "$1" --name "$2" 2>&1); then
+    echo "open-gui.sh: could not name pane $1 $2: $out" >&2
+  fi
 }
 
 # Starts the prompter, labelled with its claude's session.
@@ -236,21 +256,22 @@ add_engine_agents() {
 }
 
 # The OCTOPILOT tab, unless the space has one: the dashboard mod, and the chat
-# mod (the prompter) beside it.
+# mod (the prompter) beside it. A rerun keeps the panes the tab has: herdr-app ls
+# lists no mod panes, so their names are not set again here.
 add_main_tab() {
   local created pane
   if [ -n "$(tab_named "$1" "$MAIN_TAB")" ]; then return 0; fi
   created=$(app do tab.new --space "$1" --name "$MAIN_TAB" \
-    --mod octopilot-dashboard --props "$MOD_PROPS" --focus false)
+    --mod octopilot-dashboard --props "$DASH_PROPS" --focus false)
   pane=$(jq -r '.pane // empty' <<<"$created")
   if [ -z "$pane" ]; then
     echo "open-gui.sh: the $MAIN_TAB tab has no pane to split the chat into" >&2
     exit 1
   fi
-  name_mod_pane "$pane" "$DASHBOARD_PANE"
+  name_mod_pane "$pane" "$(pane_name "$DASHBOARD_PANE")"
   created=$(app do pane.split --direction right --pane "$pane" \
-    --mod octopilot-chat --props "$MOD_PROPS")
-  name_mod_pane "$(jq -r '.pane' <<<"$created")" "$PROMPTER_PANE"
+    --mod octopilot-chat --props "$PROMPTER_PROPS")
+  name_mod_pane "$(jq -r '.pane // empty' <<<"$created")" "$(pane_name "$PROMPTER_PANE")"
 }
 
 # The code agent, an engine terminal in the cwd of the dotfiles root: beside the
@@ -266,7 +287,7 @@ start_code_agent() {
 # The code-changes tab: the chat mod over this checkout's code agent, started when
 # missing. An old-style terminal tab of that name gives its agent up (parked, not killed).
 add_code_tab() {
-  local space=$1 pane=$2 code tab
+  local space=$1 pane=$2 code tab created
   code=$(find_agent "$CODE_AGENT")
   if [ -z "$code" ]; then code=$(start_code_agent "$space" "$pane"); fi
   tab=$(locate "$code" | cut -f2)
@@ -277,7 +298,7 @@ add_code_tab() {
   if ! code_mod_tab "$space"; then
     created=$(app do tab.new --space "$space" --name "$CODE_TAB" --mod octopilot-chat \
       --props "$CODE_PROPS" --focus false)
-    name_mod_pane "$(jq -r '.pane' <<<"$created")" "$CODE_AGENT"
+    name_mod_pane "$(jq -r '.pane // empty' <<<"$created")" "$(pane_name "$CODE_AGENT")"
   fi
 }
 
