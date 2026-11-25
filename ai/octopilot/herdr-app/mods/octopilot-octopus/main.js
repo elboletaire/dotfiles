@@ -103,7 +103,7 @@ export default class Octopus extends View {
 
   signature() {
     const h = this.view?.header;
-    return [this.seq, this.data?.status, this.data?.paused, this.error, this.newest()?.at,
+    return [this.seq, this.pose(), this.data?.status, this.data?.paused, this.error, this.newest()?.at,
       h?.active, h?.max_active, h?.paused].join("|");
   }
 

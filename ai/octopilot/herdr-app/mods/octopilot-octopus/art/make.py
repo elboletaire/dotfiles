@@ -155,8 +155,10 @@ def sparkle(p):
 
 def burst(p):
     # Pop lines round the head: the surprise mark, where blocked gets the "!".
-    return (f'<path d="M150 40 L143 34 M160 30 L157 21 M172 30 L178 22 M182 42 L190 38" fill="none" '
-            f'stroke="{p["ink"]}" stroke-width="2.2" stroke-linecap="round"/>')
+    d = "M150 40 L143 34 M160 30 L157 21 M172 30 L178 22 M182 42 L190 38"
+    # A light halo under the ink keeps the lines readable on dark backgrounds.
+    return (f'<path d="{d}" fill="none" stroke="#fff3a6" stroke-width="5.4" stroke-linecap="round"/>'
+            f'<path d="{d}" fill="none" stroke="{p["ink"]}" stroke-width="2.2" stroke-linecap="round"/>')
 
 
 def sweat():
