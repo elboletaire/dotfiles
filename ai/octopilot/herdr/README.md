@@ -84,8 +84,29 @@ terminals run in herdr-core) as one space with three tabs:
 | Tab | Holds |
 |---|---|
 | **OCTOPILOT** | the `octopilot-dashboard` mod (the table below) and, beside it, the `octopilot-chat` mod: the prompter as a chat |
-| **engine** | the orchestrator (`octopilot`, `/octopilot:messenger`), the prompter (`octopilot-prompter`) and `dashboard.sh --headless` (`octopilot-headless`), each an hc terminal |
+| **engine** | the orchestrator (`octopilot`, `/octopilot:messenger`), the prompter (`octopilot-prompter`) and `dashboard.sh --headless` (`octopilot-headless`), each an hc terminal. Parked after building: they keep running with no pane, so the tab goes away (see below) |
 | **Octopilot (code changes)** | a claude for changing octopilot itself |
+
+The engine is hidden on purpose. After building, `open-gui.sh` parks its three
+terminals (`herdr-app do terminal.park`): the pane goes, the process keeps
+running and core keep is off, so the empty engine tab goes too. They are found
+by their `octopilot.agent` labels, not by panes, so a rerun finds them parked.
+A parked orchestrator keeps its space in an `octopilot.space` label (parking
+removes `herdr.space`). A parked terminal is shown with `terminal.peek` (the
+chef in the kitchen, the chat's Terminal button, the dashboard's `v`), which
+works on it; the dashboard's `a` uses `agent.focus`, which is not checked for a
+parked one. `--show-engine`
+keeps the engine tab visible (no park, for debugging); on a rerun it refuses
+with the `terminal.keep` command for a parked orchestrator, and `--terminals`
+does the same.
+
+Every engine terminal starts through the user's interactive shell (`$SHELL -ic
+'exec "$@"'`), so the gateway env in `~/.zshrc.local` reaches claude. herdr-app
+already runs the argv of `space.new` and `tab.new` in the shell (and keeps the
+shell open after the program), but runs `pane.split` argv as given, so the
+helpers beside the orchestrator are wrapped by open-gui.sh (`shell_argv`). It
+uses `exec`, not herdr's keep-shell form: a shell left behind would keep a dead
+agent's terminal alive and labelled, and the reruns would never restart it.
 
 The headless dashboard runs the loops and writes `view.json`; the mods only
 render it and send actions. The kitchen is the `octopilot-kitchen` mod, a

@@ -11,11 +11,11 @@ actions. `$DIR` is the octopilot code dir (`props().dir`, else
 
 | piece | where | role |
 |---|---|---|
-| headless dashboard | `dashboard.sh --headless` in an hc terminal ("engine" tab) | runs every dashboard loop (GitHub refresh, doorbell, notifications, desktop notify, sidebar tokens) and writes `$STATE_DIR/view.json` |
+| headless dashboard | `dashboard.sh --headless` in an hc terminal (parked engine terminal, no pane, see herdr/README.md) | runs every dashboard loop (GitHub refresh, doorbell, notifications, desktop notify, sidebar tokens) and writes `$STATE_DIR/view.json` |
 | `octopilot-dashboard` mod | pane in the Octopilot tab | renders view.json, keyboard + mouse, sends actions |
 | `octopilot-chat` mod | pane in the Octopilot tab | the prompter as a chat over its hc terminal |
 | `octopilot-kitchen` mod | floating block in the `octopilot` layout (the right-hand corner of every tab) | the takoyaki kitchen chef: reads view.json `pan` and `kitchen`, and `scan.sh speech` for the orchestrator's last message. The dashboard's "kitchen" button toggles the layout |
-| `herdr/open-gui.sh` | launcher | builds the space, starts terminals with `--session-id`, opens the mods |
+| `herdr/open-gui.sh` | launcher | builds the space, starts terminals with `--session-id` (through the user's shell, so the gateway env reaches claude), parks the engine terminals (`--show-engine` keeps them shown), opens the mods |
 | `octopilot-launcher` mod | palette entry "Open Octopilot" (no view) | runs `herdr/open-gui.sh --close-launcher` in a new tab |
 | `herdr-app/install.sh` | installer | symlinks mods into `~/.config/herdr-app/mods/`, adds the `octopilot` program to `programs.json`, writes `layouts/octopilot.json` (`main.json` + a floating `octopilot-kitchen` block with the `dir` and `state_dir` props, which open-gui.sh switches to); `--key` also binds ctrl-alt-o |
 
