@@ -445,8 +445,9 @@ export default class Chat extends View {
       .w_full()
       .gap(4)
       .when(me, (el) => el.items_end())
-      .when(!me, (el) => el.items_start())
-      .child(card);
+      .when(!me, (el) => el.items_start());
+    // A turn that only ran tools has no text: show its chips without an empty card.
+    if (me || m.text) shell.child(card);
     if (m.tools?.length) shell.child(this.tools(t, m));
     shell.child(div().px(4).text_size(10.5).text_color(t.dim).child(m.pending ? "sending…" : clock(m.at)));
     return shell;
