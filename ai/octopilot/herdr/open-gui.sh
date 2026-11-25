@@ -6,7 +6,8 @@
 # Each claude is labelled octopilot.agent=<name> and octopilot.session=<uuid>
 # (its transcript, read by scan.py speech and chat). --terminals builds the
 # TUI-style layout instead. After building it switches to the `octopilot`
-# layout (the kitchen corner) when herdr-app/install.sh made one; --no-layout
+# layout (the kitchen corner) when herdr-app/install.sh made one and the
+# shown layout is `main` (a layout you picked stays); --no-layout
 # skips that. --close-launcher closes this terminal's own pane at the end (the
 # tab goes with its last pane), for the key or the palette (programs.json).
 # From a worktree it needs OCTOPILOT_STATE_DIR (see herdr/README.md).
@@ -219,7 +220,8 @@ close_launcher() {
 # Runs at the end of every path that did its work: the octopilot layout (the
 # kitchen corner), then the launcher's own pane.
 finish() {
-  if [ "$TERMINALS" = 0 ] && [ "$LAYOUT" = 1 ] && layout_exists octopilot; then
+  if [ "$TERMINALS" = 0 ] && [ "$LAYOUT" = 1 ] && layout_exists octopilot \
+    && [ "$("$APP" status | jq -r '.layout // empty')" = main ]; then
     app do layout.switch --name octopilot >/dev/null
   fi
   if [ "$CLOSE_LAUNCHER" = 1 ]; then close_launcher; fi

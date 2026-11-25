@@ -122,8 +122,10 @@ default shortcuts on upgrade, which is why the key is opt-in. A rejected
 a copy of your `layouts/main.json` (recorded as `cloned_from`) plus a floating block
 that docks the `octopilot-kitchen` mod in the right-hand corner of every tab. It is
 regenerated on each run, a file of that name that is not ours is left alone,
-`--uninstall` removes it, and a `layout.error` is reported. After building the
-space, `open-gui.sh` switches to it with `layout.switch` when it exists
+`--uninstall` removes it, and it is written only when the `octopilot-kitchen` mod
+is in `herdr-app/mods`. A rejection is reported (`octopilot.error`, `layout.error`,
+or `herdr-app status` `errors`). After building the space, `open-gui.sh` switches
+to it with `layout.switch` when it exists and the shown layout is `main`
 (`--no-layout` skips that; `--terminals` never switches). Re-run the installer after
 changing `main.json`.
 

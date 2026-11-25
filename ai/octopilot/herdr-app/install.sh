@@ -172,7 +172,7 @@ set_program() {
 # its origin. Regenerated on every run when it is ours; a layout of that name we
 # did not write is left alone.
 set_layout() {
-  local current main version out tmp stamp
+  local current main version out tmp stamp problems errfile
   current="$(value_at "$LAYOUT_FILE" '. // null')" || return 1
   if [ "$UNINSTALL" -eq 1 ]; then
     if [ ! -f "$LAYOUT_FILE" ] || [ "$(jq -n --argjson v "$current" "\$v | select($OURS_LAYOUT) | true")" != "true" ]; then
@@ -185,6 +185,10 @@ set_layout() {
   fi
   if [ -f "$LAYOUT_FILE" ] && [ "$(jq -n --argjson v "$current" "\$v | select($OURS_LAYOUT) | true")" != "true" ]; then
     echo "install.sh: $LAYOUT_FILE is not ours; left as it is (no octopilot layout)" >&2
+    return 0
+  fi
+  if [ ! -d "$MODS_SRC/octopilot-kitchen" ]; then
+    echo "install.sh: no octopilot-kitchen mod in $MODS_SRC yet; no octopilot layout" >&2
     return 0
   fi
   main="$LAYOUTS/main.json"
@@ -207,9 +211,16 @@ set_layout() {
   mv "$tmp" "$LAYOUT_FILE"
   echo "wrote $LAYOUT_FILE"
   sleep 2
-  if [ -f "$LAYOUTS/octopilot.error" ] && [ "$LAYOUTS/octopilot.error" -nt "$stamp" ]; then
+  problems=""
+  for errfile in "$LAYOUTS/octopilot.error" "$LAYOUTS/layout.error" "$APP_HOME/layout.error"; do
+    if [ -f "$errfile" ] && [ "$errfile" -nt "$stamp" ]; then
+      problems+="$(cat "$errfile")"$'\n'
+    fi
+  done
+  problems+="$(herdr-app status 2>/dev/null | jq -r '(.errors // [])[] | tostring | select(test("octopilot"))' 2>/dev/null || true)"
+  if [ -n "${problems//[$' \t\n']/}" ]; then
     echo "install.sh: herdr-app rejected $LAYOUT_FILE:" >&2
-    cat "$LAYOUTS/octopilot.error" >&2
+    printf '%s\n' "$problems" >&2
     command rm -f "$stamp"
     return 1
   fi
