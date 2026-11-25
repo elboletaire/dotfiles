@@ -16,9 +16,10 @@ then the review-fix loop runs. When a PR merges, the orchestrator cleans up.
 
 The user watches the dashboard (TUI or GUI) and talks to a prompter chat, which
 queues commands for the orchestrator. Nothing is typed into the orchestrator
-directly. The Octopilot workspace has two tabs: OCTOPILOT (orchestrator, prompter,
-dashboard) and "Octopilot (code changes)", a claude started in this directory
-(`ai/octopilot`) for changing this code (see `herdr/README.md`).
+directly. The Octopilot workspace has three tabs: OCTOPILOT (kitchen, chat, dashboard),
+"Octopilot (code changes)", a claude started in this directory (`ai/octopilot`) for
+changing this code, and "engine" (orchestrator, prompter, headless dashboard), shown
+third unless the launcher runs with `--hide-engine` (see `herdr/README.md`).
 
 The GUI is native mods over the same Python backend. The decisions stay in
 `scan.py` and `dashboard.py`; the mods only render `view.json` and send actions

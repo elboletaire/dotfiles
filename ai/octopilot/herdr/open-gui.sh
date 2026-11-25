@@ -2,16 +2,19 @@
 # The GUI twin of open.sh: the Octopilot space in herdr-app, with three tabs:
 #   OCTOPILOT: the octopilot-kitchen mod on the left, over the octopilot-chat mod (the
 #     kitchen KITCHEN_PX tall); on the right the octopilot-dashboard mod, full height
-#   engine: the orchestrator, the prompter and the headless dashboard, as hc
-#     terminals; parked after building (no pane, still running), so the tab goes away
 #   Octopilot (code changes): the code agent's own claude (a terminal, never parked)
+#   engine: the orchestrator, the prompter and the headless dashboard, as hc terminals
+#     (third tab); --hide-engine parks them after building (no pane, still running), so
+#     the tab goes away; a rerun shows them again unless --hide-engine is given
 # Each claude is labelled octopilot.agent=<name> and octopilot.session=<uuid>
 # (its transcript, read by scan.py speech and chat). --terminals builds the
-# TUI-style layout instead. --show-engine keeps the engine tab visible (no park).
-# --no-layout is accepted and does nothing (there is no octopilot layout any more).
+# TUI-style layout instead. --show-engine is accepted and does nothing (the engine
+# is shown by default). --no-layout is accepted and does nothing (there is no
+# octopilot layout any more).
 # --close-launcher closes this terminal's own pane at the end (the tab goes with
-# its last pane), for the key or the palette (programs.json). From a worktree it
-# needs OCTOPILOT_STATE_DIR (see herdr/README.md).
+# its last pane), for the key or the palette (programs.json). A failed run keeps that
+# pane open (the error, the log, Enter). From a worktree it needs OCTOPILOT_STATE_DIR
+# (see herdr/README.md).
 set -euo pipefail
 APP="herdr-app"
 HC="hc"
@@ -35,14 +38,30 @@ CODE_CWD="$DIR"                        # the octopilot dir: its AGENTS.md is the
 
 TERMINALS=0
 CLOSE_LAUNCHER=0
-SHOW_ENGINE=0
+HIDE_ENGINE=0
+LOG=""
+# Runs at every exit, set -e failures included. A failed run from the launcher keeps its
+# pane, so the error and the log stay readable until Enter closes it.
+on_exit() {
+  local status=$?
+  trap - EXIT
+  if [ "$status" -ne 0 ] && [ "$CLOSE_LAUNCHER" = 1 ]; then
+    if [ -n "$LOG" ]; then echo "open-gui.sh: failed (status $status); the log is $LOG" >&2; fi
+    printf 'Press Enter to close this pane. ' >&2
+    read -r _ || true
+  fi
+  exit "$status"
+}
+trap on_exit EXIT
+trap 'echo "open-gui.sh: line $LINENO: $BASH_COMMAND failed" >&2' ERR
 for arg in "$@"; do
   case "$arg" in
     --terminals) TERMINALS=1 ;;
     --close-launcher) CLOSE_LAUNCHER=1 ;;
     --no-layout) ;;
-    --show-engine) SHOW_ENGINE=1 ;;
-    -h|--help) echo "usage: open-gui.sh [--terminals] [--show-engine] [--no-layout] [--close-launcher]"; exit 0 ;;
+    --hide-engine) HIDE_ENGINE=1 ;;
+    --show-engine) ;;
+    -h|--help) echo "usage: open-gui.sh [--terminals] [--hide-engine] [--no-layout] [--close-launcher]"; exit 0 ;;
     *) echo "open-gui.sh: unknown argument $arg" >&2; exit 2 ;;
   esac
 done
@@ -64,6 +83,12 @@ set -a
 # shellcheck source=../config.sh
 source "$DIR/config.sh"
 set +a
+
+# Everything this run prints goes to the log too: the last run, and the one before as .1.
+LOG="$STATE_DIR/open-gui.log"
+mkdir -p "$STATE_DIR"
+if [ -e "$LOG" ]; then mv -f "$LOG" "$LOG.1"; fi
+exec > >(tee "$LOG") 2>&1
 
 # Every session and pane started here gets the hc backend, this octopilot's
 # directory (the skills' scan.sh, see OCTOPILOT_DIR in plugin/skills), and the
@@ -514,13 +539,35 @@ parked_engine() {
   done
 }
 
-# Parks the engine's terminals (--show-engine keeps them shown): their panes go,
-# their processes keep running, and the engine tab empties and goes away. The
-# orchestrator also keeps its space in a label, for space_of. The code agent is not
-# an engine terminal: it has its own tab.
+# Shows the parked engine terminals of this checkout again, each with its process: the
+# first one takes a tab of its own (named engine), the others go beside the engine tab.
+# Best effort: a refused one is warned about and stays parked.
+unpark_engine() {
+  local space=$1 label t located out
+  local keep
+  for label in "$ORCH_AGENT" "$PROMPTER_AGENT" "$HEADLESS_AGENT"; do
+    t=$(find_agent "$label")
+    if [ -z "$t" ] || [ -n "$(locate "$t")" ]; then continue; fi
+    keep=(--terminal "$t")
+    if [ -n "$(tab_named "$space" "$ENGINE_TAB")" ]; then keep+=(--place right); fi
+    if ! out=$("$APP" do terminal.keep "${keep[@]}" 2>&1); then
+      echo "open-gui.sh: could not show the $label terminal ($t): $out" >&2
+      continue
+    fi
+    if ! located=$(await_shown "$t"); then continue; fi
+    if [ -z "$(tab_named "$space" "$ENGINE_TAB")" ]; then
+      app do tab.rename --id "$(cut -f2 <<<"$located")" --name "$ENGINE_TAB" >/dev/null
+    fi
+  done
+}
+
+# Parks the engine's terminals (--hide-engine): their panes go, their processes keep
+# running, and the engine tab empties and goes away. The orchestrator also keeps its
+# space in a label, for space_of. The code agent is not an engine terminal: it has
+# its own tab.
 park_engine() {
   local space=$1 label t
-  if [ "$SHOW_ENGINE" = 1 ]; then return 0; fi
+  if [ "$HIDE_ENGINE" = 0 ]; then return 0; fi
   for label in "$ORCH_AGENT" "$PROMPTER_AGENT" "$HEADLESS_AGENT"; do
     t=$(find_agent "$label")
     if [ -z "$t" ] || [ -z "$(locate "$t")" ]; then continue; fi
@@ -559,11 +606,27 @@ existing_space() {
 }
 
 # Runs at the end of every path that did its work: the engine parked (the GUI
-# layout), then the launcher's own pane.
+# layout, --hide-engine), then the launcher's own pane.
 finish() {
   local space=$1
   if [ "$TERMINALS" = 0 ]; then park_engine "$space"; fi
   if [ "$CLOSE_LAUNCHER" = 1 ]; then close_launcher; fi
+}
+
+# Names the space LABEL. space.new's name is not always kept, and an unnamed space is
+# called after its first terminal's folder (herdr-app ls has no named flag to tell).
+name_space() {
+  local name
+  name=$("$APP" ls | jq -r --arg s "$1" '.spaces[] | select(.id == $s) | .name')
+  if [ "$name" != "$LABEL" ]; then app do space.rename --id "$1" --name "$LABEL" >/dev/null; fi
+}
+
+# Puts the engine tab third in the space, after OCTOPILOT and the code tab. Nothing when
+# the engine tab is not shown (--hide-engine parked it).
+place_engine_tab() {
+  local tab
+  tab=$(tab_named "$1" "$ENGINE_TAB")
+  if [ -n "$tab" ]; then app do tab.move --id "$tab" --index 3 >/dev/null; fi
 }
 
 # Shows the space and its OCTOPILOT tab.
@@ -610,7 +673,8 @@ if [ -n "$orch" ]; then
 fi
 
 if [ -n "$orch" ]; then
-  if [ "$TERMINALS" = 1 ] || [ "$SHOW_ENGINE" = 1 ]; then
+  name_space "$space"
+  if [ "$TERMINALS" = 1 ]; then
     parked=$(parked_engine)
     if [ -n "$parked" ]; then
       echo "open-gui.sh: these engine terminals are parked (no pane); show each with" \
@@ -618,8 +682,6 @@ if [ -n "$orch" ]; then
       sed 's/^/  /' <<<"$parked" >&2
       exit 1
     fi
-  fi
-  if [ "$TERMINALS" = 1 ]; then
     if [ -n "$(tab_named "$space" "$MAIN_TAB")" ] && [ "$(tab_named "$space" "$MAIN_TAB")" != "$tab" ]; then
       echo "open-gui.sh: the space already has an $MAIN_TAB tab (the GUI layout);" \
         "run without --terminals" >&2
@@ -637,10 +699,15 @@ if [ -n "$orch" ]; then
       exit 1
     fi
     if [ -n "$pane" ]; then app do tab.rename --id "$tab" --name "$ENGINE_TAB" >/dev/null; fi
+    if [ "$HIDE_ENGINE" = 0 ]; then
+      unpark_engine "$space"
+      pane=$(locate "$orch" | cut -f3)
+    fi
     add_engine_agents "$space" "$pane"
     add_main_tab "$space"
     add_kitchen "$space"
     add_code_tab "$space"
+    place_engine_tab "$space"
     focus_main "$space"
   fi
   finish "$space"
@@ -666,6 +733,7 @@ else
     --tab "$tab_name" --argv "$(session_argv "$session" "/octopilot:messenger")" --focus false)
   space=$(jq -r '.space' <<<"$created")
 fi
+name_space "$space"
 orch=$(jq -r '.terminal' <<<"$created")
 "$HC" label "$orch" "octopilot.agent=$ORCH_AGENT" "octopilot.dir=$DIR" \
   "octopilot.session=$session" >/dev/null
@@ -690,6 +758,7 @@ else
   add_main_tab "$space"
   add_kitchen "$space"
   add_code_tab "$space"
+  place_engine_tab "$space"
   focus_main "$space"
 fi
 finish "$space"

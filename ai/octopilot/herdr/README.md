@@ -81,24 +81,35 @@ It needs `uv` (which provides `rich`); there is nothing else to install.
 ## GUI (herdr-app)
 
 `herdr/open-gui.sh` builds Octopilot in the Herdr app (`herdr-app`, its
-terminals run in herdr-core) as one space with three tabs:
+terminals run in herdr-core) as one space with three tabs, in this order:
 
 | Tab | Holds |
 |---|---|
 | **OCTOPILOT** | the `octopilot-kitchen` mod, a pane 300 px tall, on the left, over the `octopilot-chat` mod (the prompter as a chat, its input at the bottom); on the right the `octopilot-dashboard` mod (the table below), full height (`props`: `dir`, `state_dir`; its pane is named by `pane.rename`, the mod reads no name) |
-| **engine** | the orchestrator (`octopilot`, `/octopilot:messenger`), the prompter (`octopilot-prompter`) and `dashboard.sh --headless` (`octopilot-headless`), each an hc terminal. Parked after building: they keep running with no pane, so the tab goes away (see below) |
 | **Octopilot (code changes)** | the code agent's own claude (`octopilot-code`, a claude started in `ai/octopilot`, an hc terminal that is never parked) |
+| **engine** | the orchestrator (`octopilot`, `/octopilot:messenger`), the prompter (`octopilot-prompter`) and `dashboard.sh --headless` (`octopilot-headless`), each an hc terminal. Shown by default; `--hide-engine` parks them (see below) |
 
-The engine is hidden on purpose. After building, `open-gui.sh` parks its three
-terminals (`herdr-app do terminal.park`): the pane goes, the process keeps
+The space is named `Octopilot` (`LABEL`): `space.new` does not keep the name it
+is given here, so the run calls `space.rename` when the space is not named so.
+
+The engine is shown by default. `--hide-engine` parks its three terminals after
+building (`herdr-app do terminal.park`): the pane goes, the process keeps
 running and core keep is off, so the empty engine tab goes too. They are found
 by their `octopilot.agent` labels, not by panes, so a rerun finds them parked.
 A parked orchestrator keeps its space in an `octopilot.space` label (parking
 removes `herdr.space`). A parked terminal is shown with `terminal.peek` (the
 chef in the kitchen, the chat's Terminal button, the dashboard's `v` and `a`),
-which works on it. `--show-engine` keeps the engine tab visible (no park, for
-debugging). On a rerun, `--terminals` and `--show-engine` refuse and list the
-parked engine terminals, each to show with `herdr-app do terminal.keep`.
+which works on it. A rerun without `--hide-engine` shows parked engine terminals
+again (`terminal.keep`: the first takes a tab named `engine`, the others go
+beside it) and puts the engine tab third. `--show-engine` is accepted and does
+nothing, since the engine is shown by default. `--terminals` refuses on a parked
+engine and lists the parked terminals, each to show with `herdr-app do terminal.keep`.
+
+Every run writes its output to `$OCTOPILOT_STATE_DIR/open-gui.log` (the default
+state dir without the variable): the last run, and the one before as `open-gui.log.1`.
+A run from the launcher (`--close-launcher`) that fails keeps its pane open: it
+prints the error and the log path and waits for Enter. Success closes the pane
+as before. This covers `set -e` failures too (an ERR trap names the line).
 
 Viewed from another computer (the Octopilot space is on a remote machine, see
 `CONTRACT.md`), the mods run their commands and read `view.json` on that machine,
@@ -114,7 +125,7 @@ terminal not running its claude (or the headless's uv) is ended and started agai
 The launcher never ends the code agent: it is your own claude session.
 
 The code agent is not an engine terminal: its claude is the terminal of the code
-tab, so its pickers and sub-agents are Claude's own, and `--show-engine` does not
+tab, so its pickers and sub-agents are Claude's own, and the engine flags do not
 touch it.
 
 A code agent from an earlier run is converted on a rerun. A parked agent (the
@@ -175,7 +186,7 @@ the same thing in a new tab, which closes again once the space is up. The
 palette entry always opens the live checkout (`~/.dotfiles`); `--dir` moves only
 the mod symlinks and the `programs.json` entry to another checkout. The launcher
 closes its own pane when the space is up (never the tab: the tab goes only with
-its last pane). `scripts/install.sh` runs the
+its last pane). A failed run keeps that pane, with the error (see the GUI section). `scripts/install.sh` runs the
 installer when `herdr-app` is installed. It does not bind a key: pass `--key`
 to bind `ctrl-alt-o` in `keys.json` as well (backed up first, a key bound to
 something else is left alone). Other options: `--dry-run`, `--uninstall`
