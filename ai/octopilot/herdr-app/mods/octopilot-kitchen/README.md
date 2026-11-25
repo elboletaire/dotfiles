@@ -1,12 +1,25 @@
 # octopilot-kitchen
 
-The takoyaki kitchen as a floating block: the octopus chef (white hachimaki, pick in one
+The takoyaki kitchen, as a pane or a floating block: the octopus chef (white hachimaki, pick in one
 tentacle) behind a cast-iron pan with one takoyaki per tracked item, flames under it, a
 shelf of served boats, and a speech bubble with the orchestrator's last message and the
 kitchen log. It is the GUI version of the band `plugin/hooks/scene.ts` draws in the
 orchestrator's session.
 
-## Putting it in a layout
+## As a pane
+
+```js
+run("pane.split", { pane, direction: "down", mod: "octopilot-kitchen", props: {} });
+```
+
+The kitchen fills its pane, wide and short (about 950x300 under the prompter's chat): the
+scene on the right, scaled to the pane's height, and the bubble in the width that is left,
+with as many log lines as fit (up to 12) under at least three lines of the message. When
+the bubble would get under 250 px, the scene shrinks to leave it that; in a pane too
+narrow for both (under about 500 px) the scene stands alone. A pane has no fold button and
+ignores `folded`: herdr's pane header closes and zooms it. `layout.js` works the sizes out.
+
+## Floating in a layout
 
 ```json
 "floating": [ { "id": "kitchen", "content": { "mod": "octopilot-kitchen" }, "edge": "right", "align": "end" } ]
@@ -15,13 +28,18 @@ orchestrator's session.
 Drag it to any edge or corner. On a side edge the bubble sits over the scene; on the top
 or bottom edge it sits to its left. Either way its tail points at the chef.
 
+- `–` on the counter folds the bubble away and leaves the kitchen; `+` brings it back.
+
+Either way:
+
 - Click the chef: peek the orchestrator's terminal (`terminal.peek`).
 - Click the message: the whole text in a dialog (the same mod, `full` props).
-- `–` on the counter folds the bubble away and leaves the kitchen; `+` brings it back.
 
 Props, all optional: `dir` (the octopilot code, default `~/.dotfiles/ai/octopilot`) and
 `state_dir` (default `~/.local/state/octopilot`), each falling back to
-`shared("octopilot.dir")` / `shared("octopilot.state_dir")`; `folded: true` to start folded.
+`shared("octopilot.dir")` / `shared("octopilot.state_dir")`; `folded: true` to start folded
+(floating only). `mod.json` is `"place": "none"`: the mod shows only where a layout floats
+it or a `pane.split` puts it, so the same folder serves both.
 
 ## What it reads
 
@@ -68,5 +86,5 @@ fixture kitchen has no bubble text. `../../fixtures/kitchen-view.json` has every
 state, a focus, a shelf and a live burst; `kitchen-view-paused.json` the paused kitchen
 with a stalled ball on an 8-hole pan.
 
-`kitchen.js` (what to show, from view.json) and `clip.js` (the bubble's cut) are pure and
-have node tests: `node --test test/*.mjs`. `herdr-app check` runs without polling.
+`kitchen.js` (what to show, from view.json), `layout.js` (the pane's sizes) and `clip.js`
+(the bubble's cut) are pure and have node tests: `node --test test/*.mjs`. `herdr-app check` runs without polling.
