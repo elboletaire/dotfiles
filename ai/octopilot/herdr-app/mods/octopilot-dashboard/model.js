@@ -131,6 +131,14 @@ export function keyName(e) {
 // Action keys come as "Delete", "Enter" or a single letter.
 export const actionKey = (k) => (k.length === 1 ? k : k.toLowerCase());
 
+// Why a parsed view.json can't be drawn, or null when it can.
+export function viewError(v) {
+  if (!v || typeof v !== "object" || v.v !== 1) return "view.json is not version 1";
+  if (!Array.isArray(v.columns) || v.columns.length !== 4) return "view.json has no four columns";
+  if (!v.header || typeof v.header !== "object") return "view.json has no header";
+  return null;
+}
+
 // The shell's JSON answer: the last line of stdout.
 export function parseAnswer(stdout) {
   const text = (stdout ?? "").trim();

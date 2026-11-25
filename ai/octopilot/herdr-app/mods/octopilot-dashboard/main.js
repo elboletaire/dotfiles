@@ -1,8 +1,6 @@
-// The Octopilot dashboard: a keyboard-first view over view.json. The backend
-// (dashboard.sh --headless) decides what is shown and what each row may do;
-// this mod draws it and sends the actions it is asked for through
-// dashboard.sh --action. Opened with props.dialog, the same mod is the
-// kitchen-closed alert or the investigate form.
+// The Octopilot dashboard: draws view.json and sends the actions it asks for.
+// The backend decides what each row may do; dashboard.sh --action runs them.
+// With props.dialog, the same mod is the kitchen alert or the investigate form.
 
 import { View } from "gpui-kit";
 import { v_flex, h_flex, ScrollHandle, InputState } from "gpui-base";
@@ -11,8 +9,8 @@ import {
   openOverlay, closeOverlay, notify, theme, window,
 } from "herdr";
 import {
-  REPO_PREFIX, CONFIRM_MS, FLASH_MS, KITCHEN_S, GLOBAL_KEYS, ROW_KEYS, arrange, resolveSel,
-  entryOf, stepSel, jumpSel, keyName, actionKey, parseAnswer, slugOf, isRepoKey,
+  CONFIRM_MS, FLASH_MS, KITCHEN_S, GLOBAL_KEYS, ROW_KEYS, arrange, resolveSel,
+  entryOf, stepSel, jumpSel, keyName, actionKey, parseAnswer, slugOf, isRepoKey, viewError,
 } from "./model.js";
 import {
   header, paused, column, pickPanel, activityPanel, notesRow, statusLine, actionBar,
@@ -26,13 +24,15 @@ const OCTOPUS = "octopilot-octopus";
 const POLL_MS = 2000;
 const NAV = { j: 1, down: 1, k: -1, up: -1, pagedown: 10, pageup: -10 };
 
-// One dashboard.sh --action, read from its one-line JSON answer.
+// One dashboard.sh --action, read from its one-line JSON answer. The TUI gives
+// cleanup 400 s; everything else is quick.
 async function runAction(dir, id, key, args = {}) {
   const argv = ["--action", id];
   if (key) argv.push(key);
   for (const [name, value] of Object.entries(args)) argv.push("--arg", `${name}=${value}`);
+  const timeout = (id === "remove" ? 400 : 60) * 1000;
   try {
-    const r = await exec(`${dir}/dashboard.sh`, argv, { timeout: 60000 });
+    const r = await exec(`${dir}/dashboard.sh`, argv, { timeout });
     if (r.code !== 0 && !r.stdout.trim()) return { ok: false, kitchen: false, message: r.stderr.trim() || `exit ${r.code}` };
     return parseAnswer(r.stdout);
   } catch (e) {
@@ -56,8 +56,9 @@ export default class OctopilotDashboard extends View {
     this.sel = null;
     this.showDone = false;
     this.expanded = new Set();
-    this.pending = null;   // an armed confirm: { id, key, text, keyLabel, until }
+    this.pending = null;   // an armed confirm: { id, key, text, until }
     this.prior = null;     // the press armed before the one being handled
+    this.held = false;     // the key being handled is auto-repeating
     this.flash = null;     // { text, ok, at }
     this.scrolls = {
       running: ScrollHandle.new(), orch: ScrollHandle.new(), needs: ScrollHandle.new(),
@@ -121,10 +122,19 @@ export default class OctopilotDashboard extends View {
     if (text == null) {
       this.view = null;
     } else {
+      let next;
       try {
-        this.view = JSON.parse(text);
+        next = JSON.parse(text);
       } catch {
-        this.error = "view.json is not valid JSON yet";
+        next = null;
+      }
+      const bad = next ? viewError(next) : "view.json is not valid JSON yet";
+      // A bad write keeps the last good view on screen, with the reason.
+      if (bad) {
+        this.error = bad;
+      } else {
+        next.kitchen = (next.kitchen ?? []).filter((k) => k.text);
+        this.view = next;
       }
     }
     cx.notify();
@@ -135,6 +145,8 @@ export default class OctopilotDashboard extends View {
     return Boolean(id) && id !== "hidden";
   }
 
+  // The window's key makes a reopen replace the open one in place, so the
+  // button always shows it, even when shared state says otherwise.
   showOctopus() {
     const id = openOverlay({
       mod: OCTOPUS, kind: "window", frame: "none", key: OCTOPUS, keep: true,
@@ -143,12 +155,13 @@ export default class OctopilotDashboard extends View {
     setShared("octopilot.octopus", id);
   }
 
-  // The window's key makes a reopen replace the open one in place, so the
-  // button always shows it, even when shared state says otherwise.
-
   // ---- dialogs: this mod opened with props.dialog ----
 
   initDialog(p, cx) {
+    this.dir = p.dir;
+    this.stateDir = p.state_dir;
+    this.openedAt = Date.now();
+    this.busy = false;
     this.readOnly = false;
     this.error = null;
     this.left = KITCHEN_S;
@@ -176,9 +189,10 @@ export default class OctopilotDashboard extends View {
   }
 
   dialogKey(e, cx) {
-    if (props()?.dialog !== "kitchen") return;
+    // A held or just-opened g is a leftover press, not a decision.
+    if (e.is_held || props()?.dialog !== "kitchen") return;
     const name = keyName(e);
-    if (name === "g") this.kitchenStart(cx);
+    if (name === "g" && Date.now() - this.openedAt >= 500) this.kitchenStart(cx);
     else if (name === "n") this.dialogClose();
   }
 
@@ -209,6 +223,8 @@ export default class OctopilotDashboard extends View {
       cx.notify();
       return;
     }
+    if (this.busy) return;
+    this.busy = true;
     const args = { repo, question, read_only: this.readOnly ? 1 : 0 };
     cx.spawn(async (cx) => {
       const res = await runAction(p.dir, p.action, null, args);
@@ -219,6 +235,7 @@ export default class OctopilotDashboard extends View {
         notify({ title: "Octopilot", body: res.message, level: "success" });
         closeOverlay(p.overlay);
       } else {
+        this.busy = false;
         this.error = res.message || "investigate failed";
         cx.notify();
       }
@@ -271,6 +288,8 @@ export default class OctopilotDashboard extends View {
   begin() {
     this.prior = this.pending;
     this.pending = null;
+    this.held = false;
+    this.handle.focus();
   }
 
   toggleRepo(slug) {
@@ -321,6 +340,7 @@ export default class OctopilotDashboard extends View {
   key(e, cx) {
     const name = keyName(e);
     this.begin();
+    this.held = Boolean(e.is_held);
     if (!name || !this.view) return;
     if (this.handleKey(name, cx)) cx.stop_propagation();
   }
@@ -353,6 +373,10 @@ export default class OctopilotDashboard extends View {
     if (entry) {
       const action = entry.actions.find((a) => actionKey(a.key) === name);
       if (action) return this.act(action, entry, cx), true;
+      if (ROW_KEYS.includes(name)) {
+        this.say(`${name}: not available for this row`, false, cx);
+        return true;
+      }
     } else if (repo && ROW_KEYS.includes(name)) {
       this.say("select a row, not a repo header", false, cx);
       return true;
@@ -389,13 +413,12 @@ export default class OctopilotDashboard extends View {
       this.openDialog("investigate", { action: action.id });
       return;
     }
+    // A key held down must not confirm or arm anything.
+    if (action.confirm && this.held) return;
     const prior = this.prior;
     const armed = prior && Date.now() < prior.until && prior.id === action.id && prior.key === key;
     if (action.confirm && !armed) {
-      this.pending = {
-        id: action.id, key, text: action.confirm,
-        keyLabel: action.key ?? action.label, until: Date.now() + CONFIRM_MS,
-      };
+      this.pending = { id: action.id, key, text: action.confirm, until: Date.now() + CONFIRM_MS };
       cx.timer.after(CONFIRM_MS, (cx) => cx.notify());
       cx.notify();
       return;

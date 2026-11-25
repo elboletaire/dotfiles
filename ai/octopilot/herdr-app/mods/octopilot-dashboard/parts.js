@@ -5,7 +5,7 @@
 import { div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import {
-  AGENT_GLYPH, CI_GLYPH, ago, liveAge, elapsed, pickSummary, FLASH_MS,
+  AGENT_GLYPH, CI_GLYPH, ago, liveAge, elapsed, pickSummary, FLASH_MS, isRepoKey,
 } from "./model.js";
 
 // Column id -> the theme colour its title, count and card edge take.
@@ -123,7 +123,7 @@ function card(v, t, e, tone, now) {
       .when(Boolean(e.draft), (el) => el.child(pill(t, "draft", t.muted)))
       .child(div().flex_1())
       .when(Boolean(ci), (el) => el.child(div().text_size(12).text_color(t[ci[1]]).child(ci[0]))))
-    .child(div().h(34).overflow_hidden().text_size(12).line_height(17)
+    .child(div().h(34).overflow_hidden().text_size(12).line_height("17px")
       .text_color(t.foreground).child(e.title || "untitled"))
     .child(h_flex().items_center().gap(6).text_size(11).text_color(t.muted)
       .when(Boolean(agent), (el) => el.child(div().text_color(t[agent[1]]).child(agent[0])))
@@ -132,7 +132,7 @@ function card(v, t, e, tone, now) {
       .child(div().flex_1())
       .child(div().text_color(stalled ? t.blocked : t.dim).child(ago(quiet))))
     .when(Boolean(e.note), (el) => el.child(div().h(30).overflow_hidden().text_size(11)
-      .line_height(15).text_color(t.dim).child(e.note)));
+      .line_height("15px").text_color(t.dim).child(e.note)));
 }
 
 export function column(v, t, col, now) {
@@ -224,8 +224,12 @@ export function statusLine(v, t, now) {
   const p = v.pending;
   if (p && now < p.until) {
     return h_flex().h(32).px(12).items_center().rounded(9).bg(t.working).text_color(t.background)
-      .font_semibold().text_size(12.5)
-      .child(`${p.text} · press ${p.keyLabel} again`);
+      .font_semibold().text_size(12.5).truncate()
+      .child(p.text);
+  }
+  if (v.error) {
+    return h_flex().h(32).px(12).items_center().rounded(9).bg(t.raised)
+      .text_size(12.5).text_color(t.blocked).truncate().child(v.error);
   }
   const f = v.flash;
   if (f && now - f.at < FLASH_MS) {
@@ -245,7 +249,7 @@ export function actionBar(v, t, entry, globals) {
       on: (_ev, cx) => v.press(a, entry, cx),
     }))
     : [];
-  const hint = v.sel && v.sel.startsWith("repo:") ? "enter folds this repo · h/l opens it" : "select a card or a row";
+  const hint = isRepoKey(v.sel) ? "enter folds this repo · h/l opens it" : "select a card or a row";
   return h_flex().h(46).px(8).gap(8).items_center().rounded(12).border_1().border_color(t.border).bg(t.surface)
     .child(h_flex().flex_1().min_w_0().gap(6).items_center().overflow_hidden()
       .children(rowButtons.length ? rowButtons : [div().px(4).text_size(11.5).text_color(t.dim).child(hint)]))
