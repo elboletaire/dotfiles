@@ -662,8 +662,36 @@ link_herdr_plugin() {
 }
 
 link_herdr_app() {
-  # Hook point for dotfiles-owned herdr-app setup, empty for now. Octopilot's mods
-  # are installed by its own install.sh, run from install_modules.
+  # Dotfiles-owned herdr-app setup. Octopilot's mods are installed by its own
+  # install.sh, run from install_modules.
+  command -v herdr-app &>/dev/null || return 0
+  _link_moll_herdr_app
+}
+
+_link_moll_herdr_app() {
+  # Moll's herdr-app mods live outside the dotfiles. Link them from their
+  # checkout where it exists, else copy them from the Moll host when one is set.
+  local checkout=$HOME/docker/moll/herdr-app/install.sh
+  local config=${XDG_CONFIG_HOME:-$HOME/.config}/moll/host
+  local host=${MOLL_HOST:-} tmp
+  if [[ -f "$checkout" ]]; then
+    bash "$checkout" ||
+      echo "WARNING: Moll's herdr-app setup failed (see above)" >&2
+    return 0
+  fi
+  if [[ -z "$host" && -f "$config" ]]; then
+    host=$(head -n 1 "$config")
+  fi
+  [[ -n "$host" ]] || return 0
+  # Runs the bundle only when the fetch worked, as _run_remote_installer does.
+  tmp="$(mktemp)" || return 0
+  if ssh -n -o BatchMode=yes -o ConnectTimeout=5 "$host" \
+    'bash docker/moll/herdr-app/install.sh --bundle >/dev/null && cat docker/moll/herdr-app/bundle.sh' > "$tmp"; then
+    sh "$tmp" || echo "WARNING: Moll's herdr-app bundle failed (see above)" >&2
+  else
+    echo "WARNING: could not fetch Moll's herdr-app bundle from $host" >&2
+  fi
+  rm -f "$tmp"
   return 0
 }
 

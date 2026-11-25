@@ -1549,6 +1549,66 @@ else
   fail "merge dropped the APM hook or kept the retired one: $(cat "$SETTINGS")"
 fi
 rm -rf "$HOME/.claude" "$DOTFILES/ai/claude/settings.json"
+echo "=== Test 46: Moll herdr-app mods are linked, copied from a host, or skipped ==="
+MOLL_TMP="$(mktemp -d)"
+MOLL_HOME="$MOLL_TMP/home"
+MOLL_LOG="$MOLL_TMP/moll.log"
+MOLL_BIN="$MOLL_TMP/bin"
+MOLL_TEMPS="$MOLL_TMP/temps"
+mkdir -p "$MOLL_HOME" "$MOLL_BIN" "$MOLL_TEMPS"
+# An ssh stub that emits a tiny bundle, or fails when MOLL_SSH_FAIL is set.
+cat > "$MOLL_BIN/ssh" <<SSH
+#!/bin/sh
+if [ -n "\$MOLL_SSH_FAIL" ]; then exit 255; fi
+echo "ssh \$*" >> "$MOLL_LOG"
+echo 'echo "bundle ran" >> "$MOLL_LOG"'
+SSH
+chmod +x "$MOLL_BIN/ssh"
+moll_run() {
+  env -u MOLL_HOST -u XDG_CONFIG_HOME HOME="$MOLL_HOME" TMPDIR="$MOLL_TEMPS" \
+    PATH="$MOLL_BIN:$PATH" "$@" bash -c 'source "$1"; _link_moll_herdr_app' _ "$TESTDIR/install_patched.sh"
+}
+
+# (a) No checkout and no host: silent no-op.
+rm -f "$MOLL_LOG"
+out=$(moll_run 2>&1) && rc=0 || rc=$?
+if [ "$rc" -eq 0 ] && [ -z "$out" ] && [ ! -e "$MOLL_LOG" ]; then
+  pass "silent no-op without a checkout or a host"
+else
+  fail "no-op printed output or ran something: rc=$rc out=$out"
+fi
+
+# (b) Checkout present: its install.sh is run.
+mkdir -p "$MOLL_HOME/docker/moll/herdr-app"
+printf '#!/bin/sh\necho "checkout $*" >> "%s"\n' "$MOLL_LOG" > "$MOLL_HOME/docker/moll/herdr-app/install.sh"
+rm -f "$MOLL_LOG"
+moll_run >/dev/null 2>&1 || true
+if grep -q "^checkout" "$MOLL_LOG"; then
+  pass "runs the checkout's install.sh"
+else
+  fail "checkout install.sh was not run: $(cat "$MOLL_LOG" 2>/dev/null)"
+fi
+rm -f "$MOLL_HOME/docker/moll/herdr-app/install.sh"
+
+# (c) MOLL_HOST set: the bundle is fetched over ssh and run.
+rm -f "$MOLL_LOG"
+moll_run MOLL_HOST=fake-host >/dev/null 2>&1 || true
+if grep -q "^ssh .*fake-host" "$MOLL_LOG" && grep -q "^bundle ran$" "$MOLL_LOG"; then
+  pass "fetches the bundle from MOLL_HOST and runs it"
+else
+  fail "bundle was not fetched and run: $(cat "$MOLL_LOG" 2>/dev/null)"
+fi
+
+# (d) ssh fails: a warning, no run, temp file removed, and the caller carries on.
+rm -f "$MOLL_LOG"
+out=$(moll_run MOLL_HOST=fake-host MOLL_SSH_FAIL=1 2>&1) && rc=0 || rc=$?
+if [ "$rc" -eq 0 ] && grep -q "WARNING: could not fetch Moll's herdr-app bundle" <<<"$out" &&
+   [ ! -e "$MOLL_LOG" ] && [ -z "$(ls -A "$MOLL_TEMPS")" ]; then
+  pass "warns on a failed fetch, runs nothing, removes the temp file"
+else
+  fail "failed fetch: rc=$rc out=$out"
+fi
+rm -rf "$MOLL_TMP"
 
 echo ""
 echo "=== ALL TESTS COMPLETE ==="
