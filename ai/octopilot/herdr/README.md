@@ -37,8 +37,8 @@ The workspace has two tabs: **OCTOPILOT**, described below, and **Octopilot
 itself. In OCTOPILOT, the dashboard pane is titled `dashboard`.
 
 `open` starts the orchestrator as a fresh claude in `OCTOPILOT_ORCH_CWD`
-(`~/src`) in a small **messenger** pane -- type `/octopilot:messenger` in it once
-to start ticking -- and the **prompter** below it, a second claude running
+(`~/src`) in a small **messenger** pane, which starts ticking by itself
+(`/octopilot:messenger`), and the **prompter** below it, a second claude running
 `/octopilot:prompter`. Type in the prompter: it answers from octopilot's state
 and queues your commands in the orchestrator's inbox. Agent reports and the
 dashboard's keys go to that inbox too, so nothing is ever typed into a pane
@@ -75,6 +75,33 @@ claude = "off"       # no state-change sounds from Claude agents (all of them)
 
 The dashboard also runs outside herdr: `~/.dotfiles/ai/octopilot/dashboard.sh`.
 It needs `uv` (which provides `rich`); there is nothing else to install.
+
+## GUI (herdr-app)
+
+`herdr/open-gui.sh` builds the same space in the Herdr app (`herdr-app`, with
+its terminals in herdr-core): the **Octopilot** space with the messenger,
+dashboard and prompter panes, and the code-changes tab. Like `open.sh`, it
+focuses the space when it exists and adds what is missing. Each claude is an
+hc terminal labelled `octopilot.agent=<name>`, and everything it starts runs
+with `OCTOPILOT_BACKEND=hc`. Unlike the TUI layout, the prompter's split is
+50/50: `pane.split` takes no ratio.
+
+To test it next to a live TUI octopilot, run it from a worktree with a scratch
+state dir. Without `OCTOPILOT_STATE_DIR` it refuses, so a worktree never
+shares the live `state.json`:
+
+```sh
+OCTOPILOT_STATE_DIR=~/.local/state/octopilot-gui-test \
+HOME_REPOS="<owner/repo>" ISSUE_ORGS="<org>" \
+  ~/.dotfiles/.worktrees/<branch>/ai/octopilot/herdr/open-gui.sh
+```
+
+`HOME_REPOS`, `ISSUE_ORGS` and `CLONE_ROOTS` narrow what the test scans. A
+worktree's claudes also get `--plugin-dir <worktree>/plugin`, and every skill
+reads its `scan.sh` from `OCTOPILOT_DIR` (set to the worktree). The installed
+plugin, from `CLAUDE_CODE_PLUGIN_DIRS`, has the same name, `octopilot`; how
+Claude Code resolves the two copies has not been checked. Close the test
+space with `herdr-app do space.close --id <space> --confirmed true`.
 
 ## What it shows
 

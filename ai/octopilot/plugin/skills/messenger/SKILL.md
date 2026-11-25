@@ -16,7 +16,7 @@ typed into your pane. When something needs the user's decision, say what it
 is and how to give it: a dashboard key, or a command for the prompter. If the
 user does type in your pane, answer them there as usual.
 
-`A=~/.dotfiles/ai/octopilot/scan.sh` for everything below.
+`A="${OCTOPILOT_DIR:-$HOME/.dotfiles/ai/octopilot}/scan.sh"` for everything below.
 
 ## One tick
 
@@ -143,7 +143,7 @@ the dashboard's `g`/`n` keys send) still work. Report `UNCLONED` and
 | `CLOSED` | Report. The PR was closed unmerged; ask the user whether to clean up. Do not remove anything yourself. On a stack, `layer=#N` names the closed layer (the item's own PR may still be open): report it the same way, and take no action on the stack. A closed layer is for the user to resolve: reopen it, or detach the stack. If the row also says `bottom=#N merged, fan-out pending`, the merged bottom's SIBLINGS fan-out has not run, and waits on the user too. |
 | `PROPOSE` | Collect these and present them as a numbered list. **Spawn nothing until the user says so.** |
 | `UNCLONED` | Report with the clone command. Never clone, never spawn. |
-| `STALE` | Report with the removal command as a suggestion: `herdr worktree remove --workspace <session> --force`. **Never run it.** |
+| `STALE` | Report with the removal command as a suggestion: `herdr worktree remove --workspace <session> --force` in the TUI, or `git worktree remove <worktree>` after closing its space (`herdr-app do space.close --id <space> --confirmed true`) in the Herdr app. **Never run it.** |
 | `UNKNOWN` | `gh pr view` failed. Report and move on; it usually resolves next tick. |
 
 ## Answering the user
@@ -154,13 +154,16 @@ the dashboard's `g`/`n` keys send) still work. Report `UNCLONED` and
 - **"re-review 452"** / **"ack 452"** -> the two answers to a stale `PUSHED` PR (see that row).
 - **"pause"** / **"resume"** -> `$A pause` / `$A resume`.
 - **"detach <#>"**, "detach this", "archive the X session" -> `$A detach <key>`.
-  It closes the herdr workspace (agent stopped, worktree and branch kept)
-  and untracks the item, so it frees its slot and its PR or issue is proposed
-  again like anything else. Use it for work the user is parking, not
-  abandoning. Reverse with `herdr worktree open --cwd <repo> --path
-  <worktree>` and starting claude in it, plus `$A track` with the workspace
-  id. When the user names a session by title rather than key, find it with
-  `herdr workspace list` and match it to the row's `session=`.
+  It closes the session's workspace (TUI) or space (GUI): agent stopped,
+  worktree and branch kept, and it untracks the item, so it frees its slot
+  and its PR or issue is proposed again like anything else. Use it for work
+  the user is parking, not abandoning. Reverse it in the TUI with `herdr
+  worktree open --cwd <repo> --path <worktree>` and starting claude in it;
+  in the Herdr app with `herdr-app do space.new --folder <worktree>` and the
+  claude command (see `herdr/open-gui.sh`). Then `$A track` with the
+  workspace or space id. When the user names a session by title rather than
+  key, find it with `herdr workspace list` (TUI) or `herdr-app ls` (GUI) and
+  match it to the row's `session=`.
 - **"/investigate [--read-only] <repo> <question>"** -> spawn an investigation (below). The
   question is the user's, verbatim -- never paraphrase it into the prompt, and
   never answer it yourself. You are the orchestrator; the session investigates.
@@ -379,8 +382,8 @@ if an agent says `ready` and the table disagrees, the table wins.
 6. **Never prompt a `driver=agent` item twice.** Its first prompt carries the
    whole loop; a second message lands mid-flight and races its own work.
 7. One `$A send` per item per tick. Two messages in one tick race each other.
-   Always `$A send`, never `herdr agent prompt` directly: it
-   finds the agent wherever it runs. Exit 4 means the agent is waiting on an
+   Always `$A send`, never type into an agent's terminal directly
+   (`herdr agent prompt`, `hc send`): it finds the agent wherever it runs. Exit 4 means the agent is waiting on an
    approval or a question -- nothing was sent; report it, never answer it.
 8. Report in the Tick report layout above. Do not paste prompt bodies back.
 9. **Never send desktop notifications** (`PushNotification`). The dashboard

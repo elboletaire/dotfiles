@@ -37,7 +37,7 @@ If you get blocked, stop and report what blocked you.
 
 ## Reporting
 
-`A=~/.dotfiles/ai/octopilot/scan.sh`, and your item key is `{{KEY}}`. Always
+`A="${OCTOPILOT_DIR:-$HOME/.dotfiles/ai/octopilot}/scan.sh"`, and your item key is `{{KEY}}`. Always
 quote it: it contains `?`, which a shell otherwise expands as a glob.
 
 When you stop, send exactly one report:

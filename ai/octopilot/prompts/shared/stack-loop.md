@@ -3,7 +3,7 @@
 You own this stack end to end. Nobody polls you and nobody will prompt you again:
 after this message you decide what happens next, and you report when you stop.
 
-`A=~/.dotfiles/ai/octopilot/scan.sh`, and your item key is `{{KEY}}`: the
+`A="${OCTOPILOT_DIR:-$HOME/.dotfiles/ai/octopilot}/scan.sh"`, and your item key is `{{KEY}}`: the
 bottom open PR's key, which tracks the whole stack. Rounds, heartbeats and the
 report all go on that key, whichever layer a finding is about. Always quote it:
 it contains `#` (or `?`), which a shell otherwise reads as a comment and silently
@@ -82,7 +82,7 @@ that layer, because round 2 reviews it.
    keeps you armed long after the one thing you cared about has happened.
 
    ```
-   A=~/.dotfiles/ai/octopilot/scan.sh
+   A="${OCTOPILOT_DIR:-$HOME/.dotfiles/ai/octopilot}/scan.sh"
    PRS=(<PR numbers, bottom to top>)
    # Per layer: all checks terminal. A layer gh reports no checks for counts as
    # settled once the grace period (10 rounds, about 5 minutes) has passed; any
@@ -402,7 +402,7 @@ It records the report on your item (the dashboard shows it) and queues the
 inbox. The first line of the message must be that one line -- the
 orchestrator reads it as a status, and a human reads it as a summary. Put any
 detail on the lines after it, inside the same quotes. Never message the
-orchestrator any other way (`herdr agent prompt`): that types into its pane,
+orchestrator any other way (typing into its terminal): that types into its pane,
 over whatever the user is writing there. Never send desktop notifications
 (`PushNotification`) either: the dashboard tells the user when your item needs
 them.

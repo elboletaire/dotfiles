@@ -3,7 +3,7 @@
 You own this PR end to end. Nobody polls you and nobody will prompt you again:
 after this message you decide what happens next, and you report when you stop.
 
-`A=~/.dotfiles/ai/octopilot/scan.sh`, and your item key is `{{KEY}}`. Always
+`A="${OCTOPILOT_DIR:-$HOME/.dotfiles/ai/octopilot}/scan.sh"`, and your item key is `{{KEY}}`. Always
 quote it: it contains `#` (or `?`), which a shell otherwise reads as a
 comment and silently truncates the argument.
 
@@ -190,7 +190,7 @@ It records the report on your item (the dashboard shows it) and queues the
 inbox. The first line of the message must be that one line -- the
 orchestrator reads it as a status, and a human reads it as a summary. Put any
 detail on the lines after it, inside the same quotes. Never message the
-orchestrator any other way (`herdr agent prompt`): that types
+orchestrator any other way (typing into its terminal): that types
 into its pane, over whatever the user is writing there. Never send desktop
 notifications (`PushNotification`) either: the dashboard tells the user when
 your item needs them.

@@ -3,12 +3,12 @@
 # Repos where every open PR is a candidate regardless of author (canonical
 # slugs -- resolved via `gh repo view`, NOT directory names. vocdoni/ui-scaffold
 # redirects to vocdoni/vocdoni-app; using the old slug silently drops the repo).
-HOME_REPOS="vocdoni/vocdoni-app vocdoni/vocdoni.io vocdoni/vocdoni-integrator-sdk"
+HOME_REPOS="${HOME_REPOS:-vocdoni/vocdoni-app vocdoni/vocdoni.io vocdoni/vocdoni-integrator-sdk}"
 
 # Where your local clones live. Octopilot treats every git repo directly under
 # these folders (a real `.git` dir; worktrees are skipped) as "cloned", and
 # resolves its GitHub slug and base branch with `gh repo view`. Space-separated.
-CLONE_ROOTS="$HOME/src/vocdoni $HOME/src/davinci"
+CLONE_ROOTS="${CLONE_ROOTS:-$HOME/src/vocdoni $HOME/src/davinci}"
 
 # Two clones can resolve to the same slug (ui-scaffold and vocdoni-app are both
 # vocdoni/vocdoni-app). The path listed here wins; otherwise the first in
@@ -18,7 +18,7 @@ CLONE_PREFER="$HOME/src/vocdoni/ui-scaffold"
 
 # Orgs whose issues are candidates when assigned to you. Add "elboletaire" here
 # if you want issue candidates from your personal repos (manga-downloader etc).
-ISSUE_ORGS="vocdoni"
+ISSUE_ORGS="${ISSUE_ORGS:-vocdoni}"
 
 # Slash command for review. `/review` is a verified alias of `/code-review`
 # (aliases:["review"] in the 2.1.267 bundle); both work.
