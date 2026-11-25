@@ -535,7 +535,8 @@ class HcBackend:
         return ((info or {}).get("status") or {}).get("state")
 
     def send(self, target, text):
-        code, data, raw = hc(["send", target, text], timeout=120)
+        # `--` keeps text that starts with a dash from reading as a flag.
+        code, data, raw = hc(["send", target, "--", text], timeout=120)
         if code == 9 or error_code(data) == "blocked":
             return False, "agent_blocked"
         return (True, "") if code == 0 else (False, error_code(data) or raw)
@@ -2429,10 +2430,8 @@ def inbox(state):
 
 # ------------------------------------------------------------ speech and chat
 #
-# The herdr-app GUI's two chats, read from the claudes' transcripts: speech is
-# the orchestrator's last message (the octopus window), chat the prompter's
-# conversation. herdr/open-gui.sh starts both with --session-id and labels
-# them octopilot.session=<uuid>, which names the transcript.
+# The GUI's two chats, read from the claudes' transcripts (CONTRACT.md, "Speech
+# and chat"). open-gui.sh labels each claude octopilot.session=<uuid>.
 
 PROMPTER_AGENT = "octopilot-prompter"
 PROJECTS_DIR = os.path.expanduser("~/.claude/projects")
@@ -2442,9 +2441,12 @@ CHAT_LIMIT = 50
 TOOL_INPUT_KEYS = ("command", "file_path", "path", "pattern", "url", "query",
                    "description", "skill")
 TOOL_SUMMARY_MAX = 100
-# User entries the harness writes for itself: command output, notifications,
-# other sessions' messages, interrupts. Nothing a person typed starts with them.
-INJECTED_PREFIXES = ("<", "[Request interrupted", "Another Claude session sent a message")
+# User entries the harness writes for itself (command output, notifications,
+# other sessions' messages, interrupts); a person's text starts with none of them.
+INJECTED_PREFIXES = ("<command-", "<local-command-", "<bash-", "<task-notification>",
+                     "<system-reminder>", "[Request interrupted",
+                     "Another Claude session sent a message")
+HC_WRAPPER = re.compile(r"^<hc\b[^>]*>(.*)</hc>$", re.S)
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
 
@@ -2473,19 +2475,22 @@ def orchestrator_terminal(state):
 
 
 def transcript_path(info):
-    """The transcript of the claude a terminal runs: the session it was labelled
-    with, else the newest one in the folder claude runs in (claude names that
-    folder after the path, with every character but letters, digits and - as -)."""
+    """The transcript of a terminal's claude: its octopilot.session label's, or
+    (after a /clear, the label is stale) the newest one in its folder, claude's
+    name for which maps every character but [A-Za-z0-9-] to -."""
     session = (info.get("labels") or {}).get("octopilot.session") or ""
     if UUID_RE.match(session):
         hits = glob.glob(os.path.join(PROJECTS_DIR, "*", f"{session}.jsonl"))
-        return hits[0] if hits else None
+        if hits:
+            return hits[0]
     fg = info.get("foreground") or {}
     folder = fg.get("cwd") if fg.get("name") == "claude" else info.get("cwd")
     if not folder:
         return None
     project = os.path.join(PROJECTS_DIR, re.sub(r"[^A-Za-z0-9-]", "-", folder))
-    files = glob.glob(os.path.join(project, "*.jsonl"))
+    since = (info.get("created_ms") or 0) / 1000 - 1
+    files = [f for f in glob.glob(os.path.join(project, "*.jsonl"))
+             if os.path.getmtime(f) >= since]
     return max(files, key=os.path.getmtime) if files else None
 
 
@@ -2520,9 +2525,11 @@ def stream_entries(path):
 
 
 def typed_text(entry):
-    """The text a person typed in a user entry, else None: tool results, meta
-    entries and the harness's own messages are not the person's."""
-    if entry.get("isMeta"):
+    """The text a person typed in a user entry, else None (tool results, meta
+    and the harness's own messages are not the person's). An hc message loses
+    its wrapper; an image alone reads as [image]."""
+    if entry.get("isMeta") or entry.get("isCompactSummary") \
+            or entry.get("isVisibleInTranscriptOnly"):
         return None
     content = (entry.get("message") or {}).get("content")
     if isinstance(content, str):
@@ -2532,9 +2539,14 @@ def typed_text(entry):
         if any(b.get("type") == "tool_result" for b in blocks):
             return None
         text = "\n".join(b.get("text") or "" for b in blocks if b.get("type") == "text")
+        if not text.strip() and any(b.get("type") == "image" for b in blocks):
+            text = "[image]"
     else:
         return None
     text = text.strip()
+    wrapped = HC_WRAPPER.match(text)
+    if wrapped:
+        text = wrapped.group(1).strip()
     if not text or text.startswith(INJECTED_PREFIXES):
         return None
     return text
@@ -2560,9 +2572,9 @@ def finish_turn(turn):
 
 
 def chat_messages(entries):
-    """Chat messages, oldest first: what a person typed, and each assistant
-    turn. Claude writes one entry per content block of an API response, all
-    with the same message id, so those entries merge into one turn."""
+    """Chat messages, oldest first: what a person typed, and each assistant turn.
+    Claude writes one entry per content block, all with the API message id, so
+    they merge into one turn."""
     turn = None
     for e in entries:
         if e.get("isSidechain"):
@@ -2628,28 +2640,29 @@ def speech_cmd(state):
 
 
 def chat_page(path, after, limit):
-    """The messages after `after`, at most `limit`. With no `after`, or one
-    that is no longer in the transcript, the newest `limit` messages. When
-    nothing follows `after`, it comes back alone: an assistant turn still being
-    written keeps its id while its text grows."""
+    """-> (messages, reset): the newest `limit`, or the anchor then up to `limit`
+    newer ones (the anchor first, since the mod updates by id). An unknown
+    anchor (a session after /clear) gives the newest with reset set."""
     tail = list(chat_messages(tail_entries(path)))
     if after is None:
-        return tail[-limit:]
+        return tail[-limit:], False
     ids = [m["id"] for m in tail]
     if after in ids:
         at = ids.index(after)
-        return tail[at + 1:at + 1 + limit] or tail[at:at + 1]
-    # Older than the tail: stream from the start, up to the anchor and then
-    # `limit` messages.
-    page, seen = [], False
+        return tail[at:at + 1 + limit], False
+    # Older than the tail: stream from the start, keeping the anchor and the
+    # messages after it.
+    page = []
     for m in chat_messages(stream_entries(path)):
-        if seen:
+        if page:
             page.append(m)
-            if len(page) == limit:
+            if len(page) > limit:
                 break
         elif m["id"] == after:
-            seen = True
-    return page if seen else tail[-limit:]
+            page.append(m)
+    if page:
+        return page, False
+    return tail[-limit:], True
 
 
 def chat_cmd(args):
@@ -2660,14 +2673,17 @@ def chat_cmd(args):
     except ValueError:
         raise SystemExit("--limit needs a number")
     limit = max(1, limit)
-    out = {"terminal": None, "status": "offline", "blocked": None, "messages": []}
+    out = {"terminal": None, "session": None, "status": "offline", "blocked": None,
+           "reset": False, "messages": []}
     address = agent_address(PROMPTER_AGENT)
     info = terminal_info(address) if address else None
     if info is None:
         return out
     path = transcript_path(info)
-    out.update(terminal=address, status=status_of(info), blocked=blocked_of(info),
-               messages=chat_page(path, after, limit) if path else [])
+    out.update(terminal=address, status=status_of(info), blocked=blocked_of(info))
+    if path:
+        out["session"] = os.path.basename(path)[:-len(".jsonl")]
+        out["messages"], out["reset"] = chat_page(path, after, limit)
     return out
 
 
@@ -2697,15 +2713,20 @@ def chat_send(args):
 
 def chat_keys(args):
     """chat-keys <keys...>: press keys in the prompter, e.g. 1, 2 or esc to
-    answer a permission prompt. Sent even while it is blocked."""
+    answer a permission prompt. Exit 4 when it is not blocked on a prompt, so
+    no stray keystrokes reach it."""
     keys = args[1:]
     if not keys:
         print("usage: scan.sh chat-keys <keys...>", file=sys.stderr)
         return 1
     address = agent_address(PROMPTER_AGENT)
-    if address is None:
+    info = terminal_info(address) if address else None
+    if info is None:
         print(json.dumps({"ok": False, "error": "no prompter running"}))
         return 3
+    if status_of(info) != "blocked":
+        print(json.dumps({"ok": False, "error": "prompter is not blocked"}))
+        return 4
     code, data, raw = hc(["keys", address, *keys])
     result_code, out = chat_result(code == 0, None if code == 0 else (error_code(data) or raw))
     print(json.dumps(out))
