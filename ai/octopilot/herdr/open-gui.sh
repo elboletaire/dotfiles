@@ -30,6 +30,7 @@ PROMPTER_PANE="octopilot-prompter"
 SIDE_PANE="octopilot-side"
 KITCHEN_PANE="octopilot-kitchen"
 KITCHEN_PX=300                         # the kitchen's height under the chat
+SIDE_PX=280                            # the side panel's width beside the agent's terminal
 MAIN_TAB="OCTOPILOT"
 ENGINE_TAB="engine"
 CODE_TAB="Octopilot (code changes)"
@@ -401,6 +402,17 @@ show_code_tab() {
   echo "$located"
 }
 
+# Sizes the side panel (pane $2, in tab $1) to its minimum plus SIDE_PX: as size_kitchen,
+# the tab is shown first, "right" on the panel shrinks it and "left" grows it. Best effort.
+size_side() {
+  local out
+  "$APP" do tab.select --id "$1" >/dev/null 2>&1 || true
+  "$APP" do pane.resize --direction right --pane "$2" --px 10000 >/dev/null 2>&1 || true
+  if ! out=$("$APP" do pane.resize --direction left --pane "$2" --px "$SIDE_PX" 2>&1); then
+    echo "open-gui.sh: could not size pane $2 to $SIDE_PX px: $out" >&2
+  fi
+}
+
 # The octopilot-side panel beside the agent's terminal, once per tab: the agent's label
 # octopilot.side=<tab>:<pane> is kept while it names this tab and that pane still exists.
 add_side_panel() {
@@ -417,6 +429,7 @@ add_side_panel() {
     return 0
   fi
   name_mod_pane "$side" "$(pane_name "$SIDE_PANE")"
+  size_side "$tab" "$side"
   record_label "$code" octopilot.side "$tab:$side"
 }
 

@@ -117,10 +117,10 @@ octopilot-code`. It sends one at a time and never while the agent waits on a pro
 (the answer is typed in its terminal). `/resume` opens its picker in that terminal,
 which the panel then focuses; every send then waits until the agent's status or
 title changes, or you click "Picker done", so no click types into the picker. A
-notice goes when the agent's status changes, or after 8 s. The panel narrows itself
-to 240 px once per pane (`pane.resize` on its divider), remembered in
-`shared("octopilot-side.fitted")`, so a panel you widen stays wide. `chat`, `chat-send` and
-`chat-keys` take `--agent octopilot-code` too; the orchestrator's `send-code` still
+notice goes when the agent's status changes, or after 8 s. The run sizes the panel
+to 280 px when it creates it (`size_side`, as the kitchen: `pane.resize` right, then left);
+the mod lays out whatever width it gets, and a rerun keeps the panel as it is. `chat`,
+`chat-send` and `chat-keys` take `--agent octopilot-code` too; the orchestrator's `send-code` still
 queues requests for the code agent.
 
 A code agent from an earlier run is converted on a rerun. A parked agent (the

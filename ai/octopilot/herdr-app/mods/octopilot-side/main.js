@@ -3,7 +3,7 @@
 // an open /resume picker. Props: dir, state_dir, agent, title (see herdr/README.md).
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { exec, hc, run, props, shared, setShared, home, theme, terminals, panes, nextCommand, window, checking } from "herdr";
+import { exec, hc, run, props, shared, home, theme, terminals, nextCommand, window, checking } from "herdr";
 
 const MODELS = ["opus", "sonnet", "haiku"];
 const WORDS = { working: "working", blocked: "needs you", idle: "idle", done: "finished", offline: "offline" };
@@ -11,12 +11,8 @@ const WORDS = { working: "working", blocked: "needs you", idle: "idle", done: "f
 const RECORDS_MS = 3000;
 // The buttons wait this long after a send, so a double click sends once.
 const LOCK_MS = 1500;
-// The panel's width: once laid out wider, its divider with the agent's terminal moves to make it this.
-const PANEL_PX = 240;
 // A notice goes after this long, or sooner when the agent's status changes.
 const NOTICE_MS = 8000;
-// The panes already narrowed (by pane id), so a panel the person widened stays wide.
-const FITTED_KEY = "octopilot-side.fitted";
 
 // scan.sh under the hc backend, with the dashboard's folder and state dir, set by env(1).
 // The agent prop goes right after the verb, where scan.sh reads it. -> [command, argv]
@@ -52,8 +48,6 @@ export default class Side extends View {
     this.noticeStatus = null;
     this.picker = null;     // after /resume: the agent's status and title then; sends wait until they change
     this.confirming = false;
-    this.width = 0;
-    this.fitted = false;
     this.fp = "";
     // `herdr-app check` runs init for real: no scan.sh, timers or key waits there.
     if (checking()) return;
@@ -90,28 +84,11 @@ export default class Side extends View {
     this.noticeStatus = this.agent?.status ?? null;
   }
 
-  // Narrows the panel to PANEL_PX, once per pane: the divider with the agent's terminal moves
-  // right. Waits until the agent's terminal is shown beside it.
-  fit() {
-    if (this.fitted || this.width < PANEL_PX + 8 || !this.agent) return;
-    const pane = panes().find((p) => p.terminal === this.agent.address);
-    const me = pane && panes().find((p) => p.mod === "octopilot-side" && p.tab === pane.tab);
-    if (!me) return;
-    this.fitted = true;
-    const done = shared(FITTED_KEY) ?? {};
-    if (done[me.pane]) return;
-    setShared(FITTED_KEY, { ...done, [me.pane]: true });
-    // on_size_change gives logical px; whether pane.resize's px are scaled by the app zoom
-    // is not documented, so at a zoom other than 1 the panel may land a little off 240.
-    run("pane.resize", { direction: "right", pane: pane.pane, px: Math.round(this.width - PANEL_PX) });
-  }
-
   tick(cx) {
     if (window()?.visible === false) return;
     const agent = agentTerminal(props()?.agent ?? "octopilot-code", props()?.dir || null);
     this.agent = agent;
     this.subs = agent ? terminals().filter((t) => t.parent === agent.address) : [];
-    this.fit();
     if (this.picker && (!agent || agent.status !== this.picker.status || agent.title !== this.picker.title)) {
       this.picker = null;
     }
@@ -416,10 +393,6 @@ export default class Side extends View {
     return v_flex()
       .id("side")
       .track_focus(this.handle)
-      .on_size_change((size) => {
-        this.width = size.width;
-        this.fit();
-      })
       .size_full()
       .min_h(0)
       .bg(t.chrome)
