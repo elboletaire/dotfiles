@@ -106,8 +106,10 @@ there is refused, never replaced), and adds an `octopilot` entry to
 `programs.json` that runs `herdr/open-gui.sh --close-launcher`. The
 `octopilot-launcher` mod's palette entry, "Open Octopilot" (ctrl-shift-p), runs
 the same thing in a new tab, which closes again once the space is up. The
-palette entry starts the checkout at `~/.dotfiles`; `--dir` points only the
-links and the program entry at another checkout. `scripts/install.sh` runs the
+palette entry always opens the live checkout (`~/.dotfiles`); `--dir` moves only
+the mod symlinks and the `programs.json` entry to another checkout. The launcher
+closes its own pane when the space is up (never the tab: the tab goes only with
+its last pane). `scripts/install.sh` runs the
 installer when `herdr-app` is installed. It does not bind a key: pass `--key`
 to bind `ctrl-alt-o` in `keys.json` as well (backed up first, a key bound to
 something else is left alone). Other options: `--dry-run`, `--uninstall`
@@ -115,6 +117,15 @@ something else is left alone). Other options: `--dry-run`, `--uninstall`
 home, as herdr-app does. A `keys.json` you edit stops getting herdr-app's new
 default shortcuts on upgrade, which is why the key is opt-in. A rejected
 `programs.json` or `keys.json` leaves a `.error` file, which the installer reports.
+
+**The octopilot layout.** The installer also writes `~/.config/herdr-app/layouts/octopilot.json`:
+a copy of your `layouts/main.json` (recorded as `cloned_from`) plus a floating block
+that docks the `octopilot-kitchen` mod in the right-hand corner of every tab. It is
+regenerated on each run, a file of that name that is not ours is left alone,
+`--uninstall` removes it, and a `layout.error` is reported. After building the
+space, `open-gui.sh` switches to it with `layout.switch` when it exists
+(`--no-layout` skips that; `--terminals` never switches). Re-run the installer after
+changing `main.json`.
 
 **Fallback.** `open-gui.sh --terminals` builds the TUI-style layout instead:
 one OCTOPILOT tab with the messenger, the curses dashboard and the prompter as

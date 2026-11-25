@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # Installs Octopilot's herdr-app parts: each mod folder in herdr-app/mods is
-# symlinked into the app's mods (edits here take effect at once), and
-# programs.json gets an Octopilot entry, which the launcher mod runs.
+# symlinked into the app's mods (edits here take effect at once), programs.json
+# gets an Octopilot entry, which the launcher mod runs, and layouts/octopilot.json
+# is written: your layouts/main.json plus the octopilot-kitchen corner.
 #
 #   install.sh [--dir <octopilot dir>] [--key] [--dry-run] [--uninstall]
 #
 # --dir       the octopilot checkout the links and the entry point into (default: this one)
 # --key       also bind ctrl-alt-o in keys.json (not on by default: see README)
 # --dry-run   print what would change, change nothing
-# --uninstall remove the mod links, the program entry and the key, when they are ours
+# --uninstall remove the mod links, the program entry, the layout and the key, when they are ours
 #
 # HERDR_APP_HOME picks another app home, as herdr-app does.
 set -euo pipefail
@@ -36,6 +37,8 @@ MODS_SRC="$DIR/herdr-app/mods"
 MODS_DST="$APP_HOME/mods"
 PROGRAMS="$APP_HOME/programs.json"
 KEYS="$APP_HOME/keys.json"
+LAYOUTS="$APP_HOME/layouts"
+LAYOUT_FILE="$LAYOUTS/octopilot.json"
 LAUNCHER="$DIR/herdr/open-gui.sh"
 
 # What we wrote, recognised by shape, so a checkout that moved updates it.
@@ -45,6 +48,10 @@ OURS_PROGRAM='type == "object" and ((.run // []) | length == 3 and .[0] == "bash
 OURS_BINDING='type == "object" and .command == "terminal.open" and
   ((.args.argv // []) | length >= 2 and .[0] == "bash"
   and (.[1] | type == "string" and endswith("/herdr/open-gui.sh")))'
+
+# Our layout, recognised by its kitchen block.
+OURS_LAYOUT='type == "object" and ((.floating // []) | any(.id == "octopilot-kitchen"))'
+KITCHEN='{"id": "octopilot-kitchen", "content": {"mod": "octopilot-kitchen"}, "edge": "right", "align": "end"}'
 
 # A herdr-app JSON file's content, or an empty object when it does not exist yet.
 read_json() {
@@ -159,6 +166,56 @@ set_program() {
   edit_json "$PROGRAMS" '.programs.octopilot = $e' --argjson e "$entry"
 }
 
+# layouts/octopilot.json: layouts/main.json as it is now, plus the kitchen
+# corner as a floating block of the root (visible on every tab). Shipped layouts
+# are read-only, so a file of its own is the supported way; cloned_from records
+# its origin. Regenerated on every run when it is ours; a layout of that name we
+# did not write is left alone.
+set_layout() {
+  local current main version out tmp stamp
+  current="$(value_at "$LAYOUT_FILE" '. // null')" || return 1
+  if [ "$UNINSTALL" -eq 1 ]; then
+    if [ ! -f "$LAYOUT_FILE" ] || [ "$(jq -n --argjson v "$current" "\$v | select($OURS_LAYOUT) | true")" != "true" ]; then
+      return 0
+    fi
+    if [ "$DRY" -eq 1 ]; then echo "would remove $LAYOUT_FILE"; return 0; fi
+    rm "$LAYOUT_FILE"
+    echo "removed $LAYOUT_FILE"
+    return 0
+  fi
+  if [ -f "$LAYOUT_FILE" ] && [ "$(jq -n --argjson v "$current" "\$v | select($OURS_LAYOUT) | true")" != "true" ]; then
+    echo "install.sh: $LAYOUT_FILE is not ours; left as it is (no octopilot layout)" >&2
+    return 0
+  fi
+  main="$LAYOUTS/main.json"
+  if [ ! -f "$main" ]; then
+    echo "install.sh: no $main (open herdr-app once); no octopilot layout" >&2
+    return 0
+  fi
+  version="$(herdr-app --version 2>/dev/null | awk '{print $NF; exit}')" || true
+  out="$(jq -c --argjson k "$KITCHEN" --arg v "${version:-0}" \
+    '. + {cloned_from: {name: "main", version: $v}, floating: ((.floating // []) | map(select(.id != "octopilot-kitchen")) + [$k])}' \
+    "$main")" || {
+    echo "install.sh: $main is not valid JSON; no octopilot layout" >&2
+    return 1
+  }
+  if [ -f "$LAYOUT_FILE" ] && [ "$(jq -c . "$LAYOUT_FILE")" = "$out" ]; then return 0; fi
+  if [ "$DRY" -eq 1 ]; then echo "would write $LAYOUT_FILE"; return 0; fi
+  stamp="$(mktemp)"
+  tmp="$LAYOUT_FILE.tmp.$$"
+  printf '%s\n' "$out" | jq . > "$tmp"
+  mv "$tmp" "$LAYOUT_FILE"
+  echo "wrote $LAYOUT_FILE"
+  sleep 2
+  if [ -f "$LAYOUTS/octopilot.error" ] && [ "$LAYOUTS/octopilot.error" -nt "$stamp" ]; then
+    echo "install.sh: herdr-app rejected $LAYOUT_FILE:" >&2
+    cat "$LAYOUTS/octopilot.error" >&2
+    command rm -f "$stamp"
+    return 1
+  fi
+  command rm -f "$stamp"
+}
+
 # The ctrl-alt-o binding, only with --key; removed by --uninstall when ours.
 set_key() {
   local current binding
@@ -199,4 +256,5 @@ else
   link_mods
 fi
 set_program
+set_layout
 set_key
