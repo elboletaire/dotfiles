@@ -107,7 +107,8 @@ export function paused(t) {
     .child("⏸  PAUSED: the orchestrator acts on nothing until resumed (P)");
 }
 
-// The selected card's edge is a bar that springs in, not a jump.
+// The selected card's edge is a bar that springs in, not a jump; inset so it stays inside
+// the rounded corners (clipping is rectangular).
 function card(v, t, e, tone, now) {
   const sel = v.sel === e.key;
   const { view } = v;
@@ -120,7 +121,7 @@ function card(v, t, e, tone, now) {
     .bg(sel ? t.raised : t.background).pl(14).pr(12).py(9).gap(5).cursor_pointer()
     .hover((s) => s.border_color(sel ? t[tone] : t.input))
     .on_click((ev, cx) => v.pickEntry(e.key, ev.click_count, cx))
-    .child(div().id(`bar-${e.key}`).absolute().left_0().top_0().bottom_0().w(3)
+    .child(div().id(`bar-${e.key}`).absolute().left_0().top(10).bottom(10).w(3).rounded_r(2)
       .bg(t[tone]).opacity(sel ? 1 : 0).spring("opacity"))
     .child(h_flex().items_center().gap(6).min_w_0()
       .child(div().font_semibold().text_size(12.5).text_color(t.foreground).truncate().child(e.label))
