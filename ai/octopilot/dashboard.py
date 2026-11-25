@@ -1466,8 +1466,8 @@ class Dashboard:
 
     def open_orch(self, live, term):
         """The prompter when there is one (that is where the user types),
-        else the orchestrator itself. The dashboard's own backend is asked
-        first, the other only when that fails."""
+        else the orchestrator itself. The prompter is looked up only in the
+        dashboard's own backend; the orchestrator wherever its address points."""
         own = scan.HC if scan.OCTOPILOT_BACKEND == "hc" else scan.HERDR
         if self.focus_agent(own, PROMPTER_AGENT):
             return

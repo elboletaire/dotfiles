@@ -183,8 +183,8 @@ def whoami(state):
 # --------------------------------------------------------------- agent hosts
 #
 # An item's session id names its backend: a TUI workspace (`w12`) or a herdr-app
-# space (`sp<hex>`). New items spawn on OCTOPILOT_BACKEND. Addresses are
-# "herdr:<agent>" and "hc:<terminal>"; a bare name is the spawn backend's.
+# space (`sp<hex>`), since it survives restarts that pane ids and names may not.
+# New items spawn on OCTOPILOT_BACKEND; a bare agent name is the spawn backend's.
 
 HERDR_WS = re.compile(r"^w[0-9A-Za-z]{1,8}$")
 HC_SPACE = re.compile(r"^sp[0-9a-f]+$")
@@ -2664,8 +2664,8 @@ def dispatch(cmd, args, state):
         return 0
     if cmd == "detach":
         # detach <key>: close its workspace or space, keep the worktree and
-        # branch, and drop the item so it holds no slot. Reverse by hand: reopen
-        # the worktree, start claude in it, then `track`.
+        # branch, and drop the item so it holds no slot (it is proposed again).
+        # Reverse by hand: reopen the worktree, start claude in it, then `track`.
         k = args[1]
         it = state["items"].get(k)
         if not it:
