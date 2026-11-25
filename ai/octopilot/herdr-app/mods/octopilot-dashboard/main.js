@@ -5,7 +5,7 @@
 import { View } from "gpui-kit";
 import { v_flex, h_flex, ScrollHandle, InputState } from "gpui-base";
 import {
-  exec, readTextFile, watchFolder, nextCommand, checking, home, props, shared, setShared,
+  exec, readTextFile, watchFolder, nextCommand, checking, home, props, shared, run, layouts,
   openOverlay, closeOverlay, notify, theme, window,
 } from "herdr";
 import {
@@ -19,7 +19,8 @@ import {
 import { kitchenDialog, investigateDialog } from "./dialogs.js";
 
 const MOD = "octopilot-dashboard";
-const OCTOPUS = "octopilot-octopus";
+// The kitchen corner: the octopilot layout's floating kitchen block.
+const KITCHEN_LAYOUT = "octopilot";
 // view.json is also read on a timer, besides the folder watch, in case a watch is lost.
 const POLL_MS = 2000;
 const NAV = { j: 1, down: 1, k: -1, up: -1, pagedown: 10, pageup: -10 };
@@ -47,7 +48,7 @@ export default class OctopilotDashboard extends View {
     if (p.dialog) return this.initDialog(p, cx);
     this.dir = p.dir ?? shared("octopilot.dir") ?? `${home()}/.dotfiles/ai/octopilot`;
     this.stateDir = p.state_dir ?? shared("octopilot.state_dir") ?? `${home()}/.local/state/octopilot`;
-    // A fixture file stands in for view.json (a test layout): no folder watch, no octopus window.
+    // A fixture file stands in for view.json (a test layout): no folder watch.
     this.fixture = p.fixture ?? null;
     this.viewFile = this.fixture ?? `${this.stateDir}/view.json`;
     this.view = null;
@@ -72,10 +73,7 @@ export default class OctopilotDashboard extends View {
       if (window()?.visible !== false) this.reload(cx);
     });
     cx.spawn((cx) => this.reload(cx));
-    if (!this.fixture) {
-      this.watchState(cx);
-      if (shared("octopilot.octopus") === undefined) this.showOctopus();
-    }
+    if (!this.fixture) this.watchState(cx);
     cx.spawn(async (cx) => {
       for (;;) {
         const command = await nextCommand();
@@ -140,19 +138,18 @@ export default class OctopilotDashboard extends View {
     cx.notify();
   }
 
-  octopusOpen() {
-    const id = shared("octopilot.octopus");
-    return Boolean(id) && id !== "hidden";
+  kitchenOpen() {
+    return shared("layout") === KITCHEN_LAYOUT;
   }
 
-  // The window's key makes a reopen replace the open one in place, so the
-  // button always shows it, even when shared state says otherwise.
-  showOctopus() {
-    const id = openOverlay({
-      mod: OCTOPUS, kind: "window", frame: "none", key: OCTOPUS, keep: true,
-      props: { dir: this.dir, state_dir: this.stateDir },
-    });
-    setShared("octopilot.octopus", id);
+  // Shows or hides the kitchen corner by switching layouts; the layout's own
+  // floating block holds the kitchen mod.
+  toggleKitchen(cx) {
+    if (!layouts().includes(KITCHEN_LAYOUT)) {
+      this.say("kitchen layout not installed: run herdr-app/install.sh", false, cx);
+      return;
+    }
+    run("layout.switch", { name: this.kitchenOpen() ? "main" : KITCHEN_LAYOUT });
   }
 
   // ---- dialogs: this mod opened with props.dialog ----
@@ -408,7 +405,7 @@ export default class OctopilotDashboard extends View {
     const key = entry?.key ?? null;
     if (action.id === "toggle_done") return this.toggleDone(cx);
     if (action.id === "fold_all") return this.toggleAll(cx);
-    if (action.id === "octopus") return this.showOctopus(), cx.notify();
+    if (action.id === "kitchen") return this.toggleKitchen(cx), cx.notify();
     if (action.id === "investigate" && action.args?.length) {
       this.openDialog("investigate", { action: action.id });
       return;
@@ -451,7 +448,7 @@ export default class OctopilotDashboard extends View {
     const arr = this.arr();
     this.sel = resolveSel(this.sel, arr);
     const entry = entryOf(view, this.sel);
-    const globals = [...globalActions(view, this), { id: "octopus", label: "🐙 octopus", active: this.octopusOpen() }];
+    const globals = [...globalActions(view, this), { id: "kitchen", label: "🍳 kitchen", active: this.kitchenOpen() }];
     const notes = view.notes ?? [];
     return root
       .child(header(this, t, now))
