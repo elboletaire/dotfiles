@@ -17,8 +17,8 @@ then the review-fix loop runs. When a PR merges, the orchestrator cleans up.
 The user watches the dashboard (TUI or GUI) and talks to a prompter chat, which
 queues commands for the orchestrator. Nothing is typed into the orchestrator
 directly. The Octopilot workspace has two tabs: OCTOPILOT (orchestrator, prompter,
-dashboard) and "Octopilot (code changes)", a claude started in the dotfiles for
-changing this code (see `herdr/README.md`).
+dashboard) and "Octopilot (code changes)", a claude started in this directory
+(`ai/octopilot`) for changing this code (see `herdr/README.md`).
 
 The GUI is native mods over the same Python backend. The decisions stay in
 `scan.py` and `dashboard.py`; the mods only render `view.json` and send actions
@@ -56,9 +56,11 @@ The GUI is native mods over the same Python backend. The decisions stay in
   from your worktree, then close the test space with
   `herdr-app do space.close --id <space> --confirmed true`. The
   `herdr/README.md` has the full recipe.
-- **Mods**: `node --test test/*.mjs` in the mod's directory. Check a mod's layout
-  with `herdr-app check` on a copy outside the repo (for example under `/tmp`);
-  fixtures are read from there, not from the worktree.
+- **Mods**: `node --test test/*.mjs` in the mod's directory. `herdr-app check <mod>`
+  loads the mod and exits 1 on load or render errors (it does not check layout or
+  paint). `herdr-app types <mod>` writes `gpui-kit.d.ts` next to the app (git-ignored);
+  run it on a copy outside the repo (for example under `/tmp`) to keep that file out
+  of the worktree.
 - **TUI changes**: capture `dashboard.sh --once` output with a fixed scratch state
   before and after the change, and diff them. A change that is not meant to alter
   the frame must give byte-identical output.

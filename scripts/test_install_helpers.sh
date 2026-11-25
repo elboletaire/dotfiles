@@ -1133,6 +1133,16 @@ echo "pacman \$*" >> "$TESTDIR/tools.log"
 [ -n "\${PACMAN_OWNS:-}" ]
 MOCK
 chmod +x "$MOCK_BIN/pacman"
+# brew owns herdr when PATH's herdr is the link under its prefix.
+BREW_PREFIX="$TESTDIR/brew"
+mkdir -p "$BREW_PREFIX/bin"
+ln -sf "$MOCK_BIN/herdr" "$BREW_PREFIX/bin/herdr"
+cat > "$MOCK_BIN/brew" <<MOCK
+#!/bin/bash
+echo "brew \$*" >> "$TESTDIR/tools.log"
+if [ "\$1" = --prefix ]; then echo "$BREW_PREFIX"; fi
+MOCK
+chmod +x "$MOCK_BIN/brew"
 OS_SAVED="${OS:-}"
 OS=Linux
 
@@ -1164,6 +1174,7 @@ grep -q "^brew upgrade herdr$" "$TESTDIR/tools.log" \
   || fail "macOS update did not run brew upgrade herdr"
 OS="$OS_SAVED"
 for tool in herdr yay brew claude pi pacman; do rm -f "$MOCK_BIN/$tool"; done
+rm -rf "$BREW_PREFIX"
 
 echo ""
 echo "=== Test 26: set_login_shell only runs chsh when the login shell is not zsh ==="
@@ -1469,36 +1480,49 @@ echo "=== Test 37: install_herdr upgrades herdr with whoever owns it, never a se
 # Stub-only PATH: the real herdr, pacman, yay, brew, curl and sh never run.
 STUB_BIN="$TESTDIR/stub-bin"
 STUB_LOG="$TESTDIR/stub.log"
+STUB_OUT="$TESTDIR/stub-out.txt"
 rm -rf "$STUB_BIN"
 mkdir -p "$STUB_BIN"
-for tool in mkdir dirname readlink cmp rm mv date ln cat grep awk sed tr cut head; do
+for tool in mkdir dirname readlink cmp rm mv date ln cat grep awk sed tr cut head mktemp python3; do
   ln -s "$(command -v "$tool")" "$STUB_BIN/$tool"
 done
 # stub <tool> <body>: logs "<tool> <args>" to $STUB_LOG, then runs <body>.
 stub() {
+  rm -f "$STUB_BIN/$1"
   printf '#!/bin/bash\necho "%s $*" >> "%s"\n%s\n' "$1" "$STUB_LOG" "$2" > "$STUB_BIN/$1"
   chmod +x "$STUB_BIN/$1"
 }
 stub herdr 'if [ "$1 $2" = "integration status" ]; then echo "claude: current (v1) (x)"; fi'
 stub pacman '[ "$STUB_OWNS" = 1 ]'
-stub brew '[ "$1" != list ] || [ "$STUB_OWNS" = 1 ]'
+stub brew 'if [ "$1" = --prefix ]; then echo "$STUB_PREFIX"; fi'
 stub yay 'true'
-stub curl 'true'
-stub sh 'cat > /dev/null'
+# curl serves latest.json (unless STUB_OFFLINE) and fails the installer download when STUB_DL_FAIL.
+stub curl 'case "$*" in
+  *latest.json*) [ "$STUB_OFFLINE" != 1 ] || exit 6; echo "{\"version\": \"$STUB_LATEST\"}" ;;
+  *install.sh*) [ "$STUB_DL_FAIL" != 1 ] ;;
+esac'
+stub sh 'true'
 stub sudo '"$@"'
 stub herdr-app 'true'
+stub pgrep '[ "$STUB_RUNNING" = 1 ]'
+# Homebrew's prefix: its herdr link points at the Cellar binary.
+STUB_PREFIX="$TESTDIR/brew-prefix"
+mkdir -p "$STUB_PREFIX/bin"
 
 # run_stubbed <OS> <owns 0|1> <command...>: runs with STUB_BIN as the only PATH.
+# Its output lands in $STUB_OUT.
 run_stubbed() {
   local os=$1 owns=$2
   shift 2
   : > "$STUB_LOG"
   (
-    export PATH="$STUB_BIN" OS="$os" STUB_OWNS="$owns"
+    export PATH="$STUB_BIN" OS="$os" STUB_OWNS="$owns" STUB_PREFIX STUB_LATEST
     "$@"
-  ) >/dev/null 2>&1 || true
+  ) >"$STUB_OUT" 2>&1 || true
 }
 called() { grep -qxF -- "$1" "$STUB_LOG"; }
+# fetched <url>: the installer was downloaded to a temp file (curl -o).
+fetched() { grep -q -- "^curl -fsSL $1 -o " "$STUB_LOG"; }
 
 run_stubbed Linux 0 install_herdr update
 if called "herdr update" && ! called "yay -S --needed --noconfirm herdr-bin"; then
@@ -1516,7 +1540,7 @@ fi
 
 run_stubbed Linux 0 install_herdr
 if ! called "herdr update" && ! called "yay -S --needed --noconfirm herdr-bin" &&
-   ! called "curl -fsSL https://herdr.dev/install.sh"; then
+   ! fetched https://herdr.dev/install.sh; then
   pass "install leaves an installed herdr alone"
 else
   fail "install touched an installed herdr: $(tr '\n' ';' < "$STUB_LOG")"
@@ -1524,52 +1548,67 @@ fi
 
 rm -f "$STUB_BIN/herdr"
 run_stubbed Linux 0 install_herdr
-if called "curl -fsSL https://herdr.dev/install.sh" && ! called "yay -S --needed --noconfirm herdr-bin"; then
-  pass "installs a missing herdr with the official script on Linux"
+if fetched https://herdr.dev/install.sh && grep -q '^sh /' "$STUB_LOG" &&
+   ! called "yay -S --needed --noconfirm herdr-bin"; then
+  pass "installs a missing herdr with the official script on Linux, run from a temp file"
 else
   fail "missing herdr did not use the official script: $(tr '\n' ';' < "$STUB_LOG")"
 fi
-
-run_stubbed Darwin 0 install_herdr
-if called "brew install herdr" && ! called "curl -fsSL https://herdr.dev/install.sh"; then
-  pass "installs a missing herdr with brew on macOS"
+stub curl 'case "$*" in *install.sh*) exit 22 ;; esac'
+run_stubbed Linux 0 install_herdr
+if ! grep -q '^sh ' "$STUB_LOG" && grep -q "WARNING: herdr install failed" "$STUB_OUT" &&
+   grep -q "ERROR: Failed to download https://herdr.dev/install.sh" "$STUB_OUT"; then
+  pass "a failed herdr download runs nothing and warns"
 else
-  fail "missing herdr on macOS did not use brew: $(tr '\n' ';' < "$STUB_LOG")"
+  fail "failed herdr download was not warned: $(tr '\n' ';' < "$STUB_OUT")"
 fi
+stub curl 'case "$*" in
+  *latest.json*) [ "$STUB_OFFLINE" != 1 ] || exit 6; echo "{\"version\": \"$STUB_LATEST\"}" ;;
+  *install.sh*) [ "$STUB_DL_FAIL" != 1 ] ;;
+esac'
 
 stub herdr 'if [ "$1 $2" = "integration status" ]; then echo "claude: current (v1) (x)"; fi'
+# Owned by brew: PATH reaches the Cellar binary through brew's prefix link.
+cp "$STUB_BIN/herdr" "$TESTDIR/cellar-herdr"
+rm -f "$STUB_BIN/herdr" "$STUB_PREFIX/bin/herdr"
+ln -s "$TESTDIR/cellar-herdr" "$STUB_PREFIX/bin/herdr"
+ln -s "$STUB_PREFIX/bin/herdr" "$STUB_BIN/herdr"
 run_stubbed Darwin 1 install_herdr update
 if called "brew upgrade herdr" && ! called "herdr update"; then
   pass "update upgrades a brew-owned herdr through brew on macOS"
 else
   fail "brew-owned herdr did not go through brew: $(tr '\n' ';' < "$STUB_LOG")"
 fi
-run_stubbed Darwin 0 install_herdr update
+
+# A herdr on PATH that is not brew's link is not brew's, even with the formula installed.
+stub herdr 'if [ "$1 $2" = "integration status" ]; then echo "claude: current (v1) (x)"; fi'
+run_stubbed Darwin 1 install_herdr update
 if called "herdr update" && ! called "brew upgrade herdr"; then
-  pass "update runs herdr's own updater for a non-brew herdr on macOS"
+  pass "update runs herdr's own updater when PATH's herdr is not brew's link"
 else
   fail "non-brew herdr on macOS did not run herdr update: $(tr '\n' ';' < "$STUB_LOG")"
 fi
 
 echo ""
-echo "=== Test 38: install_herdr_app installs the app once and reruns the installer on update ==="
+echo "=== Test 38: install_herdr_app installs once, and update reruns the installer only when the version changed ==="
 rm -f "$STUB_BIN/herdr-app"
+STUB_LATEST=0.1.18
 run_stubbed Linux 0 install_herdr_app
 if called "sudo pacman -S --needed --noconfirm vulkan-icd-loader mesa libxkbcommon-x11 wayland" &&
-   called "curl -fsSL https://releases.herdr.dev/app/install.sh"; then
+   fetched https://releases.herdr.dev/app/install.sh; then
   pass "installs the Arch runtime libraries, then runs the app installer"
 else
   fail "missing herdr-app did not install its deps and the app: $(tr '\n' ';' < "$STUB_LOG")"
 fi
 
 run_stubbed Darwin 0 install_herdr_app
-if called "curl -fsSL https://releases.herdr.dev/app/install.sh" && ! grep -q '^sudo' "$STUB_LOG"; then
+if fetched https://releases.herdr.dev/app/install.sh && ! grep -q '^sudo' "$STUB_LOG"; then
   pass "installs herdr-app on macOS without the Arch libraries"
 else
   fail "macOS herdr-app install ran pacman or skipped the app: $(tr '\n' ';' < "$STUB_LOG")"
 fi
 
-stub herdr-app 'true'
+stub herdr-app 'echo "herdr-app 0.1.18"'
 run_stubbed Linux 0 install_herdr_app
 if [ ! -s "$STUB_LOG" ]; then
   pass "install skips herdr-app when it is already installed"
@@ -1578,23 +1617,74 @@ else
 fi
 
 run_stubbed Linux 0 install_herdr_app update
-if called "curl -fsSL https://releases.herdr.dev/app/install.sh" && ! grep -q '^sudo' "$STUB_LOG"; then
-  pass "update reruns the app installer without reinstalling the libraries"
+if ! fetched https://releases.herdr.dev/app/install.sh && ! grep -q '^sudo' "$STUB_LOG" &&
+   grep -q "herdr-app 0.1.18 is current" "$STUB_OUT"; then
+  pass "update leaves a current herdr-app alone"
+else
+  fail "update reinstalled a current herdr-app: $(tr '\n' ';' < "$STUB_LOG")"
+fi
+
+stub herdr-app 'echo "herdr-app 0.1.17"'
+run_stubbed Linux 0 install_herdr_app update
+if fetched https://releases.herdr.dev/app/install.sh && ! grep -q '^sudo' "$STUB_LOG"; then
+  pass "update reruns the app installer when the version differs, without the libraries"
 else
   fail "update did not rerun the app installer: $(tr '\n' ';' < "$STUB_LOG")"
 fi
+
+# A version of 0.1.1 must not match 0.1.18 by prefix.
+stub herdr-app 'echo "herdr-app 0.1.1"'
+run_stubbed Linux 0 install_herdr_app update
+if fetched https://releases.herdr.dev/app/install.sh; then
+  pass "compares whole versions, not prefixes"
+else
+  fail "0.1.1 was taken as current for 0.1.18: $(tr '\n' ';' < "$STUB_LOG")"
+fi
+
+stub herdr-app 'echo "herdr-app 0.1.17"'
+STUB_OFFLINE=1 run_stubbed Linux 0 install_herdr_app update
+if ! fetched https://releases.herdr.dev/app/install.sh && grep -q "skipping the update" "$STUB_OUT"; then
+  pass "update skips herdr-app with a note when offline"
+else
+  fail "offline update did not skip: $(tr '\n' ';' < "$STUB_OUT")"
+fi
+
+STUB_RUNNING=1 run_stubbed Darwin 0 install_herdr_app update
+if ! fetched https://releases.herdr.dev/app/install.sh && grep -q "Herdr is running" "$STUB_OUT"; then
+  pass "macOS update leaves a running Herdr.app alone, with a note"
+else
+  fail "macOS update touched a running Herdr.app: $(tr '\n' ';' < "$STUB_OUT")"
+fi
+
+run_stubbed Darwin 0 install_herdr_app update
+if fetched https://releases.herdr.dev/app/install.sh; then
+  pass "macOS update reinstalls herdr-app when it is not running"
+else
+  fail "macOS update skipped a herdr-app that is not running: $(tr '\n' ';' < "$STUB_OUT")"
+fi
+
+STUB_DL_FAIL=1 run_stubbed Linux 0 install_herdr_app update
+if ! grep -q '^sh ' "$STUB_LOG" && grep -q "WARNING: herdr-app install failed" "$STUB_OUT"; then
+  pass "a failed herdr-app download runs nothing and warns"
+else
+  fail "failed herdr-app download was not warned: $(tr '\n' ';' < "$STUB_OUT")"
+fi
 rm -f "$STUB_BIN/herdr-app"
+rm -rf "$STUB_PREFIX"
 
 echo ""
 echo "=== Test 39: cleanup_legacy removes and moves agent-deck and aoe, quietly the second time ==="
 LEGACY_BK="$FAKE_HOME/old_dotfiles/legacy-session-managers-$(date +%Y%m%d)"
 rm -rf "$FAKE_HOME/.local/bin" "$FAKE_HOME/.config/agent-deck" "$FAKE_HOME/.local/share/agent-deck" \
   "$FAKE_HOME/.cache/agent-deck" "$FAKE_HOME/.config/agent-of-empires" "$FAKE_HOME/.tmux.conf" \
-  "$FAKE_HOME/.claude/skills/fleet" "$FAKE_HOME/.agents/skills/fleet" "$FAKE_HOME/.pi/agent/skills" \
-  "$FAKE_HOME/old_dotfiles"
+  "$FAKE_HOME/.claude/skills/fleet" "$FAKE_HOME/.agents/skills/fleet" \
+  "$FAKE_HOME/.claude/skills/agent-deck" "$FAKE_HOME/.agents/skills/agent-deck" \
+  "$FAKE_HOME/.pi/agent/skills" "$FAKE_HOME/old_dotfiles"
 mkdir -p "$FAKE_HOME/.local/bin" "$FAKE_HOME/.config/agent-deck" "$FAKE_HOME/.local/share/agent-deck" \
   "$FAKE_HOME/.cache/agent-deck" "$FAKE_HOME/.config/agent-of-empires" \
-  "$FAKE_HOME/.claude/skills/fleet" "$FAKE_HOME/.agents/skills/fleet" "$FAKE_HOME/.pi/agent/skills"
+  "$FAKE_HOME/.claude/skills/fleet" "$FAKE_HOME/.agents/skills/fleet" \
+  "$FAKE_HOME/.claude/skills/agent-deck" "$FAKE_HOME/.agents/skills/agent-deck" \
+  "$FAKE_HOME/.pi/agent/skills"
 touch "$FAKE_HOME/.local/bin/agent-deck" "$FAKE_HOME/.local/bin/aoe" "$FAKE_HOME/.local/bin/aoe (deleted)"
 cat > "$FAKE_HOME/.tmux.conf" <<'CONF'
 
@@ -1604,7 +1694,8 @@ cat > "$FAKE_HOME/.tmux.conf" <<'CONF'
 set -g mouse on
 # End agent-deck configuration
 CONF
-for d in "$FAKE_HOME/.claude/skills/fleet" "$FAKE_HOME/.agents/skills/fleet"; do
+for d in "$FAKE_HOME/.claude/skills/fleet" "$FAKE_HOME/.agents/skills/fleet" \
+  "$FAKE_HOME/.claude/skills/agent-deck" "$FAKE_HOME/.agents/skills/agent-deck"; do
   echo "description: fan out agent-deck child sessions" > "$d/SKILL.md"
 done
 ln -s ../../../.agents/skills/fleet "$FAKE_HOME/.pi/agent/skills/fleet"
@@ -1618,8 +1709,9 @@ if [ ! -e "$FAKE_HOME/.local/bin/agent-deck" ] && [ ! -e "$FAKE_HOME/.local/bin/
    [ -f "$LEGACY_BK/.tmux.conf" ] && [ ! -e "$FAKE_HOME/.tmux.conf" ] &&
    [ ! -e "$FAKE_HOME/.config/agent-deck" ] && [ ! -e "$FAKE_HOME/.claude/skills/fleet" ] &&
    [ ! -e "$FAKE_HOME/.agents/skills/fleet" ] && [ ! -L "$FAKE_HOME/.pi/agent/skills/fleet" ] &&
+   [ ! -e "$FAKE_HOME/.claude/skills/agent-deck" ] && [ ! -e "$FAKE_HOME/.agents/skills/agent-deck" ] &&
    [ ! -L "$FAKE_HOME/.pi/agent/skills/agent-deck" ]; then
-  pass "removes binaries and fleet, moves config and tmux block, drops dangling pi links"
+  pass "removes binaries, fleet and agent-deck skills, moves config and tmux block, drops dangling pi links"
 else
   fail "cleanup_legacy missed something: $out"
 fi
@@ -1636,6 +1728,8 @@ echo "=== Test 40: cleanup_legacy keeps a tmux.conf with the user's lines and a 
 rm -rf "$FAKE_HOME/old_dotfiles" "$FAKE_HOME/.claude/skills/fleet"
 mkdir -p "$FAKE_HOME/.claude/skills/fleet"
 echo "description: my own fleet skill" > "$FAKE_HOME/.claude/skills/fleet/SKILL.md"
+mkdir -p "$FAKE_HOME/.agents/skills/agent-deck"
+echo "description: my own deck tool" > "$FAKE_HOME/.agents/skills/agent-deck/SKILL.md"
 cat > "$FAKE_HOME/.tmux.conf" <<'CONF'
 set -g base-index 1
 
@@ -1648,12 +1742,57 @@ CONF
 out=$(cleanup_legacy 2>&1)
 if [ -f "$FAKE_HOME/.tmux.conf" ] && [ ! -e "$FAKE_HOME/old_dotfiles" ] &&
    [ -f "$FAKE_HOME/.claude/skills/fleet/SKILL.md" ] &&
+   [ -f "$FAKE_HOME/.agents/skills/agent-deck/SKILL.md" ] &&
    case "$out" in *"left as is"*) true ;; *) false ;; esac; then
-  pass "keeps the mixed tmux.conf with a note and leaves a fleet skill without agent-deck alone"
+  pass "keeps the mixed tmux.conf with a note and leaves fleet and agent-deck skills without agent-deck alone"
 else
   fail "cleanup_legacy touched user content: $out"
 fi
-rm -rf "$FAKE_HOME/.tmux.conf" "$FAKE_HOME/.claude/skills/fleet"
+rm -rf "$FAKE_HOME/.tmux.conf" "$FAKE_HOME/.claude/skills/fleet" "$FAKE_HOME/.agents/skills/agent-deck"
+
+echo ""
+echo "=== Test 40b: the tmux block test rejects an unterminated second block ==="
+TMUX_CONF="$TESTDIR/tmux.conf"
+cat > "$TMUX_CONF" <<'CONF'
+# agent-deck configuration
+# Added by agent-deck installer - 2026-07-23
+set -g mouse on
+# End agent-deck configuration
+# agent-deck configuration
+set -g base-index 1
+CONF
+if _is_agent_deck_tmux_conf "$TMUX_CONF"; then
+  fail "treated a file with an unterminated second block as agent-deck's alone"
+else
+  pass "keeps a file whose second agent-deck block never ends"
+fi
+cat > "$TMUX_CONF" <<'CONF'
+# agent-deck configuration
+# Added by agent-deck installer - 2026-07-23
+set -g mouse on
+# End agent-deck configuration
+CONF
+if _is_agent_deck_tmux_conf "$TMUX_CONF"; then
+  pass "still treats a lone agent-deck block as agent-deck's"
+else
+  fail "rejected a lone agent-deck block"
+fi
+
+echo ""
+echo "=== Test 40c: herdr repair leaves herdr-app installation to install, update and ai ==="
+out=$(
+  install_herdr() { echo "install_herdr"; }
+  install_herdr_app() { echo "install_herdr_app"; }
+  link_herdr_config() { echo "link_herdr_config"; }
+  link_herdr_plugin() { echo "link_herdr_plugin"; }
+  link_herdr_app() { echo "link_herdr_app"; }
+  do_herdr
+)
+if ! grep -q "install_herdr_app" <<<"$out" && grep -q "link_herdr_app" <<<"$out"; then
+  pass "herdr repair skips the herdr-app install and still links its pieces"
+else
+  fail "herdr repair installed herdr-app: $out"
+fi
 
 echo ""
 echo "=== Test 41: cleanup_legacy does nothing when nothing is left ==="

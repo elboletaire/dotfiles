@@ -15,7 +15,8 @@ git clone https://github.com/elboletaire/dotfiles .dotfiles && cd .dotfiles
 
 To refresh only the AI config (prompts, instructions, agents and the pinned
 skills from `ai/`) without installing agents or tooling, and without backing
-anything up to `~/old_dotfiles`:
+anything up to `~/old_dotfiles` (its legacy cleanup still moves old session
+manager state there, see below):
 
 ~~~bash
 ./scripts/install.sh ai-config
@@ -31,14 +32,17 @@ The herdr pieces are installed and kept current by `install` and `update`
 - **herdr-app** (desktop app, with `herdr-core` / `hc` when none is installed):
   installed from `https://releases.herdr.dev/app/install.sh`. On Arch the app's
   runtime libraries (`vulkan-icd-loader mesa libxkbcommon-x11 wayland`) are
-  installed with pacman first. `update` reruns the installer, which is
-  idempotent and updates the app in place; `install` skips it when present.
+  installed with pacman first. `update` (and `ai`) reruns the installer only when
+  `releases.herdr.dev/app/latest.json` names a different version than
+  `herdr-app --version`. On macOS it also waits while Herdr is running, and it
+  skips with a note when offline. `install` skips the app when it is present.
   macOS installs `~/Applications/Herdr.app` (Apple Silicon only).
 - **Legacy session managers**: `install`, `update`, `ai` and `ai-config` remove
   agent-deck and agent-of-empires (`aoe`) left over from before herdr. Binaries
   are deleted; their config and state, plus `~/.tmux.conf` when it holds only
   agent-deck's block, are moved to `~/old_dotfiles/legacy-session-managers-<date>/`.
-  The `fleet` skill goes only where it names agent-deck. A `~/.tmux.conf` with
+  The `fleet` and `agent-deck` skills go only where their `SKILL.md` names
+  agent-deck. A `~/.tmux.conf` with
   other lines is kept and a note is printed. Nothing is printed when there is
   nothing to clean.
 

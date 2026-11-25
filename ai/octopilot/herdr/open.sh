@@ -20,7 +20,7 @@ MESSENGER_RATIO=0.35                   # the messenger pane's share: room for th
 MAIN_TAB="OCTOPILOT"
 CODE_TAB="Octopilot (code changes)"
 CODE_AGENT="octopilot-code"            # scan.py's CODE_AGENT
-CODE_CWD="$(cd "$DIR" && pwd)"         # the octopilot dir: its AGENTS.md is the code agent's guide
+CODE_CWD="$DIR"                        # the octopilot dir: its AGENTS.md is the code agent's guide
 
 # Split the orchestrator's pane down and start the prompter in the new pane.
 add_prompter() {

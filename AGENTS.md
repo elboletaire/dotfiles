@@ -53,9 +53,9 @@ AI (`ai/`):
 Nothing is copied: `scripts/install.sh` creates symlinks.
 
 - `symlink`: every top-level item not in its exclusion list
-  (`README.md LICENSE scripts git config ai`) becomes `~/.<name>`. A new
-  top-level file is linked automatically, so a file that must not become a
-  dotfile goes into that list.
+  (`README.md LICENSE scripts git config ai AGENTS.md CLAUDE.md`) becomes
+  `~/.<name>`. A new top-level file is linked automatically, so a file that must
+  not become a dotfile goes into that list.
 - `symlink_config`: `config/<name>` becomes `~/.config/<name>`. `herdr` is
   skipped there; `link_herdr_config` links only its `config.toml`.
 - `symlink_ai` (through `link_ai`):
@@ -74,11 +74,13 @@ Nothing is copied: `scripts/install.sh` creates symlinks.
 
 | Command | What it does |
 |---|---|
-| `install` | Full setup of a new machine: system packages, nvm, Claude Code and Pi, APM, herdr with herdr-app and herdr-core, uv, submodules, symlinks, AI config, herdr links, login shell, vim plugins. Files it replaces go to `~/old_dotfiles`. It also removes legacy session managers. |
-| `update` | Refreshes the same pieces without system packages or submodule ref bumps. |
+| `install` | Full setup of a new machine: system packages, nvm, Claude Code and Pi, APM, herdr with herdr-app and herdr-core, uv, submodules, symlinks, AI config, herdr links, login shell, vim plugins. Files it replaces go to `~/old_dotfiles`. |
+| `update` | Refreshes the same pieces without system packages or submodule ref bumps. Reinstalls herdr-app only when its version changed. |
 | `ai` | Refreshes only the AI stack: agents, herdr, rtk, skills, AI links, settings, herdr links. |
-| `ai-config` | Relinks prompts, instructions, agents and pinned skills. Installs nothing and backs nothing up. |
-| `herdr` | Repairs the herdr setup (config and plugin links) without upgrading herdr. |
+| `ai-config` | Relinks prompts, instructions, agents and pinned skills. Installs nothing and makes no backups, except the legacy cleanup below. |
+| `herdr` | Repairs the herdr setup: installs herdr if missing, its agent integrations, config and plugin links. Does not upgrade herdr or touch herdr-app (`install`, `update` and `ai` do). |
+
+`install`, `update`, `ai` and `ai-config` all start with the legacy cleanup: agent-deck and aoe are removed, and their state moves to `~/old_dotfiles/legacy-session-managers-<date>/`.
 
 ## herdr
 
@@ -117,12 +119,12 @@ keep project detail there rather than in this file:
   from `~/.claude/machine.md`).
 - **Parallel work**: use a git worktree under `.worktrees/` (for example
   `.worktrees/feat-x`), branched from a fresh `origin/<base>`. `.worktrees/` is
-  not in the repo's `.gitignore`; it is ignored by the global git excludes file.
+  in the repo's `.gitignore`.
 
 ## Adding machine-specific dashboards and tools
 
 Put a tool that only one machine needs under `ai/<name>/`, as `octopilot`,
 `arxiu` and `taller` are. Make it optional: `scripts/install.sh` should set it
-up only when its command exists (`command -v`) or the host matches (hostname
-check), and skip it quietly otherwise. Document it in `ai/<name>/AGENTS.md` and
+up only when its command exists (`command -v`) or an opt-in env var or marker is
+set, and skip it quietly otherwise. Document it in `ai/<name>/AGENTS.md` and
 link that file from this one.

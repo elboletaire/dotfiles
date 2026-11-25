@@ -108,6 +108,22 @@ install_ai_agents() {
   curl -fsSL https://pi.dev/install.sh | sh
 }
 
+_run_remote_installer() {
+  # Runs a downloaded installer with sh, but only when the download worked: a
+  # piped curl would hide its failure behind sh's exit status.
+  local url=$1 tmp_installer rc
+  tmp_installer="$(mktemp)" || return 1
+  if ! curl -fsSL "$url" -o "$tmp_installer"; then
+    echo "ERROR: Failed to download $url" >&2
+    rm -f "$tmp_installer"
+    return 1
+  fi
+  sh "$tmp_installer"
+  rc=$?
+  rm -f "$tmp_installer"
+  return $rc
+}
+
 install_apm() {
   # APM (Agent Package Manager): skill & primitive manager for AI agents.
   # https://github.com/microsoft/apm
@@ -147,7 +163,8 @@ install_herdr() {
   elif [[ "$OS" == "Darwin" ]]; then
     brew install herdr
   else
-    curl -fsSL https://herdr.dev/install.sh | sh
+    _run_remote_installer https://herdr.dev/install.sh ||
+      echo "WARNING: herdr install failed (see above)" >&2
   fi
   command -v herdr &>/dev/null || return 0
 
@@ -166,7 +183,8 @@ _update_herdr() {
   # Upgrades herdr with whoever installed it, so no second copy appears: the
   # package manager that owns the binary, else herdr's own updater.
   if [[ "$OS" == "Darwin" ]]; then
-    if brew list --formula herdr &>/dev/null; then
+    # Brew owns herdr only when the herdr on PATH is Homebrew's link to it.
+    if [ "$(command -v herdr)" -ef "$(brew --prefix 2>/dev/null)/bin/herdr" ]; then
       brew upgrade herdr
     else
       herdr update
@@ -181,7 +199,7 @@ _update_herdr() {
 
 install_herdr_app() {
   # herdr-app: the Herdr desktop app, with herdr-core (hc) beside it if none is
-  # installed yet. Its installer is idempotent, so "update" just reruns it.
+  # installed yet. "update" reruns its installer only when the version changed.
   # Arch needs the app's runtime libraries, installed only with the app.
   local mode=${1:-}
   if ! command -v herdr-app &>/dev/null; then
@@ -192,9 +210,35 @@ install_herdr_app() {
   elif [[ "$mode" != "update" ]]; then
     echo "herdr-app already installed"
     return 0
+  elif ! _herdr_app_outdated; then
+    return 0
   fi
-  curl -fsSL https://releases.herdr.dev/app/install.sh | sh ||
+  _run_remote_installer https://releases.herdr.dev/app/install.sh ||
     echo "WARNING: herdr-app install failed (see above)" >&2
+}
+
+_herdr_app_outdated() {
+  # True when the published herdr-app version differs from the installed one.
+  # False when offline, and on macOS while Herdr.app runs: its installer would
+  # replace the running app.
+  local latest installed
+  if ! latest=$(curl -fsSL https://releases.herdr.dev/app/latest.json 2>/dev/null); then
+    echo "herdr-app: could not reach releases.herdr.dev; skipping the update"
+    return 1
+  fi
+  latest=$(printf '%s' "$latest" | python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])') ||
+    return 1
+  # "herdr-app --version" prints "herdr-app <version>".
+  installed=$(herdr-app --version 2>/dev/null | awk '{ print $NF }')
+  if [[ "$installed" == "$latest" ]]; then
+    echo "herdr-app $installed is current"
+    return 1
+  fi
+  if [[ "$OS" == "Darwin" ]] && pgrep -x Herdr &>/dev/null; then
+    echo "herdr-app $installed is installed and $latest is out, but Herdr is running; quit it and rerun to update"
+    return 1
+  fi
+  return 0
 }
 
 # Session managers replaced by herdr (agent-deck, agent-of-empires) and the
@@ -225,8 +269,9 @@ cleanup_legacy() {
     echo "NOTE: $HOME/.tmux.conf has agent-deck's block next to other lines; left as is"
   fi
 
-  # The fleet skill is removed only where it names agent-deck.
-  for skill in "$HOME/.claude/skills/fleet" "$HOME/.agents/skills/fleet"; do
+  # The fleet and agent-deck skills are removed only where they name agent-deck.
+  for skill in "$HOME/.claude/skills/fleet" "$HOME/.agents/skills/fleet" \
+    "$HOME/.claude/skills/agent-deck" "$HOME/.agents/skills/agent-deck"; do
     if [ -f "$skill/SKILL.md" ] && grep -q agent-deck "$skill/SKILL.md"; then
       rm -rf "$skill"
       echo "Removed $skill"
@@ -267,7 +312,7 @@ _is_agent_deck_tmux_conf() {
     /^# agent-deck configuration$/ { inblock = 1; next }
     /^# End agent-deck configuration$/ { inblock = 0; ended = 1; next }
     !inblock && NF { extra = 1 }
-    END { exit (extra || !ended) }
+    END { exit (extra || !ended || inblock) }
   ' "$1"
 }
 
@@ -1104,9 +1149,8 @@ do_install_ai_config() {
 }
 
 do_herdr() {
-  # Repairs herdr's setup without upgrading herdr: config and plugin links.
+  # Repairs herdr's setup without upgrading herdr or herdr-app: config and plugin links.
   install_herdr
-  install_herdr_app
   link_herdr_config
   link_herdr_plugin
   link_herdr_app
