@@ -59,5 +59,8 @@ dependencies by branch; `ai/apm.lock.yaml` pins each one to a commit.
   It runs `apm update -g`, which takes each dependency to the latest commit of
   its branch, copies the manifest and lock back to `ai/`, and prints the diff.
   A failure leaves `ai/` untouched.
+- **Global manifest**: `~/.apm/apm.yml` is owned by the dotfiles, which
+  overwrites it on every install. Add global dependencies in `ai/apm.yml`, not
+  there.
 - **Targets**: `agent-skills` (`~/.agents/skills/`) and `claude`
   (`~/.claude/skills/`). Pi reads `~/.agents/skills/` natively.

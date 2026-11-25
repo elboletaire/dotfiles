@@ -66,7 +66,9 @@ Nothing is copied: `scripts/install.sh` creates symlinks.
 - `install_skills`: copies `ai/apm.yml` and `ai/apm.lock.yaml` to `~/.apm/` (as
   regular files) and runs `apm install -g --target agent-skills,claude` there, which
   deploys the skills to `~/.agents/skills/` and `~/.claude/skills/`. A lock APM
-  rewrites is copied back to `ai/`.
+  rewrites is copied back to `ai/` without its per-machine native plugin blocks.
+  `~/.apm/apm.yml` is owned by the dotfiles and overwritten: add global deps in
+  `ai/apm.yml`.
 - `merge_claude_settings`: merges `ai/claude/settings.json` into
   `~/.claude/settings.json`, keeping keys other tools wrote. It sets
   `CLAUDE_CODE_PLUGIN_DIRS`, which loads the Claude plugins of
