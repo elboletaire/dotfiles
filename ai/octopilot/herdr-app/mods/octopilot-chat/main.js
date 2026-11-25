@@ -1,6 +1,9 @@
-// The prompter as a chat: its session's messages, a composer that types into it,
+// An octopilot agent as a chat: its session's messages, a composer that types into it,
 // and the answers to a prompt it waits on. Reads `scan.sh chat --json`, writes through
-// `chat-send` and `chat-keys`. Props for tests: `dir` (scan.sh folder), `fixture` (chat JSON file).
+// `chat-send` and `chat-keys`. Props: `agent` (scan.sh --agent, default the prompter),
+// `title` (header, default "Prompter"), `subject` (the agent in copy, default "the prompter"),
+// `chips` ([{label, text}] or strings), and for tests `dir` (scan.sh folder) and
+// `fixture` (chat JSON file).
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, ScrollHandle, TextareaState, Textarea, TextView } from "gpui-base";
 import { exec, readTextFile, run, props, shared, home, window, theme, nextCommand, checking } from "herdr";
@@ -28,13 +31,21 @@ const BOTTOM_SLACK = 8;
 
 // scan.sh under the GUI's backend (hc) and the dashboard's folder and state dir. herdr's
 // exec() has no env option, so env(1) sets them; OCTOPILOT_STATE_DIR only when one was
-// given, else scan.sh's default (XDG) applies. -> [command, argv]
+// given, else scan.sh's default (XDG) applies. The agent, when given, follows the verb
+// (chat, chat-send, chat-keys). -> [command, argv]
 function scanCall(args) {
   const dir = props()?.dir || shared("octopilot.dir") || `${home()}/.dotfiles/ai/octopilot`;
   const stateDir = props()?.state_dir || shared("octopilot.state_dir");
+  const agent = props()?.agent;
   const env = ["OCTOPILOT_BACKEND=hc", `OCTOPILOT_DIR=${dir}`];
   if (stateDir) env.push(`OCTOPILOT_STATE_DIR=${stateDir}`);
-  return ["env", [...env, `${dir}/scan.sh`, ...args]];
+  const argv = agent ? [args[0], "--agent", agent, ...args.slice(1)] : args;
+  return ["env", [...env, `${dir}/scan.sh`, ...argv]];
+}
+
+// Sentence start: "the prompter" -> "The prompter".
+function sentence(s) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 // HH:MM of an ISO time, in the local zone.
@@ -46,9 +57,12 @@ function clock(at) {
 
 export default class Chat extends View {
   init(_props, cx) {
+    this.title = props()?.title || "Prompter";
+    this.subject = props()?.subject || "the prompter";
+    this.chips = (props()?.chips ?? CHIPS).map((c) => (typeof c === "string" ? { label: c, text: c } : c));
     this.scroll = ScrollHandle.new();
     this.handle = cx.focus_handle();
-    this.input = TextareaState.new({ placeholder: "Ask the prompter, or type a command" });
+    this.input = TextareaState.new({ placeholder: `Ask ${this.subject}, or type a command` });
     this.input.set_auto_grow(1, 6);
     this.input.on("change", (_e, cx) => {
       const has = this.input.value().trim() !== "";
@@ -232,8 +246,8 @@ export default class Chat extends View {
   // What a chat-send or clear exit means, as a notice; null when it went through.
   sendNotice(r) {
     if (r.code === 0) return null;
-    if (r.code === 4) return "The prompter is waiting on a prompt. Answer it first.";
-    if (r.code === 3) return "The prompter isn't running.";
+    if (r.code === 4) return `${sentence(this.subject)} is waiting on a prompt. Answer it first.`;
+    if (r.code === 3) return `${sentence(this.subject)} isn't running.`;
     return r.error || `scan.sh exited ${r.code}`;
   }
 
@@ -241,7 +255,7 @@ export default class Chat extends View {
     const text = this.input.value().trim();
     if (!text || !this.online()) return;
     if (this.blocked) {
-      this.notice = "The prompter is waiting on a prompt. Answer it first.";
+      this.notice = `${sentence(this.subject)} is waiting on a prompt. Answer it first.`;
       cx.notify();
       return;
     }
@@ -356,7 +370,7 @@ export default class Chat extends View {
       .child(div().size(8).flex_none().rounded_full().bg(color))
       .child(v_flex()
         .gap(1)
-        .child(div().font_semibold().text_size(14).child("Prompter"))
+        .child(div().font_semibold().text_size(14).child(this.title))
         .child(h_flex()
           .gap(6)
           .items_center()
@@ -536,14 +550,14 @@ export default class Chat extends View {
         .bg(t.surface)
         .border_1()
         .border_color(t.border)
-        .child(div().flex_1().text_size(12).text_color(t.muted).child("Clear this conversation? This sends /clear to the prompter."))
+        .child(div().flex_1().text_size(12).text_color(t.muted).child(`Clear this conversation? This sends /clear to ${this.subject}.`))
         .child(this.button(t, "chat-clear-no", "Cancel", (_e, cx) => {
           this.confirming = false;
           cx.notify();
         }))
         .child(this.button(t, "chat-clear-yes", "Clear", (_e, cx) => cx.spawn(async (cx) => this.clear(cx)), true));
     }
-    const msg = this.error ? `Can't reach the prompter: ${this.error}` : this.notice;
+    const msg = this.error ? `Can't reach ${this.subject}: ${this.error}` : this.notice;
     if (!msg) return null;
     return div()
       .mx(14)
@@ -573,7 +587,7 @@ export default class Chat extends View {
           .bg(t.surface)
           .text_size(12.5)
           .text_color(t.muted)
-          .child(this.status === null ? "Connecting to the prompter…" : "The prompter is offline -- start it to chat."));
+          .child(this.status === null ? `Connecting to ${this.subject}…` : `${sentence(this.subject)} is offline -- start it to chat.`));
     }
     return v_flex()
       .flex_none()
@@ -586,7 +600,7 @@ export default class Chat extends View {
         .gap(6)
         .px(14)
         .pb(8)
-        .children(CHIPS.map((c, i) => h_flex()
+        .children(this.chips.map((c, i) => h_flex()
           .id(`chip-${i}`)
           .h(24)
           .px(10)
