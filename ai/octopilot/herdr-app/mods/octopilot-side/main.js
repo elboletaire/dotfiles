@@ -71,7 +71,7 @@ export default class Side extends View {
   // says its machine in its address. Null here, undefined while not known.
   machine() {
     const tab = this.agent ? panes().find((p) => p.terminal === this.agent.address)?.tab ?? null : null;
-    return this.machineOf(panes(), spaces(), { mod: "octopilot-side", name: props()?.pane_name ?? null, tab });
+    return this.machineOf(panes(), spaces(), { mod: "octopilot-side", name: props()?.pane_name ?? "octopilot-side", tab });
   }
 
   // The agent's machine, from its address (`bolt/t7`; a bare one is this computer's), undefined

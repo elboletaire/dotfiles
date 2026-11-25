@@ -23,13 +23,35 @@ test("a remote pane resolves through the prefixed or the bare tab id", () => {
   assert.equal(resolveMachine([{ ...panes[2], tab: "t9" }], spaces, { mod: MOD }), "bolt");
 });
 
-test("a name given but not found is unknown, never the shown tab", () => {
+test("a name not found, but the mod's only pane: that pane, never the shown tab", () => {
+  assert.equal(resolveMachine([panes[2]], remoteShown, { mod: MOD, name: "nope" }), "bolt");
+  assert.equal(resolveMachine([panes[2]], spaces, { mod: MOD, name: "octopilot-dashboard" }), "bolt");
+});
+
+test("a name not found and two panes of the mod is unknown", () => {
   assert.equal(resolveMachine(panes, remoteShown, { mod: MOD, name: "nope" }), undefined);
-  assert.equal(resolveMachine([panes[2]], remoteShown, { mod: MOD, name: "octopilot-dashboard" }), undefined);
 });
 
 test("several panes of the mod and no name is unknown", () => {
   assert.equal(resolveMachine(panes, remoteShown, { mod: MOD }), undefined);
+});
+
+test("a role name matches the pane renamed role-<hash> when it is the only such pane", () => {
+  const hashed = [
+    { pane: "h1", mod: MOD, name: "octopilot-dashboard-2c3bfaaf", tab: "t1" },
+    { pane: "h2", mod: MOD, name: "octopilot-dashboard-other", tab: "bolt/t9" },
+  ];
+  assert.equal(resolveMachine(hashed, spaces, { mod: MOD, name: "octopilot-dashboard" }), undefined);
+  assert.equal(resolveMachine([hashed[0], { ...hashed[1], mod: "octopilot-chat" }], spaces, { mod: MOD, name: "octopilot-dashboard" }), null);
+  assert.equal(resolveMachine([hashed[0], { ...hashed[1], mod: "octopilot-chat" }], spaces, { mod: MOD, name: "octopilot-dashboard-2c3bfaaf" }), null);
+});
+
+test("an exact name wins over a prefix match", () => {
+  const both = [
+    { pane: "e1", mod: MOD, name: "octopilot-dashboard", tab: "t1" },
+    { pane: "e2", mod: MOD, name: "octopilot-dashboard-2c3bfaaf", tab: "bolt/t9" },
+  ];
+  assert.equal(resolveMachine(both, spaces, { mod: MOD, name: "octopilot-dashboard" }), null);
 });
 
 test("a copy with a pane that is not in panes() is unknown", () => {

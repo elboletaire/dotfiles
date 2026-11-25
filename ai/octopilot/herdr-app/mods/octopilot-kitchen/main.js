@@ -88,7 +88,7 @@ export default class Kitchen extends View {
   // Fixtures are always local.
   machine() {
     if (props()?.fixture) return null;
-    return this.machineOf(panes(), spaces(), { mod: MOD, name: props()?.pane_name ?? null, floating: placement() != null });
+    return this.machineOf(panes(), spaces(), { mod: MOD, name: props()?.pane_name ?? "octopilot-kitchen", floating: placement() != null });
   }
 
   // Where the octopilot is, on its machine (`on`, null here): the code dir, the state dir (null:

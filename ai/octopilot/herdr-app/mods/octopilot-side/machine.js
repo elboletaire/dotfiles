@@ -3,10 +3,9 @@
 // Each mod has a copy of this file (a mod folder stands alone); keep them identical.
 
 // The machine of the mod's space, from its tab: the tab given (the side panel's agent tab), else
-// the tab of the mod's pane: the one named `name`, else the mod's only pane (name null). A copy
-// that should have a pane but finds none it can name gets undefined: not known yet. Only a
-// floating copy (no pane at all) falls back to the shown tab. Remote tab ids may carry the
-// machine's prefix. -> the machine (null here), or undefined.
+// the tab of the mod's pane (paneOf). A copy that should have a pane but finds none gets
+// undefined: not known yet. Only a floating copy (no pane at all) falls back to the shown tab.
+// Remote tab ids may carry the machine's prefix. -> the machine (null here), or undefined.
 export function resolveMachine(panes, spaces, { mod, name = null, tab = null, floating = false }) {
   let id = tab;
   if (id == null) {
@@ -15,7 +14,7 @@ export function resolveMachine(panes, spaces, { mod, name = null, tab = null, fl
       if (!floating) return undefined;
       id = spaces.find((s) => s.active)?.tabs.find((t) => t.active)?.id ?? null;
     } else {
-      const pane = name != null ? mine.find((p) => p.name === name) : (mine.length === 1 ? mine[0] : undefined);
+      const pane = paneOf(mine, name);
       if (!pane) return undefined;
       id = pane.tab;
     }
@@ -23,6 +22,22 @@ export function resolveMachine(panes, spaces, { mod, name = null, tab = null, fl
   if (id == null) return undefined;
   const space = spaces.find((s) => s.tabs.some((t) => t.id === id || (s.machine != null && t.id === `${s.machine}/${id}`)));
   return space ? (space.machine ?? null) : undefined;
+}
+
+// The mod's own pane, of its panes `mine`: the one named `name` exactly, else its only pane, else
+// the only one named `name` plus a suffix (open-gui.sh names panes role-<hash>, and a pane renamed
+// before props had pane_name keeps that name). Undefined when none or several match.
+function paneOf(mine, name) {
+  if (name != null) {
+    const exact = mine.filter((p) => p.name === name);
+    if (exact.length === 1) return exact[0];
+  }
+  if (mine.length === 1) return mine[0];
+  if (name != null) {
+    const prefixed = mine.filter((p) => p.name?.startsWith(`${name}-`));
+    if (prefixed.length === 1) return prefixed[0];
+  }
+  return undefined;
 }
 
 // resolveMachine(), again when spaces(), the mod's panes or the hints change. An unknown answer
