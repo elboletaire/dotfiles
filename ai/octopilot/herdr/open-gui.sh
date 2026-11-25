@@ -408,13 +408,14 @@ show_code_tab() {
   echo "$located"
 }
 
-# Closes the octopilot-side panel an earlier run put beside the code agent in tab $2, and
-# removes the agent's octopilot.side label. The panel is closed only when the label names
-# this tab and pane.rename finds that pane (a mod pane, so pane.close is safe).
+# Closes the octopilot-side panel an earlier run put beside the code agent (its pane $3 in
+# tab $2), and removes the agent's octopilot.side label. The panel is closed only when the
+# label names this tab and pane.rename finds that pane: that proves the pane exists, not that
+# it is ours, so the agent's own pane is never closed here.
 drop_side_panel() {
-  local code=$1 tab=$2 side
+  local code=$1 tab=$2 pane=$3 side
   side=$(recorded_pane "$code" octopilot.side "$tab")
-  if [ -n "$side" ] \
+  if [ -n "$side" ] && [ "$side" != "$pane" ] \
     && "$APP" do pane.rename --pane "$side" --name "$(pane_name octopilot-side)" >/dev/null 2>&1; then
     app do pane.close --pane "$side" >/dev/null
   fi
@@ -448,7 +449,7 @@ add_code_tab() {
   # The old tab holds no terminal now (checked above, and the agent is in $t): mods only.
   if [ -n "$old" ] && [ "$old" != "$t" ]; then app do tab.close --id "$old" >/dev/null; fi
   app do tab.rename --id "$t" --name "$CODE_TAB" >/dev/null
-  drop_side_panel "$code" "$t"
+  drop_side_panel "$code" "$t" "$(cut -f3 <<<"$located")"
 }
 
 # The --terminals code tab: a terminal tab with its claude in the dotfiles root,
