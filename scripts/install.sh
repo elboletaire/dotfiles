@@ -209,6 +209,18 @@ _retire_local_apm_package() {
   done
 }
 
+# Prints an APM lock without its native plugin blocks. APM records the per-HOME
+# marketplace path there, which would break every other machine.
+_portable_apm_lock() {
+  python3 - "$1" <<'PY'
+import re, sys
+text = open(sys.argv[1]).read()
+text = re.sub(r"(?m)^  native_plugin:\n(?:    .*\n)+", "", text)
+text = re.sub(r"(?m)^  native_declared:\n(?:  - .*\n)+", "", text)
+sys.stdout.write(text)
+PY
+}
+
 install_skills() {
   # Installs the skills from ai/apm.yml globally. The locked commits decide what
   # gets installed, so this reproduces ai/apm.lock.yaml; only skills-bump moves them.
@@ -221,10 +233,17 @@ install_skills() {
     return 1
   fi
   # APM rewrites the lock only when apm.yml changed (or its format did); keep it.
-  if ! cmp -s "$apm_home/apm.lock.yaml" "$ai/apm.lock.yaml"; then
-    cp "$apm_home/apm.lock.yaml" "$ai/apm.lock.yaml" || return 1
+  local portable
+  portable="$(mktemp)" || return 1
+  if ! _portable_apm_lock "$apm_home/apm.lock.yaml" > "$portable"; then
+    rm -f "$portable"
+    return 1
+  fi
+  if ! cmp -s "$portable" "$ai/apm.lock.yaml"; then
+    cp "$portable" "$ai/apm.lock.yaml" || { rm -f "$portable"; return 1; }
     echo "NOTE: ai/apm.lock.yaml changed; review and commit it"
   fi
+  rm -f "$portable"
 }
 
 skills_bump() {
@@ -237,7 +256,8 @@ skills_bump() {
     echo "ERROR: apm update -g failed; ai/ unchanged" >&2
     return 1
   fi
-  cp "$apm_home/apm.yml" "$ai/apm.yml" && cp "$apm_home/apm.lock.yaml" "$ai/apm.lock.yaml" || return 1
+  cp "$apm_home/apm.yml" "$ai/apm.yml" || return 1
+  _portable_apm_lock "$apm_home/apm.lock.yaml" > "$ai/apm.lock.yaml" || return 1
   if git -C "$dotfiles" diff --quiet -- ai/; then
     echo "No skill version moved."
   else

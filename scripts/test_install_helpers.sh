@@ -235,6 +235,57 @@ else
 fi
 
 echo ""
+echo "=== Test 4e: the native plugin blocks are stripped and do not count as a change ==="
+# APM records the per-HOME marketplace path in these blocks; the tracked lock must not.
+PLAIN_LOCK="lockfile_version: '4'
+dependencies:
+- repo_url: vocdoni/skills
+  alias: contributing
+deployments: []"
+NATIVE_LOCK_A="lockfile_version: '4'
+dependencies:
+- repo_url: vocdoni/skills
+  alias: contributing
+  native_plugin:
+    name: vocdoni-contributing
+    marketplace:
+      name: apm-u-aaaa
+      path: /home/a/.agents/plugins
+  native_declared:
+  - claude
+deployments: []"
+NATIVE_LOCK_B="${NATIVE_LOCK_A//apm-u-aaaa/apm-u-bbbb}"
+NATIVE_LOCK_B="${NATIVE_LOCK_B//\/home\/a/\/home\/b}"
+seed_ai "manifest-v1" "lockfile_version: '4'
+dependencies: []"
+reset_global_apm
+export MOCK_APM_NEW_LOCK="$NATIVE_LOCK_A"
+out=$(install_skills 2>&1) || fail "install_skills failed: $out"
+unset MOCK_APM_NEW_LOCK
+if [ "$(cat "$DOTFILES/ai/apm.lock.yaml")" = "$PLAIN_LOCK" ] && [[ "$out" == *"ai/apm.lock.yaml changed"* ]]; then
+  pass "a lock with native blocks is written back without them"
+else
+  fail "native blocks leaked into ai/apm.lock.yaml: $(cat "$DOTFILES/ai/apm.lock.yaml")"
+fi
+export MOCK_APM_NEW_LOCK="$NATIVE_LOCK_B"
+out=$(install_skills 2>&1) || fail "install_skills failed: $out"
+unset MOCK_APM_NEW_LOCK
+if [ "$(cat "$DOTFILES/ai/apm.lock.yaml")" = "$PLAIN_LOCK" ] && [[ "$out" != *"changed"* ]]; then
+  pass "a lock differing only in the native blocks is not copied back"
+else
+  fail "native-only difference was copied back: $out"
+fi
+export MOCK_APM_NEW_LOCK="$NATIVE_LOCK_A" MOCK_APM_NEW_MANIFEST="manifest-bumped"
+out=$(skills_bump 2>&1) || fail "skills_bump failed: $out"
+unset MOCK_APM_NEW_LOCK MOCK_APM_NEW_MANIFEST
+if [ "$(cat "$DOTFILES/ai/apm.lock.yaml")" = "$PLAIN_LOCK" ] && ! grep -q native "$DOTFILES/ai/apm.lock.yaml"; then
+  pass "skills-bump writes the stripped lock too"
+else
+  fail "skills-bump kept native blocks: $(cat "$DOTFILES/ai/apm.lock.yaml")"
+fi
+seed_ai "manifest-v1" "$PLAIN_LOCK"
+
+echo ""
 echo "=== Test 4c: update and ai paths install skills but never bump them ==="
 reset_global_apm
 : > "$TESTDIR/calls.log"
