@@ -70,6 +70,7 @@ OCTOPILOT_BACKEND = os.environ.get("OCTOPILOT_BACKEND", "herdr")
 # The octopilot code dir: where workers find scan.sh and their plugin.
 OCTOPILOT_DIR = (os.environ.get("OCTOPILOT_DIR")
                  or os.path.dirname(os.path.abspath(__file__)))
+INSTALLED_DIR = os.path.expanduser("~/.dotfiles/ai/octopilot")
 # herdr agent name the orchestrator runs under.
 ORCH_AGENT = "octopilot"
 # herdr agent in the "Octopilot (code changes)" tab (herdr/open.sh): changes
@@ -224,8 +225,17 @@ def app_do(command, args, timeout=60):
 
 
 def error_code(data):
+    """The error's code (herdr) or kind (hc), or ''."""
     err = (data or {}).get("error") or {}
-    return (err.get("code") if isinstance(err, dict) else err) or ""
+    if not isinstance(err, dict):
+        return err or ""
+    return err.get("code") or err.get("kind") or ""
+
+
+def gather(fn):
+    """fn(backend) for every backend in parallel, so a hung core cannot stall the other."""
+    with ThreadPoolExecutor(max_workers=len(BACKENDS)) as ex:
+        return list(ex.map(fn, BACKENDS.values()))
 
 
 def owned_worktree(wt, repo):
@@ -257,7 +267,7 @@ def worktree_of(folder):
     None."""
     code, out, _ = sh(["git", "rev-parse", "--path-format=absolute",
                        "--show-toplevel", "--git-dir", "--git-common-dir"],
-                      cwd=folder)
+                      cwd=folder, timeout=10)
     if code != 0:
         return None
     top, gitdir, common = out.splitlines()
@@ -293,7 +303,7 @@ class HerdrBackend:
         asked."""
         if not shutil.which("herdr"):
             return []
-        code, data, _ = herdr(["workspace", "list"])
+        code, data, _ = herdr(["workspace", "list"], timeout=10)
         if code != 0 or not data:
             return None
         return (data.get("result") or {}).get("workspaces", [])
@@ -309,7 +319,7 @@ class HerdrBackend:
                 by_repo.setdefault(wt["repo_root"], []).append((w, wt))
         out = []
         for repo, rows in by_repo.items():
-            code, d, _ = herdr(["worktree", "list", "--cwd", repo])
+            code, d, _ = herdr(["worktree", "list", "--cwd", repo], timeout=10)
             listed_ = ((d or {}).get("result") or {}).get("worktrees", []) \
                 if code == 0 else []
             branch = {x.get("open_workspace_id"): x.get("branch") for x in listed_}
@@ -324,7 +334,7 @@ class HerdrBackend:
         """[{session, agent, pane, status}] for every herdr agent."""
         if not shutil.which("herdr"):
             return []
-        code, data, _ = herdr(["agent", "list"])
+        code, data, _ = herdr(["agent", "list"], timeout=10)
         if code != 0 or not data:
             return []
         return [{"session": a.get("workspace_id"), "agent": a.get("name"),
@@ -452,7 +462,7 @@ class HcBackend:
         None when it is not answering."""
         if not shutil.which("herdr-app"):
             return []
-        code, data, _ = cli(["herdr-app", "ls"])
+        code, data, _ = cli(["herdr-app", "ls"], timeout=10)
         if code != 0 or not data:
             return None
         return data.get("spaces", [])
@@ -478,14 +488,14 @@ class HcBackend:
     def agents(self):
         """[{session, agent, pane, status}] for every terminal running an agent.
         The agent's name is its octopilot.agent label, else the terminal's name."""
-        code, data, _ = hc(["ls", "--json"])
+        code, data, _ = hc(["ls", "--json"], timeout=10)
         if code != 0 or not data:
             return []
         out = []
         for t in data.get("terminals", []):
             if not t.get("agent"):
                 continue
-            _, info, _ = hc(["get", t["address"], "--json"])
+            _, info, _ = hc(["get", t["address"], "--json"], timeout=10)
             info = info or {}
             labels = info.get("labels") or {}
             out.append({"session": labels.get("herdr.space"),
@@ -517,9 +527,9 @@ class HcBackend:
         return ((info or {}).get("status") or {}).get("state")
 
     def send(self, target, text):
-        if self.status(target) == "blocked":
-            return False, "agent_blocked"
         code, data, raw = hc(["send", target, text], timeout=120)
+        if code == 9 or error_code(data) == "blocked":
+            return False, "agent_blocked"
         return (True, "") if code == 0 else (False, error_code(data) or raw)
 
     def read(self, target):
@@ -552,10 +562,17 @@ class HcBackend:
     def discard(self, session, wt):
         """Close the space, then remove its worktree -> (code, message). A
         tracked item has none on record: its space's worktree stands in."""
+        spaces = self.spaces()
         if not wt:
-            wt = next((s["path"] for s in self.sessions(self.spaces()) or []
+            wt = next((s["path"] for s in self.sessions(spaces) or []
                        if s["id"] == session), None)
         code, raw = self.close(session)
+        if code != 0:
+            remaining = self.spaces()
+            if remaining is None or any(s.get("id") == session for s in remaining):
+                # Still open, or unknown: its worktree is still in use.
+                return code, raw
+            code, raw = 0, ""
         if wt and os.path.isdir(wt):
             code, out, err = sh(["git", "worktree", "remove", "--force", wt],
                                 cwd=wt, timeout=180)
@@ -563,19 +580,27 @@ class HcBackend:
         return code, raw
 
     def current(self):
-        """Address of the terminal running this command, if it is an hc one."""
+        """This terminal's address when it is the orchestrator, i.e. labelled
+        octopilot.agent=octopilot. The user's own claude is not."""
         tid = os.environ.get("HC_TERMINAL_ID")
-        return f"hc:{tid}" if tid and shutil.which("hc") else None
+        if not tid or not shutil.which("hc"):
+            return None
+        _, info, _ = hc(["get", tid, "--json"], timeout=10)
+        labels = (info or {}).get("labels") or {}
+        return f"hc:{tid}" if labels.get("octopilot.agent") == ORCH_AGENT else None
 
     def spawn(self, key_, path, wt, title, model):
         """A space on the worktree, its first terminal running a named claude."""
         # The terminal inherits herdr-core's login environment, not this one,
         # so the octopilot settings the worker needs travel in its argv.
-        env = ["OCTOPILOT_BACKEND=hc", f"OCTOPILOT_DIR={OCTOPILOT_DIR}"]
-        if os.environ.get("OCTOPILOT_STATE_DIR"):
-            env.append(f"OCTOPILOT_STATE_DIR={os.environ['OCTOPILOT_STATE_DIR']}")
-        argv = (["env"] + env + ["claude", "--plugin-dir",
-                                 os.path.join(OCTOPILOT_DIR, "plugin")]
+        env = ["OCTOPILOT_BACKEND=hc", f"OCTOPILOT_DIR={OCTOPILOT_DIR}",
+               f"OCTOPILOT_STATE_DIR={os.path.dirname(STATE_FILE)}"]
+        # The installed plugin already loads through CLAUDE_CODE_PLUGIN_DIRS;
+        # only a worktree's copy of octopilot needs its own plugin dir.
+        plugin = []
+        if os.path.realpath(OCTOPILOT_DIR) != os.path.realpath(INSTALLED_DIR):
+            plugin = ["--plugin-dir", os.path.join(OCTOPILOT_DIR, "plugin")]
+        argv = (["env"] + env + ["claude"] + plugin
                 + (["--model", model] if model else []))
         code, data, raw = app_do("space.new", ["--name", title, "--folder", wt,
                                                "--argv", json.dumps(argv),
@@ -591,6 +616,8 @@ class HcBackend:
         # for it for a while, then wait for the agent to settle.
         for _ in range(30):
             if accept_trust(self, term, wt, path):
+                break
+            if self.status(term) in ("idle", "blocked"):
                 break
             time.sleep(1)
         self.wait_idle(term)
@@ -633,18 +660,14 @@ def split_address(address):
 
 
 def all_sessions():
-    """-> (sessions, names of the backends that answered, open session ids).
-
-    A session missing from a listing means it was closed only when its own
-    backend answered: silence is not removal, so an unreachable herdr never
-    untracks live work (see listed())."""
+    """-> (sessions, answered backend names, open session ids). A session missing
+    from a listing counts as closed only when its own backend answered."""
     rows, answered, ids = [], set(), set()
-    for backend in BACKENDS.values():
-        r, ok, open_ids = backend.listing()
+    for name, (r, ok, open_ids) in gather(lambda b: (b.name, b.listing())):
         rows += r
         ids |= open_ids
         if ok:
-            answered.add(backend.name)
+            answered.add(name)
     return rows, answered, ids
 
 
@@ -656,8 +679,8 @@ def listed(answered, session):
 
 def all_live():
     out = {}
-    for backend in BACKENDS.values():
-        out.update(backend.live())
+    for live in gather(lambda b: b.live()):
+        out.update(live)
     return out
 
 
@@ -689,7 +712,8 @@ def send_to(address, text):
 def current_orch():
     """Address of the agent running this command, if it is one. The TUI is
     asked first, so it wins when both ran the command."""
-    for backend in BACKENDS.values():
+    backends = [HERDR, HC] if OCTOPILOT_BACKEND == "hc" else [HERDR]
+    for backend in backends:
         address = backend.current()
         if address:
             return address
@@ -1910,10 +1934,8 @@ def agent_name(key_):
 
 
 def add_worktree(path, base, branch, new_branch):
-    """The branch's worktree, created with git and not `herdr worktree create`:
-    for a branch that only exists on origin, herdr makes a fresh local branch
-    off HEAD instead of tracking it, which would put a PR's agent on the wrong
-    code. -> the worktree's path."""
+    """Create the branch's worktree with git, not `herdr worktree create` (that
+    makes a local branch off HEAD for an origin-only PR). -> the worktree's path."""
     wt = worktree_dir(path, branch)
     porcelain = sh(["git", "worktree", "list", "--porcelain"], cwd=path)[1]
     if f"worktree {wt}" not in porcelain.splitlines():
@@ -2458,6 +2480,9 @@ def dispatch(cmd, args, state):
         return 0
     if cmd == "reboot":
         return reboot(state, args[1])
+    if cmd in ("read", "focus") and len(args) < 2:
+        print(f"usage: scan.sh {cmd} <item>", file=sys.stderr)
+        return 1
     if cmd == "read":
         # read <item>: the item's agent screen, whichever backend runs it.
         return read_item(state, args[1])
@@ -2614,10 +2639,10 @@ def dispatch(cmd, args, state):
         return 0
     if cmd == "detach":
         # detach <key>: park an item without losing its work. Closes its
-        # workspace or space (agent stopped, worktree and branch kept) and drops the
-        # item from state, so it holds no slot and its PR/issue is proposed
-        # again like anything else. Reverse by hand: `herdr worktree open
-        # --path <worktree>`, start claude in it, then `track`.
+        # workspace or space (agent stopped, worktree and branch kept) and
+        # drops the item from state, so it holds no slot and its PR/issue is
+        # proposed again like anything else. Reverse by hand: reopen the
+        # worktree, start claude in it, then `track`.
         k = args[1]
         it = state["items"].get(k)
         if not it:
