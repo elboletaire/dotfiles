@@ -3,7 +3,7 @@
 // Props (agent, title, subject, chips): see herdr/README.md; `dir` and `fixture` are for tests.
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, ScrollHandle, TextareaState, Textarea, TextView } from "gpui-base";
-import { exec, readTextFile, run, props, shared, home, window, theme, nextCommand, checking } from "herdr";
+import { exec, readTextFile, run, props, shared, home, window, theme, nextCommand, checking, panes, spaces, focused } from "herdr";
 
 const SPIN = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 const WORDS = { working: "working", blocked: "needs you", idle: "idle", done: "finished", offline: "offline" };
@@ -37,6 +37,14 @@ function scanCall(args) {
   if (stateDir) env.push(`OCTOPILOT_STATE_DIR=${stateDir}`);
   const argv = agent ? [args[0], "--agent", agent, ...args.slice(1)] : args;
   return ["env", [...env, `${dir}/scan.sh`, ...argv]];
+}
+
+// The character a keypress types, or null: chords with ctrl, alt or cmd type nothing here.
+function typedChar(e) {
+  const m = e.modifiers ?? {};
+  const ch = e.key_char;
+  if (m.control || m.alt || m.platform || !ch || ch.length !== 1 || ch < " " || ch === "\x7f") return null;
+  return ch;
 }
 
 // Sentence start: "the prompter" -> "The prompter".
@@ -88,6 +96,8 @@ export default class Chat extends View {
     this.scrollEnd = true;
     this.reading = false;
     this.last = 0;
+    this.focusWanted = false;  // the composer should take the keyboard once the agent is online
+    this.tabShown = null;      // whether this pane's tab was the shown one on the last tick: see followTab
     // `herdr-app check` runs init for real: no scan.sh, timers or key waits there.
     if (checking()) return;
     cx.spawn(async (cx) => this.sync(cx, true));
@@ -109,13 +119,38 @@ export default class Chat extends View {
     return this.status === "working" || this.status === "blocked";
   }
 
+  // The composer takes the keyboard; while the agent is offline (no composer shown), the list does,
+  // and the composer follows once it is online.
   focusComposer() {
+    this.focusWanted = !this.online();
+    if (this.online()) this.input.focus();
+    else this.handle.focus();
+  }
+
+  // On the clock tick: when this pane's tab becomes the shown one, the composer takes the
+  // keyboard, once, unless a terminal or another pane of that tab has it. Only a lone chat
+  // pane knows its tab (several chats in the window cannot be told apart from panes()).
+  followTab() {
+    const mine = panes().filter((p) => p.mod === "octopilot-chat");
+    const me = mine.length === 1 ? mine[0] : null;
+    const active = spaces().find((s) => s.active)?.tabs.find((t) => t.active)?.id ?? null;
+    const shown = me !== null && me.tab === active;
+    const was = this.tabShown;
+    this.tabShown = shown;
+    const f = focused();
+    if (!shown || was === true || (f && (f.terminal != null || (f.pane != null && f.pane !== me.pane)))) return;
     if (this.online()) this.input.focus();
     else this.handle.focus();
   }
 
   tick(cx) {
     if (window()?.visible === false) return;
+    this.followTab();
+    if (this.focusWanted && this.online()) {
+      this.focusWanted = false;
+      this.input.focus();
+      cx.notify();
+    }
     if (this.answering && Date.now() - this.answeredAt > ANSWER_MS) {
       this.answering = false;
       cx.notify();
@@ -182,6 +217,8 @@ export default class Chat extends View {
       this.messages = [];
       this.index = new Map();
       this.pending = [];
+      // A fresh transcript lands at its end, wherever the reader had scrolled.
+      this.scrollEnd = true;
     }
     const atBottom = this.atBottom();
     let added = 0;
@@ -304,13 +341,28 @@ export default class Chat extends View {
     this.input.focus();
   }
 
+  // Keys reach here from the list and, bubbling up, from the composer.
   key(e, cx) {
+    const m = e.modifiers ?? {};
     if (e.keystroke === "ctrl-l") {
       if (!this.online()) return;
       this.confirming = true;
     } else if (e.key === "escape") {
       if (this.confirming) this.confirming = false;
-      else this.input.blur();
+      else { this.input.blur(); this.handle.focus(); }
+    } else if (e.key === "tab") {
+      // Tab takes the list to the composer; Shift+Tab brings it back. In the composer Tab is left alone.
+      if (!this.focused) {
+        if (!this.online()) return;
+        this.input.focus();
+      } else if (m.shift) {
+        this.handle.focus();
+      } else {
+        return;
+      }
+    } else if (!this.focused && this.online() && typedChar(e)) {
+      // A letter typed while the list has the keyboard goes to the composer.
+      this.fill(this.input.value() + typedChar(e));
     } else {
       return;
     }
@@ -483,7 +535,9 @@ export default class Chat extends View {
       // The last child is the scroll target: it keeps the bottom padding in view.
       div().h(8).flex_none(),
     ];
-    if (this.scrollEnd) {
+    // The request runs after this frame's layout, so a reader at the end is followed on every
+    // frame: a message that grows after the request is brought in by the next one.
+    if (this.scrollEnd || this.atBottom()) {
       this.scroll.scroll_to_item(items.length - 1);
       this.scrollEnd = false;
     }

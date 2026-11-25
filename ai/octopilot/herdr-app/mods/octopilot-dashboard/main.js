@@ -6,11 +6,12 @@ import { View } from "gpui-kit";
 import { v_flex, h_flex, ScrollHandle, InputState } from "gpui-base";
 import {
   exec, readTextFile, watchFolder, nextCommand, checking, home, props, shared, run, layouts,
-  openOverlay, closeOverlay, notify, theme, window, focused,
+  openOverlay, closeOverlay, notify, theme, window, focused, panes, spaces,
 } from "herdr";
 import {
   CONFIRM_MS, FLASH_MS, KITCHEN_S, GLOBAL_KEYS, ROW_KEYS, arrange, resolveSel,
   entryOf, stepSel, jumpSel, keyName, actionKey, parseAnswer, slugOf, isRepoKey, viewError, isStale,
+  soloPane, shownTab, keyboardFree,
 } from "./model.js";
 import {
   header, paused, column, pickPanel, activityPanel, notesRow, statusLine, actionBar,
@@ -76,6 +77,7 @@ export default class OctopilotDashboard extends View {
     this.held = false;     // the key being handled is auto-repeating
     this.flash = null;     // { text, ok, at }
     this.peeking = null;   // the peek this pane opened, until focus comes back: see followPeek
+    this.tabShown = null;  // whether this pane's tab was the shown one on the last tick: see followTab
     this.scrolls = {
       running: ScrollHandle.new(), orch: ScrollHandle.new(), needs: ScrollHandle.new(),
       done: ScrollHandle.new(), pick: ScrollHandle.new(),
@@ -83,6 +85,7 @@ export default class OctopilotDashboard extends View {
     if (checking()) return;
     cx.timer.every(1000, (cx) => {
       this.followPeek();
+      this.followTab();
       if (window()?.visible !== false) cx.notify();   // the clock and the ages
     });
     cx.timer.every(POLL_MS, (cx) => {
@@ -93,7 +96,7 @@ export default class OctopilotDashboard extends View {
     cx.spawn(async (cx) => {
       for (;;) {
         const command = await nextCommand();
-        if (command === "focus") this.handle.focus();
+        if (command === "focus") this.takeFocus();
         cx.notify();
       }
     });
@@ -362,6 +365,8 @@ export default class OctopilotDashboard extends View {
   handleKey(name, cx) {
     const view = this.view;
     const arr = this.arr();
+    // The cursor may sit off the rows between a refocus and the next render: settle it first.
+    this.sel = resolveSel(this.sel, arr);
     const repo = isRepoKey(this.sel) ? slugOf(this.sel) : null;
     const entry = entryOf(view, this.sel);
     if (NAV[name]) return this.select(stepSel(arr, this.sel, NAV[name]), cx), true;
@@ -479,6 +484,23 @@ export default class OctopilotDashboard extends View {
     const back = f.tab === w.tab && (f.pane === w.pane || (f.pane === null && f.terminal === null));
     if (!back) return;
     this.peeking = null;
+    this.takeFocus();
+  }
+
+  // On the clock tick: when this pane's tab becomes the shown one, take the keyboard, once,
+  // unless a terminal or another pane of that tab has it. Only a lone dashboard pane knows its tab.
+  followTab() {
+    const me = soloPane(panes(), MOD);
+    const shown = me !== null && me.tab === shownTab(spaces());
+    const was = this.tabShown;
+    this.tabShown = shown;
+    if (shown && was !== true && keyboardFree(focused(), me.pane)) this.takeFocus();
+  }
+
+  // Every refocus (peek closed, "focus", tab shown) lands on a valid cursor: the old row
+  // while it exists, else the first one. h/l need that; j/k would recover on their own.
+  takeFocus() {
+    if (this.view) this.sel = resolveSel(this.sel, this.arr());
     this.handle.focus();
   }
 

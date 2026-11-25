@@ -85,6 +85,24 @@ export function resolveSel(sel, arr) {
   return arr.selectable[0] ?? null;
 }
 
+// The pane of a mod when it is the only one in the window, else null (several copies
+// cannot be told apart from panes()).
+export function soloPane(panes, mod) {
+  const mine = panes.filter((p) => p.mod === mod);
+  return mine.length === 1 ? mine[0] : null;
+}
+
+// The id of the shown tab, from spaces().
+export function shownTab(spaces) {
+  return spaces.find((s) => s.active)?.tabs.find((t) => t.active)?.id ?? null;
+}
+
+// Whether a pane may take the keyboard: nothing has it, or no terminal and no other pane
+// does (focused() as herdr reports it).
+export function keyboardFree(f, pane) {
+  return !f || (f.terminal == null && (f.pane == null || f.pane === pane));
+}
+
 export function entryOf(view, key) {
   if (!key || isRepoKey(key)) return null;
   for (const c of view.columns) {
