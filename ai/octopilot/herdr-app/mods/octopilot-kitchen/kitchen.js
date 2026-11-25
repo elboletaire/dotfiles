@@ -124,6 +124,13 @@ export function headerLine({ onPan, holes, shelf, paused, offline }) {
     + (offline ? " · offline" : "");
 }
 
+// Why the kitchen is offline, for its chip: the read error when there is one, else how old view.json is.
+export function offlineReason(view, nowMs, error) {
+  if (error) return error;
+  if (!view) return "no view.json";
+  return `view.json is ${Math.round(nowMs / 1000 - (Number(view.generated_at) || 0))} s old`;
+}
+
 // Everything the scene and the bubble draw, for `view` at `nowMs`. `walk` counts the steps
 // the chef has taken along the pan. `until` is when this stops being true (a mood or a
 // burst ends), or null.

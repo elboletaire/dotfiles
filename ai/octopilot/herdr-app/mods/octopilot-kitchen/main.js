@@ -7,7 +7,7 @@ import { v_flex, h_flex, TextView } from "gpui-base";
 import { exec, readTextFile, watchFolder, run, theme, props, shared, home, window, placement, openOverlay, closeOverlay, checking } from "herdr";
 import { clip } from "./clip.js";
 import { SCENE, BOX, SPRITE } from "./atlas.js";
-import { derive, holeAt, spriteBox, boatBox, WALK_MS } from "./kitchen.js";
+import { derive, holeAt, spriteBox, boatBox, offlineReason, WALK_MS } from "./kitchen.js";
 
 const MOD = "octopilot-kitchen";
 const BUBBLE_W = 340;
@@ -58,6 +58,7 @@ async function readJson(path) {
 export default class Kitchen extends View {
   init(_props, cx) {
     this.view = null;
+    this.viewError = null;
     this.speech = null;
     this.error = null;
     this.walk = 0;
@@ -148,9 +149,11 @@ export default class Kitchen extends View {
     const p = props() ?? {};
     try {
       this.view = await readJson(p.fixture ?? `${stateDir()}/view.json`);
-    } catch (_e) {
-      // A missing or half-written view.json: no kitchen for now.
+      this.viewError = null;
+    } catch (e) {
+      // A missing or half-written view.json: no kitchen for now, and the chip says why.
       this.view = null;
+      this.viewError = String(e?.message ?? e).split("\n")[0].slice(0, 80);
     }
   }
 
@@ -328,7 +331,8 @@ export default class Kitchen extends View {
         : null,
       m.offline ? div().absolute().left(0).top(0).w(SCENE.w).h(SCENE.h).rounded(10).bg(INK.dim).opacity(0.45) : null,
       m.offline
-        ? div().absolute().left(0).w(SCENE.w).top(SCENE.h / 2 - 12).flex().justify_center().child(this.chip("kitchen offline"))
+        ? div().absolute().left(0).w(SCENE.w).top(SCENE.h / 2 - 12).flex().justify_center()
+          .child(this.chip(`kitchen offline: ${offlineReason(this.view, this.now(), this.viewError)}`))
         : null,
       // Click the chef to look into the orchestrator's terminal.
       layer([BOX.chef[0] + 14, BOX.chef[1] + 8, 112, 124]).id("chef").cursor_pointer()

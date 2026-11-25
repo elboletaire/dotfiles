@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
-import { derive, ballSprite, chefMood, focusIndex, armPiece, armReach, holeAt, spriteBox, boatBox, toneOf, logLines, headerLine, MOODS, BURSTS } from "../kitchen.js";
+import { derive, ballSprite, chefMood, focusIndex, armPiece, armReach, holeAt, spriteBox, boatBox, toneOf, logLines, headerLine, offlineReason, MOODS, BURSTS } from "../kitchen.js";
 import { PAN, ARM_POSES, COOK_STEPS } from "../atlas.js";
 
 const here = new URL(".", import.meta.url);
@@ -173,4 +173,10 @@ test("without `pan` (an older backend) the newest event still moves the chef", (
   assert.equal(derive(view, (view.generated_at + 10) * 1000).mood, "sleep");
   assert.deepEqual(m.balls, []);
   assert.equal(m.header, "🐙 takoyaki kitchen · 3/6 on the pan");
+});
+
+test("offlineReason names the read error, else a missing or stale view.json", () => {
+  assert.equal(offlineReason(null, 1e12, "no file at /x/view.json"), "no file at /x/view.json");
+  assert.equal(offlineReason(null, 1e12, null), "no view.json");
+  assert.equal(offlineReason({ generated_at: 1000 }, 1040 * 1000), "view.json is 40 s old");
 });
