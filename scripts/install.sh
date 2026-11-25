@@ -246,7 +246,7 @@ install_skills() {
 skills_bump() {
   # The only path that moves skill versions: each dependency goes to the latest
   # commit of its ref. ai/ is replaced only after apm update succeeds.
-  local ai=$dotfiles/ai apm_home=$HOME/.apm lock
+  local ai=$dotfiles/ai apm_home=$HOME/.apm
   mkdir -p "$apm_home" || return 1
   _retire_local_apm_package "$apm_home" "$ai/apm.lock.yaml"
   _cleanup_legacy_skills
@@ -255,14 +255,10 @@ skills_bump() {
     echo "ERROR: apm update -g failed; ai/ unchanged" >&2
     return 1
   fi
-  lock="$(mktemp)" || return 1
-  if ! { cp "$apm_home/apm.lock.yaml" "$lock" &&
-    cp "$apm_home/apm.yml" "$ai/apm.yml" && cp "$lock" "$ai/apm.lock.yaml"; }; then
-    rm -f "$lock"
+  if ! { cp "$apm_home/apm.yml" "$ai/apm.yml" && cp "$apm_home/apm.lock.yaml" "$ai/apm.lock.yaml"; }; then
     echo "ERROR: could not write ai/; restore it from git" >&2
     return 1
   fi
-  rm -f "$lock"
   # Shows the change when dotfiles is a git checkout; otherwise nothing to show.
   if ! git -C "$dotfiles" rev-parse --git-dir &>/dev/null; then
     echo "Updated ai/apm.yml and ai/apm.lock.yaml"
@@ -486,13 +482,6 @@ _cleanup_legacy_skills() {
     done
   fi
 
-  # An intermediate build declared contributing as a native Claude plugin; it is
-  # a plain skill now, so the plugin APM deployed is stale.
-  if [ -e "$HOME/.agents/plugins/vocdoni-contributing" ] || [ -L "$HOME/.agents/plugins/vocdoni-contributing" ]; then
-    _move_legacy "$HOME/.agents/plugins/vocdoni-contributing" "$backup"
-    rmdir "$HOME/.agents/plugins" 2>/dev/null || true
-  fi
-
   # The skills CLI's lock is stale once APM owns the skills.
   if [ -e "$HOME/.agents/.skill-lock.json" ] || [ -L "$HOME/.agents/.skill-lock.json" ]; then
     _move_legacy "$HOME/.agents/.skill-lock.json" "$backup"
@@ -696,32 +685,9 @@ RETIRED = [
 ]
 
 
-# An intermediate build declared contributing as a native plugin, and APM wrote
-# a marketplace apm-u-* for this HOME's ~/.agents/plugins. Only those go.
-APM_PLUGINS = os.path.join(os.path.expanduser("~"), ".agents", "plugins")
-
-
-def apm_native_keys(d):
-    """The (parent, key) pairs of the native plugin settings APM wrote."""
-    found = []
-    mk = d.get("extraKnownMarketplaces")
-    if isinstance(mk, dict):
-        for name, val in mk.items():
-            src = val.get("source") if isinstance(val, dict) else None
-            path = src.get("path") if isinstance(src, dict) else None
-            if name.startswith("apm-u-") and isinstance(path, str) and path.rstrip("/") == APM_PLUGINS:
-                found.append(("extraKnownMarketplaces", name))
-    ep = d.get("enabledPlugins")
-    if isinstance(ep, dict):
-        for key in ep:
-            if key.startswith("vocdoni-contributing@apm-u-"):
-                found.append(("enabledPlugins", key))
-    return found
-
-
 def drop_retired(d):
     d = dict(d)
-    for parent, key in RETIRED + apm_native_keys(d):
+    for parent, key in RETIRED:
         if isinstance(d.get(parent), dict) and key in d[parent]:
             rest = {k: v for k, v in d[parent].items() if k != key}
             if rest:
@@ -732,7 +698,8 @@ def drop_retired(d):
 
 
 # Hooks these dotfiles used to write: agent-deck and aoe hooks (any event) are
-# gone, and the contributing hook is not installed by these dotfiles any more.
+# gone. So is the old upstream contributing SessionStart hook: elboletaire/skills'
+# contributing-rules hook injects the same rules, so keeping both injects them twice.
 LEGACY_HOOK_MARKERS = ["agent-deck", "AOE_", "# aoe-hooks"]
 # The old contributing hook, with $HOME or the expanded home directory.
 LEGACY_CONTRIBUTING_HOOK = re.compile(
