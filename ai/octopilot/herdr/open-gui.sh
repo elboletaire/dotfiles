@@ -253,10 +253,8 @@ start_code_agent() {
   echo "$term"
 }
 
-# The code-changes tab, a mod tab: the chat over this checkout's code agent. The
-# agent is started when missing (its pane is the orchestrator's, empty while
-# parked). An old-style code tab, a terminal tab of that name, gives its agent up:
-# the agent is parked, so its claude keeps running and the tab goes.
+# The code-changes tab: the chat mod over this checkout's code agent, started when
+# missing. An old-style terminal tab of that name gives its agent up (parked, not killed).
 add_code_tab() {
   local space=$1 pane=$2 code tab
   code=$(find_agent "$CODE_AGENT")

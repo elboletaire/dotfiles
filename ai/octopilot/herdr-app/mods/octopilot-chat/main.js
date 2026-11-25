@@ -1,9 +1,6 @@
-// An octopilot agent as a chat: its session's messages, a composer that types into it,
-// and the answers to a prompt it waits on. Reads `scan.sh chat --json`, writes through
-// `chat-send` and `chat-keys`. Props: `agent` (scan.sh --agent, default the prompter),
-// `title` (header, default "Prompter"), `subject` (the agent in copy, default "the prompter"),
-// `chips` ([{label, text}] or strings), and for tests `dir` (scan.sh folder) and
-// `fixture` (chat JSON file).
+// An octopilot agent as a chat: its messages, a composer that types into it, and the answers
+// to a prompt it waits on. Reads `scan.sh chat --json`, writes through `chat-send` and `chat-keys`.
+// Props (agent, title, subject, chips): see herdr/README.md; `dir` and `fixture` are for tests.
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, ScrollHandle, TextareaState, Textarea, TextView } from "gpui-base";
 import { exec, readTextFile, run, props, shared, home, window, theme, nextCommand, checking } from "herdr";
@@ -18,7 +15,7 @@ const CHIPS = [
   { label: "go #", text: "go " },
   { label: "investigate…", text: "investigate " },
 ];
-// Polls: a second while the prompter works or waits on you, three seconds otherwise.
+// Polls: a second while the agent works or waits on you, three seconds otherwise.
 const LIVE_MS = 1000;
 const IDLE_MS = 3000;
 // A pending bubble the transcript never confirms is dropped after this, once idle.
@@ -29,10 +26,9 @@ const MAX_MESSAGES = 200;
 // How close to the end still counts as "at the bottom", in px.
 const BOTTOM_SLACK = 8;
 
-// scan.sh under the GUI's backend (hc) and the dashboard's folder and state dir. herdr's
-// exec() has no env option, so env(1) sets them; OCTOPILOT_STATE_DIR only when one was
-// given, else scan.sh's default (XDG) applies. The agent, when given, follows the verb
-// (chat, chat-send, chat-keys). -> [command, argv]
+// scan.sh under the hc backend, with the dashboard's folder and state dir, set by env(1)
+// (exec() has no env option). The agent prop goes right after the verb, where scan.sh reads it.
+// -> [command, argv]
 function scanCall(args) {
   const dir = props()?.dir || shared("octopilot.dir") || `${home()}/.dotfiles/ai/octopilot`;
   const stateDir = props()?.state_dir || shared("octopilot.state_dir");

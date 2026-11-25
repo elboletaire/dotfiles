@@ -2699,20 +2699,17 @@ def agent_name(agent):
 
 
 def chat_agent(args):
-    """-> (agent, args without --agent): the agent the chat commands address, the
-    prompter unless --agent names another of CHAT_AGENTS. Any other name is
-    refused (exit 2), so no stray text reaches an arbitrary terminal."""
-    if "--agent" not in args:
+    """-> (agent, args without `--agent <name>`). --agent is read only right after
+    the verb, where the mod puts it; anywhere else it is text. The prompter unless
+    it names another of CHAT_AGENTS; any other name is refused (exit 2)."""
+    if len(args) < 3 or args[1] != "--agent":
         return PROMPTER_AGENT, args
-    i = args.index("--agent")
-    if i + 1 >= len(args):
-        raise SystemExit("--agent needs a value")
-    agent = args[i + 1]
+    agent = args[2]
     if agent not in CHAT_AGENTS:
         print(json.dumps({"ok": False, "error": f"unknown agent {agent}",
                           "agents": list(CHAT_AGENTS)}))
         raise SystemExit(2)
-    return agent, args[:i] + args[i + 2:]
+    return agent, [args[0]] + args[3:]
 
 
 def chat_cmd(args):

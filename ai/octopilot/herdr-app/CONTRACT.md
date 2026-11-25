@@ -153,7 +153,11 @@ that changed (unknown anchor, or no transcript yet) answers `"reset": true`.
   `1`, `2`, `esc`). Exit 4 `{"ok": false, "error": "prompter is not blocked"}` otherwise; exit 3 when none runs.
 - `--agent <name>` on `chat`, `chat-send` and `chat-keys` picks the agent: `octopilot-prompter` (the default, as above)
   or `octopilot-code` (the "Octopilot (code changes)" tab's claude, labelled `octopilot.agent=octopilot-code`).
+  `--agent` is read only right after the verb (`chat-send --agent octopilot-code <text…>`); anywhere else it is text.
   Any other name is refused: `{"ok": false, "error": "unknown agent <name>", "agents": [...]}`, exit 2, nothing sent.
+  The errors name the agent: `no <agent> running` (exit 3) and `<agent> is not blocked` (exit 4), where the prompter's
+  are `no prompter running` and `prompter is not blocked`; `octopilot-code`'s read `no octopilot-code running` and
+  `octopilot-code is not blocked`.
   `send-code` is unchanged: it queues the orchestrator's requests for the code agent.
 - `--json` is accepted; the output is always JSON. Under the TUI backend, or with nothing running, speech and chat
   report `"status": "offline"` and no text or messages.
