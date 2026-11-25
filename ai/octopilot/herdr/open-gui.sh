@@ -5,15 +5,15 @@
 set -euo pipefail
 APP="herdr-app"
 HC="hc"
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-LIVE_DIR="$HOME/.dotfiles/ai/octopilot"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+LIVE_DIR="$(cd "$HOME/.dotfiles/ai/octopilot" 2>/dev/null && pwd -P || echo "$HOME/.dotfiles/ai/octopilot")"
 LABEL="Octopilot"
 ORCH_AGENT="octopilot"                 # scan.py's ORCH_AGENT
 PROMPTER_AGENT="octopilot-prompter"
 CODE_AGENT="octopilot-code"            # scan.py's CODE_AGENT
 MAIN_TAB="OCTOPILOT"
 CODE_TAB="Octopilot (code changes)"
-CODE_CWD="$(cd "$DIR/../.." && pwd)"   # the checkout this octopilot lives in
+CODE_CWD="$(cd "$DIR/../.." && pwd -P)"   # the checkout this octopilot lives in
 
 if [ "$DIR" != "$LIVE_DIR" ] && [ -z "${OCTOPILOT_STATE_DIR:-}" ]; then
   echo "open-gui.sh: $DIR is not the live octopilot ($LIVE_DIR), and would" \
@@ -45,12 +45,14 @@ argv_json() {
   jq -nc '$ARGS.positional' --args -- "$@"
 }
 
-# argv for a claude session, optionally started with a prompt. A worktree's
-# claude loads the worktree's plugin too; the live checkout's comes from the
-# CLAUDE_CODE_PLUGIN_DIRS setting already.
+# The --settings that put a worktree's octopilot plugin in place of the
+# installed one (empty on the live checkout), for every claude started here.
+SETTINGS="$(OCTOPILOT_DIR="$DIR" "$DIR/scan.sh" plugin-settings)"
+
+# argv for a claude session, optionally started with a prompt.
 session_argv() {
   local args=(env "${envs[@]}" claude)
-  if [ "$DIR" != "$LIVE_DIR" ]; then args+=(--plugin-dir "$DIR/plugin"); fi
+  if [ -n "$SETTINGS" ]; then args+=(--settings "$SETTINGS"); fi
   if [ -n "${1:-}" ]; then args+=("$1"); fi
   argv_json "${args[@]}"
 }

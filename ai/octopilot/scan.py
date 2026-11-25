@@ -612,11 +612,11 @@ class HcBackend:
         # so the octopilot settings the worker needs travel in its argv.
         env = ["OCTOPILOT_BACKEND=hc", f"OCTOPILOT_DIR={OCTOPILOT_DIR}",
                f"OCTOPILOT_STATE_DIR={os.path.dirname(STATE_FILE)}"]
-        # The installed plugin already loads through CLAUDE_CODE_PLUGIN_DIRS;
-        # only a worktree's copy of octopilot needs its own plugin dir.
-        plugin = []
-        if os.path.realpath(OCTOPILOT_DIR) != os.path.realpath(INSTALLED_DIR):
-            plugin = ["--plugin-dir", os.path.join(OCTOPILOT_DIR, "plugin")]
+        # A worktree's octopilot replaces the installed plugin through
+        # --settings: --plugin-dir would load a second copy, and the installed
+        # one wins.
+        settings = plugin_settings()
+        plugin = ["--settings", settings] if settings else []
         argv = (["env"] + env + ["claude"] + plugin
                 + (["--model", model] if model else []))
         code, data, raw = app_do("space.new", ["--name", title, "--folder", wt,
@@ -2425,7 +2425,37 @@ def inbox(state):
     return 0
 
 
-READ_ONLY = {"render", "status", "siblings", "snapshot", "wind-down"}
+READ_ONLY = {"render", "status", "siblings", "snapshot", "wind-down", "plugin-settings"}
+
+
+def plugin_settings():
+    """--settings JSON that loads this checkout's octopilot plugin in place of
+    the installed one, keeping the other plugin dirs of settings.json. Empty on
+    the live checkout, which already loads its own plugin."""
+    if os.path.realpath(OCTOPILOT_DIR) == os.path.realpath(INSTALLED_DIR):
+        return ""
+    try:
+        with open(os.path.expanduser("~/.claude/settings.json")) as f:
+            settings = json.load(f)
+    except (OSError, ValueError):
+        settings = {}
+    env = settings.get("env") if isinstance(settings, dict) else None
+    listed = env.get("CLAUDE_CODE_PLUGIN_DIRS") if isinstance(env, dict) else None
+    installed = os.path.realpath(os.path.join(INSTALLED_DIR, "plugin"))
+    own = os.path.join(OCTOPILOT_DIR, "plugin")
+    dirs, placed = [], False
+    for entry in (listed if isinstance(listed, str) else "").split(":"):
+        if not entry:
+            continue
+        if os.path.realpath(os.path.expanduser(entry)) == installed:
+            if not placed:
+                dirs.append(own)
+                placed = True
+        else:
+            dirs.append(entry)
+    if not placed:
+        dirs.insert(0, own)
+    return json.dumps({"env": {"CLAUDE_CODE_PLUGIN_DIRS": ":".join(dirs)}})
 
 
 def main():
@@ -2576,6 +2606,13 @@ def dispatch(cmd, args, state):
         state["declined"] = [k for k in state["declined"] if k not in args[1:]]
         save(state)
         print("undeclined:", " ".join(args[1:]))
+        return 0
+    if cmd == "plugin-settings":
+        # plugin-settings: the --settings JSON for a worktree's claude, nothing
+        # on the live checkout (open-gui.sh uses it).
+        settings = plugin_settings()
+        if settings:
+            print(settings)
         return 0
     if cmd == "track":
         # track <key> <mode> <branch> <session> [pr]

@@ -105,17 +105,22 @@ since labels are global). Its own sessions, the dashboard and the code tab get
 script. The workers that scan.py spawns get them from scan.py, so the test is
 only isolated as far as that hand-off goes.
 
-Plugins: the settings' `CLAUDE_CODE_PLUGIN_DIRS` loads the live `octopilot`
-plugin into every session. Adding a worktree's `--plugin-dir` loads a second
-plugin of the same name, and the live copy wins. Checked with `claude -p
-"..." --plugin-dir <worktree>/plugin --debug` on 2026-11-25, which printed
-`octopilot: hooks module not loaded: another plugin of that name loads first`.
-So the worktree's takoyaki hook does not run, and its skills are presumably
-the live ones too (same-name collision; not separately confirmed). What still
-points at the worktree is `OCTOPILOT_DIR`, which the skills read for `scan.sh`.
-Setting `CLAUDE_CODE_PLUGIN_DIRS=<worktree>/plugin` in the session env instead
-removes the collision (same check, no warning), but it also drops the other
-plugin dirs from settings.
+Plugins: settings.json's `CLAUDE_CODE_PLUGIN_DIRS` loads the installed
+`octopilot` plugin into every session. A worktree's `--plugin-dir` does not
+replace it: the installed copy still wins, and the worktree's takoyaki hook
+never loads (`claude -p ... --plugin-dir <worktree>/plugin --debug` prints
+`octopilot: hooks module not loaded: another plugin of that name loads first`).
+Setting the env var in the process does not replace it either, since settings
+env overwrites the process env. What works is `--settings`, which open-gui.sh
+and the GUI spawns pass: `scan.sh plugin-settings` prints that JSON, with the
+worktree's plugin in place of the installed one and the other plugin dirs
+kept, or nothing on the live checkout. Checked with `claude --settings
+"$(scan.sh plugin-settings)" plugin list --json`: `octopilot@inline` points at
+the worktree, and `arxiu-bibliotecaria@inline` and `taller@inline` remain.
+
+Only the GUI spawns carry `OCTOPILOT_DIR`, `OCTOPILOT_STATE_DIR` and the
+`--settings` override. TUI workers spawned by a worktree's octopilot get
+neither, so they run the live scan.sh and plugin.
 
 Close the test space with `herdr-app do space.close --id <space> --confirmed true`.
 
