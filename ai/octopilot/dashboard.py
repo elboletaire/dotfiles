@@ -893,7 +893,9 @@ def focus_row(model, e):
     with model.lock:
         live = dict(model.live)
     if model.backend.focus(e["session"], live):
-        return Result(True, "")
+        # From the GUI, a TUI session comes forward in the herdr TUI, not here: say so.
+        gui_on_tui = scan.OCTOPILOT_BACKEND == "hc" and scan.backend_for(e["session"]) is scan.HERDR
+        return Result(True, "focused in the herdr TUI (this session lives there)" if gui_on_tui else "")
     return Result(False, f"could not focus workspace {e['session']}")
 
 
