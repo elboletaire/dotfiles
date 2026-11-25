@@ -2,8 +2,8 @@
 """Draws the takoyaki kitchen as layered SVG pieces and renders them to PNG at 2x.
 
 `python3 make.py` rewrites art/svg/*.svg, art/png/*.png and ../atlas.js (where each
-piece sits in the scene, for main.js). `--preview [mood]` also writes
-art/svg/preview.png, the whole scene composed, to judge the art without the app.
+piece sits in the scene, for main.js). `--preview [mood...]` instead writes
+art/svg/preview-<mood>.png, the whole scene composed, to judge the art without the app.
 Everything is drawn in scene coordinates (360x220); a piece's file is a crop of it.
 """
 
@@ -22,9 +22,10 @@ PAN_X, PAN_W, PAN_TOP, PAN_FACE, PAN_RIM = 134, 216, 126, 34, 8
 BALL_Y, BALL_R = 138, 13
 # A ball sprite's canvas, and the ball's centre in it (room above for the flag).
 SPRITE_W, SPRITE_H, SPRITE_CX, SPRITE_CY = 40, 48, 20, 26
-ARM_POSES = 6
+# Arm poses are closer together than the holes, so the pick lands near any hole of any pan.
+ARM_POSES = 18
 COUNTER_Y = 152
-SHELF_X, SHELF_ROWS, SHELF_PITCH, SHELF_PER_ROW = 184, (58, 98), 42, 4
+SHELF_X, SHELF_ROWS, SHELF_PITCH, SHELF_PER_ROW = 184, (54, 92), 42, 4
 BOAT_W, BOAT_H = 38, 24
 
 WARM = dict(hi="#ffcdb8", base="#f4705c", mid="#dc5160", shade="#8a3a70", ink="#3b2145",
@@ -717,6 +718,11 @@ def pose_x(k):
     return PAN_X + PAN_W * (k + .5) / ARM_POSES
 
 
+def reach(hx):
+    """How far along the pan the arm stretches, 0 at its near end to 5 at the far one."""
+    return (hx - PAN_X) / PAN_W * 6 - .5
+
+
 def pick(x0, y0, x1, y1):
     """The takoyaki pick: a wooden handle from (x0, y0) and a steel needle to (x1, y1)."""
     mx, my = x0 + (x1 - x0) * .45, y0 + (y1 - y0) * .45
@@ -742,16 +748,19 @@ def arm(kind, k=0, tag="w"):
     suck = (10, 15, 20, 25, 30)
     if kind == "point":
         hx = pose_x(k)
+        k = reach(hx)
         tip = (hx + 3, 108)
-        c1 = (s[0] + 26 + k * 6, s[1] - 8 - k * 7)
-        c2 = (tip[0] - 22 - k * 6, tip[1] - 26 - k * 3)
+        # A low arc, to stay under the shelf's boats.
+        c1 = (s[0] + 26 + k * 6, s[1] - 6 - k * 2)
+        c2 = (tip[0] - 22 - k * 6, tip[1] - 14 - k)
         body = tentacle(s, c1, c2, tip, 8, 3.4, fill, p, suck)
         return pick(hx + 5.5, 99, hx + .5, BALL_Y - BALL_R + 3) + body_curl(tip, p, fill) + body
     if kind == "pour":
         hx = pose_x(k)
+        k = reach(hx)
         tip = (hx - 13, 103)
-        c1 = (s[0] + 24 + k * 6, s[1] - 10 - k * 7)
-        c2 = (tip[0] - 20 - k * 6, tip[1] - 24 - k * 3)
+        c1 = (s[0] + 24 + k * 6, s[1] - 8 - k * 2)
+        c2 = (tip[0] - 20 - k * 6, tip[1] - 12 - k)
         stream = (f'<path d="M{f1(hx + 1.5)} 109 Q{f1(hx + 3)} 120 {f1(hx + .5)} {BALL_Y - 2}" fill="none" stroke="#d9bf74" stroke-width="4.4" stroke-linecap="round"/>'
                   f'<path d="M{f1(hx + 1.5)} 109 Q{f1(hx + 3)} 120 {f1(hx + .5)} {BALL_Y - 2}" fill="none" stroke="#fbeeb4" stroke-width="3" stroke-linecap="round"/>')
         return stream + jug(hx - 6, 100) + tentacle(s, c1, c2, tip, 8, 3.6, fill, p, suck)
@@ -873,7 +882,7 @@ def preview(all_pieces, mood):
         if s:
             parts.append(ball(s, i))
     arm_name = {"sleep": "arm-down-w", "doze": "arm-down-w", "sad": "arm-down-f", "happy": "arm-cheer-w", "serve": "arm-cheer-w",
-                "surprised": "arm-rest-w", "idle": "arm-rest-w", "worried": "arm-rest-f", "pour": "arm-pour-4"}.get(mood, "arm-point-2")
+                "surprised": "arm-rest-w", "idle": "arm-rest-w", "worried": "arm-rest-f", "pour": "arm-pour-13"}.get(mood, "arm-point-16")
     parts.append(at(arm_name))
     parts.append(at("steam", PAN_X + PAN_W * 1.5 / 6 - 12, 92))
     parts.append(at("smoke", PAN_X + PAN_W * (5.5 if states[5] else 4.5) / 6 - 20, 84))

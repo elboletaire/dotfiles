@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
-import { derive, ballSprite, chefMood, focusIndex, armPiece, holeAt, spriteBox, boatBox, toneOf, logLines, headerLine, MOODS, BURSTS } from "../kitchen.js";
+import { derive, ballSprite, chefMood, focusIndex, armPiece, armReach, holeAt, spriteBox, boatBox, toneOf, logLines, headerLine, MOODS, BURSTS } from "../kitchen.js";
 import { PAN, ARM_POSES, COOK_STEPS } from "../atlas.js";
 
 const here = new URL(".", import.meta.url);
@@ -48,15 +48,27 @@ test("holes spread over the pan and shrink when there are many", () => {
 });
 
 test("the arm reaches the focused hole, or takes the mood's own pose", () => {
-  assert.equal(armPiece("busy", 0, 6), "arm-point-0");
-  assert.equal(armPiece("flip", 5, 6), `arm-point-${ARM_POSES - 1}`);
-  assert.equal(armPiece("pour", 2, 6), "arm-pour-2");
-  assert.equal(armPiece("busy", 7, 8), `arm-point-${ARM_POSES - 1}`);
+  assert.equal(armPiece("busy", 0, 6), `arm-point-${armReach(0, 6).pose}`);
+  assert.equal(armPiece("pour", 2, 6), `arm-pour-${armReach(2, 6).pose}`);
+  assert.equal(armPiece("busy", 0, 1), `arm-point-${armReach(0, 1).pose}`);
   assert.equal(armPiece("busy", -1, 6), "arm-rest-w");
   assert.equal(armPiece("happy", 2, 6), "arm-cheer-w");
   assert.equal(armPiece("sad", 2, 6), "arm-down-f");
   assert.equal(armPiece("worried", 2, 6), "arm-rest-f");
   assert.equal(armPiece("sleep", -1, 6), "arm-down-w");
+});
+
+test("the pick lands on the hole of any pan: a near pose, slid by the rest", () => {
+  const pitch = PAN.w / ARM_POSES;
+  for (let holes = 1; holes <= 12; holes++) {
+    for (let i = 0; i < holes; i++) {
+      const { pose, shift } = armReach(i, holes);
+      assert.ok(pose >= 0 && pose < ARM_POSES);
+      assert.ok(Math.abs(shift) <= pitch / 2 + 1e-9, `${i}/${holes}: ${shift}`);
+      assert.ok(Math.abs(PAN.x + pitch * (pose + 0.5) + shift - holeAt(i, holes).x) < 1e-9);
+    }
+  }
+  assert.ok([0, 1, 2, 3, 4, 5].every((i) => armReach(i, 6).shift === 0));
 });
 
 test("every piece the scene can ask for has its art", () => {
@@ -117,16 +129,22 @@ test("the fixture kitchen: every ball state, a focus, a shelf and a live burst",
   assert.equal(later.burst, null);
   assert.equal(later.until, null);
   assert.equal(later.focus, 4);
-  assert.equal(later.arm, "arm-point-4");
+  assert.equal(later.arm, `arm-point-${armReach(4, 6).pose}`);
+  assert.equal(later.armShift, 0);
 });
 
-test("paused: the chef sleeps and the flames are out", () => {
+test("paused: the chef sleeps over a pilot flame, but an event still stirs him", () => {
   const view = fixture("kitchen-view-paused.json");
   const m = derive(view, view.generated_at * 1000);
   assert.equal(m.mood, "sleep");
-  assert.equal(m.flames, "none");
+  assert.equal(m.flames, "pilot");
   assert.equal(m.arm, "arm-down-w");
   assert.equal(m.holes, 8);
+  view.pan.chef = { mood: "surprised", since: view.generated_at, ms: 2000, resting: "sleep" };
+  view.kitchen = [];
+  const stirred = derive(view, view.generated_at * 1000);
+  assert.equal(stirred.mood, "surprised");
+  assert.equal(stirred.until, view.generated_at * 1000 + 2000);
   assert.ok(m.balls.some((b) => b.sprite === "ball-stalled"));
   assert.ok(m.header.endsWith("· paused"));
 });
@@ -151,6 +169,8 @@ test("without `pan` (an older backend) the newest event still moves the chef", (
   delete view.pan;
   const m = derive(view, view.generated_at * 1000);
   assert.equal(m.mood, "happy");
+  view.header.paused = true;
+  assert.equal(derive(view, (view.generated_at + 10) * 1000).mood, "sleep");
   assert.deepEqual(m.balls, []);
   assert.equal(m.header, "🐙 takoyaki kitchen · 3/6 on the pan");
 });

@@ -71,13 +71,19 @@ export function focusIndex(balls, walking, walk = 0) {
   return flagged < 0 ? 0 : flagged;
 }
 
+// The drawn arm pose nearest to hole `focus`, and how far (px) to slide it to land on the hole.
+export function armReach(focus, holes) {
+  const { x } = holeAt(focus, holes);
+  const pitch = PAN.w / ARM_POSES;
+  const pose = clamp(Math.round((x - PAN.x) / pitch - 0.5), 0, ARM_POSES - 1);
+  return { pose, shift: x - (PAN.x + pitch * (pose + 0.5)) };
+}
+
 // The arm piece for a mood: the pick (or the batter jug) over the focused hole, or a pose of its own.
 export function armPiece(mood, focus, holes) {
   const fixed = focus < 0 ? ARM[mood] ?? "rest" : ARM[mood];
   if (fixed) return `arm-${fixed}-${FLUSHED.includes(mood) && fixed !== "cheer" ? "f" : "w"}`;
-  const { x } = holeAt(focus, holes);
-  const pose = clamp(Math.round(((x - PAN.x) / PAN.w) * ARM_POSES - 0.5), 0, ARM_POSES - 1);
-  return `arm-${mood === "pour" ? "pour" : "point"}-${pose}`;
+  return `arm-${mood === "pour" ? "pour" : "point"}-${armReach(focus, holes).pose}`;
 }
 
 export function newest(kitchen) {
@@ -135,14 +141,15 @@ export function derive(view, nowMs, walk = 0) {
   // Without `pan` (an older backend) the newest event stands in for the chef.
   const chef = pan?.chef ?? (last ? { mood: last.mood, since: last.at, ms: last.ms, resting: "idle" } : null);
 
+  // An event's mood shows even while paused; `pan` already rests in sleep then.
   let mood = chefMood(chef, nowMs);
-  if (paused) mood = "sleep";
+  if (paused && !pan && mood === "idle") mood = "sleep";
   if (offline) mood = "doze";
   const busy = pan?.busy === true && !paused && !offline;
   const focus = focusIndex(balls, busy && mood === "busy", walk);
 
   let burst = null;
-  let until = offline || paused ? null : moodEnd(chef, nowMs);
+  let until = offline ? null : moodEnd(chef, nowMs);
   if (!offline && last && BURSTS.includes(last.burst)) {
     const end = last.at * 1000 + burstMs(last);
     if (end > nowMs) {
@@ -161,7 +168,9 @@ export function derive(view, nowMs, walk = 0) {
     flushed: FLUSHED.includes(mood),
     blinks: BLINKS.includes(mood) && !offline,
     arm: armPiece(mood, focus, holes),
-    flames: offline || paused ? "none" : busy ? "big" : "pilot",
+    armShift: armPiece(mood, focus, holes).match(/point|pour/) ? armReach(focus, holes).shift : 0,
+    // Never out while the kitchen is open: a pilot simmer, roaring while the orchestrator works.
+    flames: offline ? "none" : busy ? "big" : "pilot",
     balls: balls.map((b, i) => ({ sprite: ballSprite(b), state: b.state, label: b.label ?? b.key ?? "", focus: i === focus })),
     focus,
     boats: shelf.length,

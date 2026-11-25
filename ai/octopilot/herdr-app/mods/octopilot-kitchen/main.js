@@ -1,7 +1,6 @@
 // The takoyaki kitchen as a floating block: the octopus chef behind the pan, one ball per
 // tracked item, flames, the shelf of served boats, and a speech bubble with the orchestrator's
-// last message and the kitchen log. Props: { dir?, state_dir?, folded?, fixture?, fixture_speech?, fixture_now? }.
-// For the full-text dialog: { full: true, text, status, overlay }.
+// last message and the kitchen log. Props: see README.md.
 
 import { View, div, image, svg } from "gpui-kit";
 import { v_flex, h_flex, TextView } from "gpui-base";
@@ -95,7 +94,8 @@ export default class Kitchen extends View {
   poll(cx) {
     cx.spawn(async (cx) => {
       for (;;) {
-        await Promise.all([this.loadView(), this.loadSpeech()]);
+        // Folded, the bubble is gone: no need to ask for the speech.
+        await Promise.all([this.loadView(), this.folded ? null : this.loadSpeech()]);
         this.refresh(cx);
         await cx.sleep(this.shown() ? FAST_MS : SLOW_MS);
       }
@@ -179,6 +179,8 @@ export default class Kitchen extends View {
     const sig = JSON.stringify([this.model, s?.seq, s?.status, s?.text, s?.terminal, this.error]);
     if (sig !== this.sig) cx.notify();
     this.sig = sig;
+    // A fixture's clock stands still, so nothing on show ever ends.
+    if (props()?.fixture) return;
     const wake = ++this.wake;
     const wait = this.model.until == null ? 0 : this.model.until - this.now();
     if (wait <= 0) return;
@@ -208,6 +210,11 @@ export default class Kitchen extends View {
     this.folded = !this.folded;
     try { localStorage.setItem(FOLD_KEY, this.folded ? "1" : "0"); } catch (_e) { /* not kept, that's all */ }
     cx.notify();
+    if (this.folded) return;
+    cx.spawn(async (cx) => {
+      await this.loadSpeech();
+      this.refresh(cx);
+    });
   }
 
   chef(m) {
@@ -223,7 +230,8 @@ export default class Kitchen extends View {
   }
 
   arm(m) {
-    const [x, y, w, h] = BOX.arm;
+    const [left, y, w, h] = BOX.arm;
+    const x = left + m.armShift;
     const working = m.arm.startsWith("arm-point") || m.arm.startsWith("arm-pour");
     const inner = image(art(m.arm)).w(w).h(h);
     // The pick dips into the ball while he works it.
@@ -323,7 +331,8 @@ export default class Kitchen extends View {
         ? div().absolute().left(0).w(SCENE.w).top(SCENE.h / 2 - 12).flex().justify_center().child(this.chip("kitchen offline"))
         : null,
       // Click the chef to look into the orchestrator's terminal.
-      layer([BOX.chef[0] + 14, BOX.chef[1] + 8, 112, 124]).id("chef").cursor_pointer().on_click(() => this.peek()),
+      layer([BOX.chef[0] + 14, BOX.chef[1] + 8, 112, 124]).id("chef").cursor_pointer()
+        .on_mouse_down("left", (_e, cx) => cx.stop_propagation()).on_click(() => this.peek()),
       div().id("fold").absolute().left(SCENE.w - 26).top(SCENE.h - 22).w(20).h(16).rounded(8).bg(INK.chip)
         .flex().items_center().justify_center().text_size(11).text_color(INK.text).cursor_pointer()
         .hover((s) => s.bg(INK.hover))
@@ -345,7 +354,8 @@ export default class Kitchen extends View {
     if (this.error) return muted(`Can't reach the orchestrator: ${this.error}`);
     if (!s) return muted("Waiting for the orchestrator…");
     if (!s.text) return muted(s.status === "offline" ? "The orchestrator is offline." : "The orchestrator hasn't said anything yet.");
-    return div().id("speech").text_size(13).text_color(t.foreground).cursor_pointer().on_click(() => this.openFull())
+    return div().id("speech").text_size(13).text_color(t.foreground).cursor_pointer()
+      .on_mouse_down("left", (_e, cx) => cx.stop_propagation()).on_click(() => this.openFull())
       .child(TextView.markdown("octopilot-speech", clip(s.text)).raw_html(false));
   }
 

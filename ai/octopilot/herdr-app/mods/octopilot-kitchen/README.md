@@ -29,7 +29,8 @@ Props, all optional: `dir` (the octopilot code, default `~/.dotfiles/ai/octopilo
   balls, shelf, the chef's mood, `busy`, `paused`), `kitchen` (the log, and the newest
   event's burst) and `header`. A `generated_at` older than 15 s is an offline kitchen:
   dimmed, flames out, the chef dozing.
-- `$DIR/scan.sh speech --json` for the bubble's message, status and terminal, run through
+- `$DIR/scan.sh speech --json` for the bubble's message, status and terminal (not while
+  folded), run through
   `env` with `OCTOPILOT_BACKEND=hc`, `OCTOPILOT_DIR` and, when a state folder was set,
   `OCTOPILOT_STATE_DIR`.
 
@@ -43,8 +44,9 @@ Props, all optional: `dir` (the octopilot code, default `~/.dotfiles/ai/octopilo
 | `stalled` | cold and frosted, no steam |
 
 The focused ball has a ring and the chef's pick over it (the batter jug while he pours);
-while the orchestrator is busy the pick walks along the pan. Flames roar while `busy`,
-drop to a pilot light when idle, and go out when paused. Chef moods: `idle`, `busy`,
+while the orchestrator is busy the pick walks along the pan. Flames roar while `busy`
+and drop to a pilot light otherwise, paused too; they only go out when offline. Paused,
+the chef sleeps, but an event's mood still shows for its time. Chef moods: `idle`, `busy`,
 `flip`, `pour`, `happy`, `serve`, `worried`, `sad`, `surprised`, `sleep`, `doze`.
 
 ## The art
