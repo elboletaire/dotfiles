@@ -124,17 +124,39 @@ _run_remote_installer() {
   return $rc
 }
 
+# APM (Agent Package Manager) installs the skills from ai/apm.yml.
+# https://github.com/microsoft/apm
+apm_min_version=0.39.0
+
+_apm_version() {
+  # The installed APM version (e.g. 0.39.0); empty when apm is missing.
+  apm --version 2>/dev/null | sed -n 's/.*version \([0-9][0-9.]*\).*/\1/p' | head -1
+}
+
+_apm_at_least() {
+  # True when version $1 is $2 or newer.
+  [ "$(printf '%s\n' "$2" "$1" | sort -V | head -1)" = "$2" ]
+}
+
 install_apm() {
-  # APM (Agent Package Manager): skill & primitive manager for AI agents.
-  # https://github.com/microsoft/apm
-  if command -v apm &>/dev/null; then
-    echo "apm already installed ($(apm --version 2>/dev/null || echo present))"
-    return
+  # Older releases cannot do the locked installs install_skills relies on, so
+  # an older apm is upgraded on every path.
+  local current
+  current=$(_apm_version)
+  if [ -n "$current" ] && _apm_at_least "$current" "$apm_min_version"; then
+    echo "apm already installed ($current)"
+    return 0
   fi
-  if [[ "$OS" == "Darwin" ]]; then
-    brew install microsoft/apm/apm
+  if [ -n "$current" ]; then
+    echo "apm $current is older than $apm_min_version; upgrading"
+  fi
+  if [[ "$OS" == "Darwin" ]] && brew list --formula apm &>/dev/null; then
+    brew upgrade microsoft/apm/apm || return 1
+  elif [[ "$OS" == "Darwin" ]] && [ -z "$current" ]; then
+    brew install microsoft/apm/apm || return 1
   else
-    local tmp_installer
+    # Downloaded first, so a failed download is not hidden behind a pipe.
+    local tmp_installer install_rc
     tmp_installer="$(mktemp)"
     if ! curl -fsSL https://aka.ms/apm-unix -o "$tmp_installer"; then
       echo "ERROR: Failed to download APM installer" >&2
@@ -142,9 +164,84 @@ install_apm() {
       return 1
     fi
     bash "$tmp_installer"
-    local install_rc=$?
+    install_rc=$?
     rm -f "$tmp_installer"
-    return $install_rc
+    [ "$install_rc" -eq 0 ] || return "$install_rc"
+  fi
+  current=$(_apm_version)
+  if [ -z "$current" ] || ! _apm_at_least "$current" "$apm_min_version"; then
+    echo "ERROR: apm $apm_min_version or newer is required (found: ${current:-none})" >&2
+    return 1
+  fi
+}
+
+# Copies the tracked manifest and lock into the global APM dir. The old file is
+# removed first: a symlink there would make cp write through it into the repo.
+_copy_apm_files() {
+  local from=$1 to=$2 f
+  for f in apm.yml apm.lock.yaml; do
+    rm -f "$to/$f" && cp "$from/$f" "$to/$f" || return 1
+  done
+}
+
+# Skill dir names that the given APM locks deploy under ~/.agents/skills or
+# ~/.claude/skills.
+_apm_skill_names() {
+  grep -hE '^  - \.(agents|claude)/skills/[^/]+' "$@" 2>/dev/null |
+    sed -E 's#^  - \.(agents|claude)/skills/([^/]+).*#\2#' | sort -u
+}
+
+# Once the old global manifest lists ai/ as a local package, its deployed skills
+# block the new install: APM refuses to replace files it does not manage. Moves
+# those skills aside (to the legacy backup) so APM deploys them fresh.
+_retire_local_apm_package() {
+  local apm_home=$1 new_lock=$2
+  local backup=$oldfiles/legacy-skills-$(date +%Y%m%d) name root path
+  grep -qE '^[[:space:]]*-[[:space:]]+/' "$apm_home/apm.yml" 2>/dev/null || return 0
+  echo "Retiring the local dotfiles APM package: its skills move aside"
+  for name in $(_apm_skill_names "$apm_home/apm.lock.yaml" "$new_lock"); do
+    for root in .agents .claude; do
+      path="$HOME/$root/skills/$name"
+      if [ -e "$path" ] || [ -L "$path" ]; then
+        _move_legacy "$path" "$backup"
+      fi
+    done
+  done
+}
+
+install_skills() {
+  # Installs the skills from ai/apm.yml globally. The locked commits decide what
+  # gets installed, so this reproduces ai/apm.lock.yaml; only skills-bump moves them.
+  local ai=$dotfiles/ai apm_home=$HOME/.apm
+  mkdir -p "$apm_home" || return 1
+  _retire_local_apm_package "$apm_home" "$ai/apm.lock.yaml"
+  _copy_apm_files "$ai" "$apm_home" || return 1
+  if ! (cd "$apm_home" && apm install -g --target agent-skills,claude); then
+    echo "ERROR: apm install -g failed; ai/ unchanged" >&2
+    return 1
+  fi
+  # APM rewrites the lock only when apm.yml changed (or its format did); keep it.
+  if ! cmp -s "$apm_home/apm.lock.yaml" "$ai/apm.lock.yaml"; then
+    cp "$apm_home/apm.lock.yaml" "$ai/apm.lock.yaml" || return 1
+    echo "NOTE: ai/apm.lock.yaml changed; review and commit it"
+  fi
+}
+
+skills_bump() {
+  # The only path that moves skill versions: each dependency goes to the latest
+  # commit of its ref. The new files are copied back to ai/ only after success.
+  local ai=$dotfiles/ai apm_home=$HOME/.apm
+  mkdir -p "$apm_home" || return 1
+  _copy_apm_files "$ai" "$apm_home" || return 1
+  if ! (cd "$apm_home" && apm update -g --yes --target agent-skills,claude); then
+    echo "ERROR: apm update -g failed; ai/ unchanged" >&2
+    return 1
+  fi
+  cp "$apm_home/apm.yml" "$ai/apm.yml" && cp "$apm_home/apm.lock.yaml" "$ai/apm.lock.yaml" || return 1
+  if git -C "$dotfiles" diff --quiet -- ai/; then
+    echo "No skill version moved."
+  else
+    git -C "$dotfiles" diff --stat -- ai/
   fi
 }
 
@@ -241,22 +338,31 @@ _herdr_app_outdated() {
   return 0
 }
 
-# Session managers replaced by herdr (agent-deck, agent-of-empires) and the
-# fleet skill that drove agent-deck. Binaries are deleted; config and state go
-# under ~/old_dotfiles. Prints only what it did.
+# Session managers replaced by herdr (agent-deck, agent-of-empires, aoe) and the
+# fleet skill that drove agent-deck. Packages are uninstalled, binaries deleted,
+# config and state go under ~/old_dotfiles. Prints only what it did.
 cleanup_legacy() {
   local backup=$oldfiles/legacy-session-managers-$(date +%Y%m%d)
-  local bin=$HOME/.local/bin f skill link
+  local bin f skill link
 
-  for f in "$bin/agent-deck" "$bin/aoe" "$bin/aoe (deleted)"; do
-    if [ -e "$f" ] || [ -L "$f" ]; then
-      rm -f "$f"
-      echo "Removed $f"
-    fi
+  _uninstall_legacy_packages
+
+  for bin in "$HOME/.local/bin" "$HOME/bin" "$HOME/.cargo/bin" "$HOME/go/bin"; do
+    for f in "$bin/agent-deck" "$bin/aoe" "$bin/aoe (deleted)"; do
+      if [ -e "$f" ] || [ -L "$f" ]; then
+        rm -f "$f"
+        echo "Removed $f"
+      fi
+    done
   done
 
-  for f in "$HOME/.config/agent-deck" "$HOME/.local/share/agent-deck" \
-    "$HOME/.cache/agent-deck" "$HOME/.config/agent-of-empires"; do
+  for f in "$HOME/.config/agent-deck" "$HOME/.config/agent-of-empires" "$HOME/.config/aoe" \
+    "$HOME/.local/share/agent-deck" "$HOME/.local/share/agent-of-empires" "$HOME/.local/share/aoe" \
+    "$HOME/.local/state/agent-deck" "$HOME/.local/state/agent-of-empires" "$HOME/.local/state/aoe" \
+    "$HOME/.cache/agent-deck" "$HOME/.cache/agent-of-empires" "$HOME/.cache/aoe" \
+    "$HOME/.agent-deck" "$HOME/.aoe" \
+    "$HOME/Library/Application Support/agent-deck" "$HOME/Library/Application Support/agent-of-empires" \
+    "$HOME/Library/Application Support/aoe"; do
     if [ -e "$f" ] || [ -L "$f" ]; then
       _move_legacy "$f" "$backup"
     fi
@@ -290,7 +396,94 @@ cleanup_legacy() {
     rm -f "$link"
     echo "Removed $link"
   fi
+  _cleanup_legacy_skills
   return 0
+}
+
+# Hand-installed skills that APM now deploys or that were retired. Each one is
+# removed only where APM's global lock does not deploy it.
+legacy_skills=(aoe aoe-fleet impeccable graphic-designer effective-print-design
+  resume-generator brag brag-slim tsdown vocdoni-sdk davinci-sdk
+  vocdoni-ballot-protocol agent-browser create-readme)
+
+# True when ~/.apm/apm.lock.yaml deploys $1, a path relative to $HOME.
+_apm_deploys() {
+  grep -qxF -- "  - $1" "$HOME/.apm/apm.lock.yaml" 2>/dev/null
+}
+
+_cleanup_legacy_skills() {
+  local backup=$oldfiles/legacy-skills-$(date +%Y%m%d)
+  local name root link target agents_skills
+
+  # Unmanaged copies go to $backup; APM would refuse to overwrite them.
+  for name in "${legacy_skills[@]}"; do
+    for root in "$HOME/.agents/skills" "$HOME/.claude/skills" "$HOME/.pi/agent/skills"; do
+      link="$root/$name"
+      if [ ! -e "$link" ] && [ ! -L "$link" ]; then
+        continue
+      fi
+      if _apm_deploys "${root#"$HOME"/}/$name"; then
+        continue
+      fi
+      if [ -L "$link" ]; then
+        rm -f "$link"
+        echo "Removed $link"
+      else
+        _move_legacy "$link" "$backup"
+      fi
+    done
+  done
+
+  # Dangling links are left by the skills removed above or by older installs.
+  for root in "$HOME/.pi/agent/skills" "$HOME/.claude/skills"; do
+    [ -d "$root" ] || continue
+    for link in "$root"/*; do
+      if [ -L "$link" ] && [ ! -e "$link" ]; then
+        rm -f "$link"
+        echo "Removed dangling $link"
+      fi
+    done
+  done
+
+  # Pi reads ~/.agents/skills natively, so its per-skill links into it are redundant.
+  agents_skills=$(cd -P "$HOME/.agents/skills" 2>/dev/null && pwd) || agents_skills=""
+  if [ -n "$agents_skills" ]; then
+    for link in "$HOME/.pi/agent/skills"/*; do
+      [ -L "$link" ] && [ -e "$link" ] || continue
+      target=$(cd -P "$link" 2>/dev/null && pwd) || continue
+      if [[ "$target" == "$agents_skills"/* ]]; then
+        rm -f "$link"
+        echo "Removed $link (Pi reads ~/.agents/skills)"
+      fi
+    done
+  fi
+
+  # The skills CLI's lock is stale once APM owns the skills.
+  if [ -e "$HOME/.agents/.skill-lock.json" ] || [ -L "$HOME/.agents/.skill-lock.json" ]; then
+    _move_legacy "$HOME/.agents/.skill-lock.json" "$backup"
+  fi
+}
+
+_uninstall_legacy_packages() {
+  # Packages that installed aoe or agent-deck; each is removed only when present.
+  local pkg installed=()
+  if [[ "$OS" == "Darwin" ]]; then
+    command -v brew &>/dev/null || return 0
+    for pkg in aoe agent-deck; do
+      if brew list --formula "$pkg" &>/dev/null; then
+        brew uninstall --formula "$pkg" && echo "Uninstalled brew formula $pkg" ||
+          echo "WARNING: could not uninstall brew formula $pkg" >&2
+      fi
+    done
+  elif command -v pacman &>/dev/null; then
+    for pkg in aoe agent-of-empires agent-deck; do
+      pacman -Qq "$pkg" &>/dev/null && installed+=("$pkg")
+    done
+    if [ "${#installed[@]}" -gt 0 ]; then
+      sudo pacman -Rns --noconfirm "${installed[@]}" && echo "Removed packages: ${installed[*]}" ||
+        echo "WARNING: could not remove packages: ${installed[*]}" >&2
+    fi
+  fi
 }
 
 _move_legacy() {
@@ -432,13 +625,13 @@ migrate_octopilot_state() {
 
 merge_claude_settings() {
   # Merges the dotfiles-owned keys into ~/.claude/settings.json (other tools write
-  # there too): our values win, the retired keys below are dropped, and the file
-  # is rewritten only on change, with a backup.
+  # there too): our values win, the retired keys and hooks below are dropped, and
+  # the file is rewritten only on change, with a backup.
   local src="$dotfiles/ai/claude/settings.json" dest="$HOME/.claude/settings.json"
   [ -f "$src" ] || return 0
   mkdir -p "$HOME/.claude"
   python3 - "$src" "$dest" <<'PY'
-import json, os, shutil, sys
+import json, os, re, shutil, sys
 
 src, dest = sys.argv[1], os.path.realpath(sys.argv[2])
 with open(src) as fh:
@@ -480,7 +673,45 @@ def drop_retired(d):
     return d
 
 
-new = drop_retired(merge(cur, base))
+# Hooks these dotfiles used to write: agent-deck and aoe hooks (any event) are
+# gone, and APM 0.39 deploys the contributing hooks in its native plugin.
+LEGACY_HOOK_MARKERS = ["agent-deck", "AOE_", "# aoe-hooks"]
+# The old contributing hook, with $HOME or the expanded home directory.
+LEGACY_CONTRIBUTING_HOOK = re.compile(
+    r"""bash ["']?(\$HOME|~|[^"']*)/\.claude/hooks/contributing/hooks/session-start\.sh["']?"""
+)
+
+
+def is_legacy_hook(hook):
+    cmd = str(hook.get("command", "")) if isinstance(hook, dict) else ""
+    return bool(LEGACY_CONTRIBUTING_HOOK.fullmatch(cmd)) or any(m in cmd for m in LEGACY_HOOK_MARKERS)
+
+
+def drop_legacy_hooks(d):
+    hooks = d.get("hooks")
+    if not isinstance(hooks, dict):
+        return d
+    out = {}
+    for event, groups in hooks.items():
+        if not isinstance(groups, list):
+            out[event] = groups
+            continue
+        kept = []
+        for group in groups:
+            inner = group.get("hooks") if isinstance(group, dict) else None
+            if isinstance(inner, list):
+                rest = [h for h in inner if not is_legacy_hook(h)]
+                if not rest:
+                    continue
+                group = {**group, "hooks": rest}
+            kept.append(group)
+        # An event left empty by this removal goes too; one that was empty already stays.
+        if kept or not groups:
+            out[event] = kept
+    return {**d, "hooks": out}
+
+
+new = drop_legacy_hooks(drop_retired(merge(cur, base)))
 if new == cur:
     sys.exit(0)
 if os.path.exists(dest):
@@ -545,213 +776,6 @@ link_ai() {
   ln -s "$src" "$dest"
 }
 
-# Derive tracked skill names from the project lockfile.
-# Outputs one skill name per line.
-_tracked_skill_names() {
-  local lockfile=$1
-  # One deployed skill dir name per dependency: its alias, else its package name.
-  sed -n '/^dependencies:/,/^[a-z]/p' "$lockfile" \
-    | awk '
-      function trim(s) { sub(/^[[:space:]]+/, "", s); sub(/[[:space:]]+$/, "", s); return s }
-      function emit() { if (name != "") print (alias != "" ? alias : name) }
-      /^- / { emit(); name = ""; alias = "" }
-      /^[[:space:]]+name:/ { name = trim(substr($0, index($0, ":") + 1)) }
-      /^[[:space:]]+alias:/ { alias = trim(substr($0, index($0, ":") + 1)) }
-      END { emit() }
-    ' \
-    | sort -u
-}
-
-# Remove legacy per-skill symlinks that point into ~/.agents/skills and are
-# owned by the tracked dotfiles APM lockfile. Preserves foreign symlinks,
-# regular directories, and regular files.
-#
-# Ownership is derived from the tracked ai/apm.lock.yaml: only symlinks whose
-# basename matches a skill name listed in the lock AND whose resolved target
-# falls under ~/.agents/skills are removed. Dangling managed symlinks are
-# handled without requiring the target to exist.
-clean_legacy_skill_symlinks() {
-  local lockfile=$1   # path to the tracked ai/apm.lock.yaml
-  local rollback_file=${2:-}  # optional: if set, record removed path<TAB>target
-  local agents_skills="$HOME/.agents/skills"
-  local dir
-
-  if [ ! -f "$lockfile" ] || [ ! -r "$lockfile" ]; then
-    echo "Warning: cannot read lockfile $lockfile; skipping legacy cleanup"
-    return 0
-  fi
-
-  # Collect tracked skill names into a fast lookup
-  local tracked
-  tracked=$(_tracked_skill_names "$lockfile")
-
-  for dir in "$HOME/.pi/agent/skills" "$HOME/.claude/skills"; do
-    if [ ! -d "$dir" ]; then
-      continue
-    fi
-    local link
-    for link in "$dir"/*; do
-      # Skip if glob didn't expand
-      [ -e "$link" ] || [ -L "$link" ] || continue
-      # Skip non-symlinks
-      if [ ! -L "$link" ]; then
-        continue
-      fi
-      local basename
-      basename="$(basename "$link")"
-
-      # Only remove symlinks whose basename is a tracked skill name
-      if ! echo "$tracked" | grep -qxF "$basename"; then
-        continue
-      fi
-
-      # Resolve target; handle dangling symlinks by using readlink directly
-      local target
-      target="$(readlink "$link")"
-      # Resolve relative links against the link's directory
-      local resolved
-      if [[ "$target" == /* ]]; then
-        resolved="$target"
-      else
-        resolved="$(cd "$(dirname "$link")" && cd "$(dirname "$target")" 2>/dev/null && pwd)/$(basename "$target")" || true
-      fi
-
-      # Remove if the resolved target is under ~/.agents/skills (or dangling
-      # whose readlink suggests it was meant to point there)
-      if [[ "$target" == "$agents_skills"/* ]] || [[ "$resolved" == "$agents_skills"/* ]]; then
-        echo "Removing legacy symlink: $link -> $target"
-        # Record removal before deleting, for potential rollback
-        if [ -n "$rollback_file" ]; then
-          printf '%s\t%s\n' "$link" "$target" >> "$rollback_file"
-        fi
-        rm "$link"
-      fi
-    done
-  done
-}
-
-_global_apm_has_dotfiles_package() {
-  local ai=$dotfiles/ai
-  local manifest=$HOME/.apm/apm.yml
-  [ -f "$manifest" ] || return 1
-
-  awk -v needle="$ai" '
-    /^[[:space:]]*-[[:space:]]*/ {
-      value = $0
-      sub(/^[[:space:]]*-[[:space:]]*/, "", value)
-      if (value == needle) found = 1
-    }
-    END { exit(found ? 0 : 1) }
-  ' "$manifest"
-}
-
-_dotfiles_retired_skill_names() {
-  local global_lock=$1
-  local current_lock=$2
-  local ai=$dotfiles/ai
-  [ -r "$global_lock" ] || return 0
-
-  local resolver current_names
-  resolver=$(awk -v needle="$ai" '
-    /^-[[:space:]]repo_url:/ {
-      repo = $0
-      sub(/^-[[:space:]]repo_url:[[:space:]]*/, "", repo)
-    }
-    /^[[:space:]]+local_path:/ {
-      path = $0
-      sub(/^[[:space:]]+local_path:[[:space:]]*/, "", path)
-      if (path == needle) { print repo; exit }
-    }
-  ' "$global_lock")
-  [ -n "$resolver" ] || return 0
-
-  current_names=$(_tracked_skill_names "$current_lock")
-  awk -v owner="$resolver" '
-    function emit() {
-      if (name != "" && resolved_by == owner) print (alias != "" ? alias : name)
-    }
-    /^-[[:space:]]repo_url:/ {
-      emit()
-      name = ""
-      alias = ""
-      resolved_by = ""
-      next
-    }
-    /^[[:space:]]+name:/ {
-      name = $0
-      sub(/^[[:space:]]+name:[[:space:]]*/, "", name)
-      next
-    }
-    /^[[:space:]]+alias:/ {
-      alias = $0
-      sub(/^[[:space:]]+alias:[[:space:]]*/, "", alias)
-      next
-    }
-    /^[[:space:]]+resolved_by:/ {
-      resolved_by = $0
-      sub(/^[[:space:]]+resolved_by:[[:space:]]*/, "", resolved_by)
-    }
-    END { emit() }
-  ' "$global_lock" | sort -u | while IFS= read -r name; do
-    if ! printf '%s\n' "$current_names" | grep -qxF "$name"; then
-      printf '%s\n' "$name"
-    fi
-  done
-}
-
-_remove_retired_skill_dirs() {
-  local retired_file=$1
-  [ -s "$retired_file" ] || return 0
-
-  local name root path
-  while IFS= read -r name; do
-    # Refuse malformed names so a lockfile value can never escape a skill root.
-    if [[ ! "$name" =~ ^[A-Za-z0-9._-]+$ ]]; then
-      echo "Warning: refusing unsafe retired skill name: $name" >&2
-      continue
-    fi
-    for root in "$HOME/.agents/skills" "$HOME/.claude/skills"; do
-      path="$root/$name"
-      # Only remove directories previously owned by this APM package. Preserve
-      # regular files and symlinks at the same path as potentially foreign.
-      if [ -d "$path" ] && [ ! -L "$path" ]; then
-        rm -rf "$path"
-        echo "Removed retired dotfiles skill: $path"
-      fi
-    done
-  done < "$retired_file"
-}
-
-# apm copies plugin hooks to ~/.claude/hooks/<name>/, but their scripts find
-# the plugin's skills relative to the plugin root, which apm does not reproduce.
-_link_apm_hook_skills() {
-  local hook_dir link
-  for hook_dir in "$HOME"/.claude/hooks/*/; do
-    [ -d "$hook_dir/hooks" ] || continue
-    link="${hook_dir%/}/skills"
-    # Create the link, or refresh one that is dangling or already ours. Foreign
-    # links and real directories are left alone.
-    if [ ! -e "$link" ] && [ ! -L "$link" ]; then
-      ln -s ../../skills "$link"
-    elif [ -L "$link" ] && { [ ! -e "$link" ] || [ "$(readlink "$link")" = "../../skills" ]; }; then
-      ln -sfn ../../skills "$link"
-    fi
-  done
-}
-
-_restore_legacy_skill_symlinks() {
-  local rollback_file=$1
-  [ -s "$rollback_file" ] || return 0
-
-  local link_path target
-  while IFS=$'\t' read -r link_path target; do
-    if [ ! -e "$link_path" ] && [ ! -L "$link_path" ]; then
-      ln -s "$target" "$link_path"
-      echo "Restored: $link_path -> $target"
-    fi
-  done < "$rollback_file"
-}
-
 symlink_ai() {
   local ai=$dotfiles/ai
 
@@ -766,248 +790,6 @@ symlink_ai() {
   # Claude global instructions and subagent definitions.
   link_ai "$ai/claude/CLAUDE.md" ~/.claude/CLAUDE.md
   link_ai "$ai/claude/agents" ~/.claude/agents
-
-  # Skills: managed by APM (Agent Package Manager).
-  # Treat the ai/ directory as a local APM package. A global install reads the
-  # package's apm.yml + apm.lock.yaml and adds its dependencies to ~/.apm/
-  # without overwriting unrelated global entries.
-  if command -v apm &>/dev/null; then
-    local rollback_file validation_root retired_file="" global_lock_backup=""
-    local global_manifest_backup=""
-    local replace_existing=0
-
-    # APM replays the flattened global lock for an unchanged local package path;
-    # it does not notice removed transitive skills. Validate the new graph first,
-    # then rebuild the global lock so unrelated direct dependencies are preserved
-    # while this local package's changed transitive graph is re-resolved.
-    if _global_apm_has_dotfiles_package; then
-      replace_existing=1
-      validation_root="$(mktemp -d)" || return 1
-      echo "Validating the updated dotfiles skill graph..."
-      # apm >= 0.33 reads the lock from --root, so --frozen needs it there.
-      if ! cp "$ai/apm.lock.yaml" "$validation_root/" ||
-        ! (cd "$ai" && apm install --frozen --root "$validation_root" --target agent-skills,claude); then
-        echo "ERROR: updated dotfiles skill graph failed validation" >&2
-        rm -rf "$validation_root"
-        return 1
-      fi
-      rm -rf "$validation_root"
-
-      retired_file="$(mktemp)" || return 1
-      if ! _dotfiles_retired_skill_names "$HOME/.apm/apm.lock.yaml" \
-        "$ai/apm.lock.yaml" > "$retired_file"; then
-        rm -f "$retired_file"
-        return 1
-      fi
-
-      global_manifest_backup="$(mktemp)" || { rm -f "$retired_file"; return 1; }
-      cp "$HOME/.apm/apm.yml" "$global_manifest_backup" || {
-        rm -f "$retired_file" "$global_manifest_backup"
-        return 1
-      }
-      if [ -f "$HOME/.apm/apm.lock.yaml" ]; then
-        global_lock_backup="$(mktemp)" || {
-          rm -f "$retired_file" "$global_manifest_backup"
-          return 1
-        }
-        cp "$HOME/.apm/apm.lock.yaml" "$global_lock_backup" || {
-          rm -f "$retired_file" "$global_manifest_backup" "$global_lock_backup"
-          return 1
-        }
-      fi
-    fi
-
-    rollback_file="$(mktemp)" || {
-      rm -f "$retired_file" "$global_manifest_backup" "$global_lock_backup"
-      return 1
-    }
-
-    # Clean legacy symlinks before installing, recording removals for rollback.
-    # Ownership is derived from the tracked lockfile.
-    clean_legacy_skill_symlinks "$ai/apm.lock.yaml" "$rollback_file"
-
-    if [ "$replace_existing" -eq 1 ]; then
-      echo "Removing the cached dotfiles APM package graph..."
-      if ! apm uninstall -g "$ai"; then
-        echo "ERROR: apm uninstall -g failed; restoring global APM state" >&2
-        _restore_legacy_skill_symlinks "$rollback_file"
-        cp "$global_manifest_backup" "$HOME/.apm/apm.yml"
-        if [ -n "$global_lock_backup" ]; then
-          cp "$global_lock_backup" "$HOME/.apm/apm.lock.yaml"
-        fi
-        rm -f "$rollback_file" "$retired_file" "$global_manifest_backup" "$global_lock_backup"
-        return 1
-      fi
-      echo "Rebuilding the global APM dependency graph..."
-      rm -f "$HOME/.apm/apm.lock.yaml"
-    fi
-
-    # Install the local package globally. APM reads ai/apm.yml + ai/apm.lock.yaml
-    # and deploys skills. APM v0.28.0 supports comma-separated multi-target.
-    echo "Installing dotfiles skills via APM..."
-    if ! apm install -g "$ai" --target agent-skills,claude; then
-      echo "ERROR: apm install -g failed" >&2
-      _restore_legacy_skill_symlinks "$rollback_file"
-      if [ -n "$global_manifest_backup" ]; then
-        cp "$global_manifest_backup" "$HOME/.apm/apm.yml"
-      fi
-      if [ -n "$global_lock_backup" ]; then
-        cp "$global_lock_backup" "$HOME/.apm/apm.lock.yaml"
-      fi
-      rm -f "$rollback_file" "$retired_file" "$global_manifest_backup" "$global_lock_backup"
-      return 1
-    fi
-
-    _remove_retired_skill_dirs "$retired_file"
-    _link_apm_hook_skills
-    if [ "$replace_existing" -eq 1 ]; then
-      if ! (cd "$HOME/.apm" && apm prune); then
-        echo "Warning: APM could not prune orphaned package cache entries" >&2
-      fi
-    fi
-    rm -f "$rollback_file" "$retired_file" "$global_manifest_backup" "$global_lock_backup"
-
-    # Remove legacy .skill-lock.json symlink only after a successful APM install,
-    # and only when it is a symlink (preserve foreign regular files).
-    local lock_link="$HOME/.agents/.skill-lock.json"
-    if [ -L "$lock_link" ]; then
-      echo "Removing legacy skill lock symlink: $lock_link"
-      rm "$lock_link"
-    fi
-  else
-    echo "apm not found; skipping skills install."
-    echo "Install APM, then re-run: bash $dotfiles/scripts/install.sh"
-  fi
-}
-
-# Refresh each pinned dependency to the HEAD commit of its configured Git URL.
-# APM cannot update arbitrary SHA pins when upstreams lack compatible annotated
-# semver tags, so resolve default-branch commits first and let APM validate and
-# lock the resulting exact refs.
-_refresh_apm_refs() {
-  local manifest=$1
-  local cache_file=$2
-  local output_file="$manifest.next"
-  local current_git=""
-  local line refs commit indent
-
-  : > "$output_file" || return 1
-  : > "$cache_file" || { rm -f "$output_file"; return 1; }
-
-  while IFS= read -r line || [ -n "$line" ]; do
-    if [[ "$line" =~ ^[[:space:]]*-[[:space:]]git:[[:space:]](.+)$ ]]; then
-      current_git="${BASH_REMATCH[1]}"
-      current_git="${current_git%$'\r'}"
-      printf '%s\n' "$line" >> "$output_file" || return 1
-      continue
-    fi
-
-    if [[ "$line" =~ ^([[:space:]]*)ref:[[:space:]].*$ ]]; then
-      indent="${BASH_REMATCH[1]}"
-      if [ -z "$current_git" ]; then
-        echo "ERROR: ref entry has no preceding git URL in $manifest" >&2
-        rm -f "$output_file"
-        return 1
-      fi
-
-      commit=$(awk -F '\t' -v url="$current_git" '$1 == url { print $2; exit }' "$cache_file")
-      if [ -z "$commit" ]; then
-        if ! refs=$(git ls-remote "$current_git" HEAD); then
-          echo "ERROR: could not resolve HEAD for $current_git" >&2
-          rm -f "$output_file"
-          return 1
-        fi
-        commit=$(printf '%s\n' "$refs" | awk 'NR == 1 { print $1 }')
-        if [ "${#commit}" -ne 40 ] || [[ "$commit" == *[!0-9a-fA-F]* ]]; then
-          echo "ERROR: invalid HEAD commit for $current_git: $commit" >&2
-          rm -f "$output_file"
-          return 1
-        fi
-        printf '%s\t%s\n' "$current_git" "$commit" >> "$cache_file" || return 1
-      fi
-
-      printf '%sref: %s\n' "$indent" "$commit" >> "$output_file" || return 1
-      continue
-    fi
-
-    printf '%s\n' "$line" >> "$output_file" || return 1
-  done < "$manifest"
-
-  mv "$output_file" "$manifest"
-}
-
-update_apm_skills() {
-  # Refresh upstream default-branch commits in an isolated project, then let
-  # APM validate the exact pins and rebuild the tracked lockfile. Nothing is
-  # copied back unless every ref resolves and the project install succeeds.
-  if ! command -v apm &>/dev/null; then
-    echo "apm not found; skipping skills update."
-    return 1
-  fi
-
-  local ai=$dotfiles/ai
-  local tmpdir
-  tmpdir="$(mktemp -d)" || return 1
-
-  cp "$ai/apm.yml" "$tmpdir/apm.yml" || { rm -rf "$tmpdir"; return 1; }
-  cp "$ai/apm.lock.yaml" "$tmpdir/apm.lock.yaml" || { rm -rf "$tmpdir"; return 1; }
-
-  echo "Resolving latest skill commits..."
-  if ! _refresh_apm_refs "$tmpdir/apm.yml" "$tmpdir/ref-cache"; then
-    echo "ERROR: failed to refresh skill refs; tracked ai/ files unchanged." >&2
-    rm -rf "$tmpdir"
-    return 1
-  fi
-
-  rm -f "$tmpdir/apm.lock.yaml"
-  if ! (cd "$tmpdir" && apm install --target agent-skills,claude); then
-    echo "ERROR: APM validation failed; tracked ai/ files unchanged." >&2
-    rm -rf "$tmpdir"
-    return 1
-  fi
-  if [ ! -f "$tmpdir/apm.lock.yaml" ]; then
-    echo "ERROR: APM did not generate apm.lock.yaml; tracked ai/ files unchanged." >&2
-    rm -rf "$tmpdir"
-    return 1
-  fi
-
-  # Stage both outputs before replacing either tracked file. Keep same-filesystem
-  # backups so a failed second swap can restore the original matched pair.
-  local transaction_id manifest_stage lock_stage manifest_backup lock_backup
-  transaction_id="$(basename "$tmpdir")"
-  manifest_stage="$ai/.apm.yml.$transaction_id.new"
-  lock_stage="$ai/.apm.lock.yaml.$transaction_id.new"
-  manifest_backup="$ai/.apm.yml.$transaction_id.backup"
-  lock_backup="$ai/.apm.lock.yaml.$transaction_id.backup"
-
-  if ! cp "$tmpdir/apm.yml" "$manifest_stage" || \
-     ! cp "$tmpdir/apm.lock.yaml" "$lock_stage" || \
-     ! cp "$ai/apm.yml" "$manifest_backup" || \
-     ! cp "$ai/apm.lock.yaml" "$lock_backup"; then
-    echo "ERROR: could not stage updated APM state; tracked ai/ files unchanged." >&2
-    rm -f "$manifest_stage" "$lock_stage" "$manifest_backup" "$lock_backup"
-    rm -rf "$tmpdir"
-    return 1
-  fi
-
-  if ! mv "$manifest_stage" "$ai/apm.yml"; then
-    echo "ERROR: could not replace ai/apm.yml; tracked ai/ files unchanged." >&2
-    rm -f "$manifest_stage" "$lock_stage" "$manifest_backup" "$lock_backup"
-    rm -rf "$tmpdir"
-    return 1
-  fi
-  if ! mv "$lock_stage" "$ai/apm.lock.yaml"; then
-    echo "ERROR: could not replace ai/apm.lock.yaml; restoring original pair." >&2
-    mv -f "$manifest_backup" "$ai/apm.yml"
-    mv -f "$lock_backup" "$ai/apm.lock.yaml"
-    rm -f "$manifest_stage" "$lock_stage" "$manifest_backup" "$lock_backup"
-    rm -rf "$tmpdir"
-    return 1
-  fi
-
-  rm -f "$manifest_backup" "$lock_backup"
-  rm -rf "$tmpdir"
-  echo "Skill refs and apm.lock.yaml updated in the repo. Review & commit the bump."
 }
 
 install_packages() {
@@ -1080,7 +862,8 @@ do_install() {
   symlink
   symlink_config
   install_rtk               # wires hooks into claude and pi, which must exist first
-  symlink_ai || return 1    # config symlinks + APM skills global install
+  symlink_ai || return 1    # config symlinks
+  install_skills || return 1
   merge_claude_settings
   migrate_octopilot_state
   link_herdr_config
@@ -1104,8 +887,8 @@ do_update() {
   symlink
   symlink_config
   install_rtk update
-  update_apm_skills || return 1
   symlink_ai || return 1
+  install_skills || return 1
   merge_claude_settings
   migrate_octopilot_state
   link_herdr_config
@@ -1124,8 +907,8 @@ do_update_ai() {
   install_herdr_app update
   install_uv
   install_rtk update
-  update_apm_skills || return 1
   symlink_ai || return 1
+  install_skills || return 1
   merge_claude_settings
   migrate_octopilot_state
   link_herdr_config
@@ -1141,11 +924,18 @@ do_install_ai_config() {
   no_backup=1
   cleanup_legacy
   symlink_ai || return 1
+  install_skills || return 1
   merge_claude_settings
   migrate_octopilot_state
   link_herdr_plugin
   link_herdr_app
   echo "AI config install complete"
+}
+
+do_skills_bump() {
+  # Moves every skill to the latest commit of its ref: the only path that does.
+  install_apm || return 1
+  skills_bump
 }
 
 do_herdr() {
@@ -1169,5 +959,6 @@ case "${1:-install}" in
   ai)      do_update_ai || exit 1 ;;
   ai-config) do_install_ai_config || exit 1 ;;
   herdr)   do_herdr || exit 1 ;;
-  *) echo "usage: $(basename "$0") [install|update|ai|ai-config|herdr]" && exit 1 ;;
+  skills-bump) do_skills_bump || exit 1 ;;
+  *) echo "usage: $(basename "$0") [install|update|ai|ai-config|herdr|skills-bump]" && exit 1 ;;
 esac
