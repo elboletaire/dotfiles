@@ -10,7 +10,7 @@ import {
 } from "herdr";
 import {
   CONFIRM_MS, FLASH_MS, KITCHEN_S, GLOBAL_KEYS, ROW_KEYS, arrange, resolveSel,
-  entryOf, stepSel, jumpSel, keyName, actionKey, parseAnswer, slugOf, isRepoKey, viewError,
+  entryOf, stepSel, jumpSel, keyName, actionKey, parseAnswer, slugOf, isRepoKey, viewError, isStale,
 } from "./model.js";
 import {
   header, paused, column, pickPanel, activityPanel, notesRow, statusLine, actionBar,
@@ -25,15 +25,25 @@ const KITCHEN_LAYOUT = "octopilot";
 const POLL_MS = 2000;
 const NAV = { j: 1, down: 1, k: -1, up: -1, pagedown: 10, pageup: -10 };
 
+// dashboard.sh under the GUI's backend (hc) and this mod's state dir. herdr's exec()
+// has no env option, so env(1) sets them; OCTOPILOT_STATE_DIR only when one was given,
+// else dashboard.sh's own default (XDG) applies.
+function dashboardArgv(dir, stateDir, argv) {
+  const env = ["OCTOPILOT_BACKEND=hc", `OCTOPILOT_DIR=${dir}`];
+  if (stateDir) env.push(`OCTOPILOT_STATE_DIR=${stateDir}`);
+  return ["env", ...env, `${dir}/dashboard.sh`, ...argv];
+}
+
 // One dashboard.sh --action, read from its one-line JSON answer. The TUI gives
 // cleanup 400 s; everything else is quick.
-async function runAction(dir, id, key, args = {}) {
+async function runAction(dir, stateDir, id, key, args = {}) {
   const argv = ["--action", id];
   if (key) argv.push(key);
   for (const [name, value] of Object.entries(args)) argv.push("--arg", `${name}=${value}`);
   const timeout = (id === "remove" ? 400 : 60) * 1000;
   try {
-    const r = await exec(`${dir}/dashboard.sh`, argv, { timeout });
+    const [cmd, ...cmdArgs] = dashboardArgv(dir, stateDir, argv);
+    const r = await exec(cmd, cmdArgs, { timeout });
     if (r.code !== 0 && !r.stdout.trim()) return { ok: false, kitchen: false, message: r.stderr.trim() || `exit ${r.code}` };
     return parseAnswer(r.stdout);
   } catch (e) {
@@ -47,7 +57,9 @@ export default class OctopilotDashboard extends View {
     this.handle = cx.focus_handle();
     if (p.dialog) return this.initDialog(p, cx);
     this.dir = p.dir ?? shared("octopilot.dir") ?? `${home()}/.dotfiles/ai/octopilot`;
-    this.stateDir = p.state_dir ?? shared("octopilot.state_dir") ?? `${home()}/.local/state/octopilot`;
+    // Only an explicit state dir is passed to the actions; unset, their default applies.
+    this.stateExplicit = p.state_dir ?? shared("octopilot.state_dir") ?? null;
+    this.stateDir = this.stateExplicit ?? `${home()}/.local/state/octopilot`;
     // A fixture file stands in for view.json (a test layout): no folder watch.
     this.fixture = p.fixture ?? null;
     this.viewFile = this.fixture ?? `${this.stateDir}/view.json`;
@@ -156,7 +168,7 @@ export default class OctopilotDashboard extends View {
 
   initDialog(p, cx) {
     this.dir = p.dir;
-    this.stateDir = p.state_dir;
+    this.stateExplicit = p.state_dir ?? null;
     this.openedAt = Date.now();
     this.busy = false;
     this.readOnly = false;
@@ -181,7 +193,7 @@ export default class OctopilotDashboard extends View {
     const tall = kind === "investigate";
     return openOverlay({
       mod: MOD, kind: "dialog", width: tall ? 520 : 440, height: tall ? 340 : 260,
-      props: { dialog: kind, dir: this.dir, state_dir: this.stateDir, ...extra },
+      props: { dialog: kind, dir: this.dir, state_dir: this.stateExplicit, ...extra },
     });
   }
 
@@ -202,7 +214,7 @@ export default class OctopilotDashboard extends View {
     if (this.busy) return;
     this.busy = true;
     cx.spawn(async () => {
-      const res = await runAction(p.dir, p.action, p.key, { ...(p.args ?? {}), confirmed: 1 });
+      const res = await runAction(p.dir, p.state_dir, p.action, p.key, { ...(p.args ?? {}), confirmed: 1 });
       notify({
         title: "Octopilot", body: res.message || (res.ok ? "started" : "failed"),
         level: res.ok ? "success" : "error",
@@ -224,7 +236,7 @@ export default class OctopilotDashboard extends View {
     this.busy = true;
     const args = { repo, question, read_only: this.readOnly ? 1 : 0 };
     cx.spawn(async (cx) => {
-      const res = await runAction(p.dir, p.action, null, args);
+      const res = await runAction(p.dir, p.state_dir, p.action, null, args);
       if (res.kitchen) {
         this.openDialog("kitchen", { action: p.action, args, message: res.message });
         closeOverlay(p.overlay);
@@ -371,7 +383,7 @@ export default class OctopilotDashboard extends View {
       const action = entry.actions.find((a) => actionKey(a.key) === name);
       if (action) return this.act(action, entry, cx), true;
       if (ROW_KEYS.includes(name)) {
-        this.say(`${name}: not available for this row`, false, cx);
+        this.say(name === "enter" ? "no session for this row" : `${name}: not available for this row`, false, cx);
         return true;
       }
     } else if (repo && ROW_KEYS.includes(name)) {
@@ -425,7 +437,7 @@ export default class OctopilotDashboard extends View {
 
   perform(id, key, args, cx) {
     cx.spawn(async (cx) => {
-      const res = await runAction(this.dir, id, key, args);
+      const res = await runAction(this.dir, this.stateExplicit, id, key, args);
       if (res.kitchen) this.openDialog("kitchen", { action: id, key, args, message: res.message });
       else this.say(res.message || (res.ok ? "done" : "failed"), res.ok, cx);
       cx.notify();
@@ -460,6 +472,6 @@ export default class OctopilotDashboard extends View {
         .child(pickPanel(this, t, arr, view.header.pick))
         .child(activityPanel(t, view, now)))
       .child(statusLine(this, t, now))
-      .child(actionBar(this, t, entry, globals));
+      .child(actionBar(this, t, entry, globals, isStale(view, now)));
   }
 }

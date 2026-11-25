@@ -26,10 +26,15 @@ const MAX_MESSAGES = 200;
 // How close to the end still counts as "at the bottom", in px.
 const BOTTOM_SLACK = 8;
 
-// scan.sh of the dashboard's folder: the prop, else the shared one, else the checkout.
-function scanPath() {
+// scan.sh under the GUI's backend (hc) and the dashboard's folder and state dir. herdr's
+// exec() has no env option, so env(1) sets them; OCTOPILOT_STATE_DIR only when one was
+// given, else scan.sh's default (XDG) applies. -> [command, argv]
+function scanCall(args) {
   const dir = props()?.dir || shared("octopilot.dir") || `${home()}/.dotfiles/ai/octopilot`;
-  return `${dir}/scan.sh`;
+  const stateDir = props()?.state_dir || shared("octopilot.state_dir");
+  const env = ["OCTOPILOT_BACKEND=hc", `OCTOPILOT_DIR=${dir}`];
+  if (stateDir) env.push(`OCTOPILOT_STATE_DIR=${stateDir}`);
+  return ["env", [...env, `${dir}/scan.sh`, ...args]];
 }
 
 // HH:MM of an ISO time, in the local zone.
@@ -125,7 +130,8 @@ export default class Chat extends View {
       const text = await readTextFile(fixture);
       return JSON.parse(text ?? "null");
     }
-    const r = await exec(scanPath(), ["chat", "--json", ...args], { timeout: 20000 });
+    const [cmd, argv] = scanCall(["chat", "--json", ...args]);
+    const r = await exec(cmd, argv, { timeout: 20000 });
     if (r.code !== 0) throw new Error(r.stderr.trim() || `scan.sh chat exited ${r.code}`);
     return JSON.parse(r.stdout);
   }
@@ -213,7 +219,8 @@ export default class Chat extends View {
   async say(args) {
     if (props()?.fixture) return { code: -1, error: "Fixture mode: nothing was sent." };
     try {
-      const r = await exec(scanPath(), args, { timeout: 20000 });
+      const [cmd, argv] = scanCall(args);
+      const r = await exec(cmd, argv, { timeout: 20000 });
       let error = r.stderr.trim();
       if (!error) try { error = JSON.parse(r.stdout)?.error ?? ""; } catch {}
       return { code: r.code, error };

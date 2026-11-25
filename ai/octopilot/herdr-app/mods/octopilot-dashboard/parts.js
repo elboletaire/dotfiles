@@ -5,7 +5,7 @@
 import { div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import {
-  AGENT_GLYPH, CI_GLYPH, ago, liveAge, elapsed, pickSummary, FLASH_MS, isRepoKey,
+  AGENT_GLYPH, CI_GLYPH, ago, liveAge, elapsed, pickSummary, FLASH_MS, isRepoKey, isStale,
 } from "./model.js";
 
 // Column id -> the theme colour its title, count and card edge take.
@@ -26,11 +26,12 @@ function keycap(t, key) {
     .bg(t.background).text_size(10.5).text_color(t.muted).child(key);
 }
 
-export function button(t, id, label, { key, tone, active = false, on }) {
+export function button(t, id, label, { key, tone, active = false, dim = false, on }) {
   return h_flex().id(id).flex_none().h(28).px(9).gap(7).items_center().rounded(8).border_1()
     .border_color(active ? t.accent : t.border).bg(active ? t.raised : t.surface)
     .text_size(12).text_color(tone ? t[tone] : t.foreground).cursor_pointer()
     .hover((s) => s.bg(t.hover))
+    .when(dim, (el) => el.opacity(0.45))
     .on_click((ev, cx) => on(ev, cx))
     .child(label)
     .when(Boolean(key), (el) => el.child(keycap(t, key)));
@@ -77,6 +78,7 @@ export function header(v, t, now) {
   const h = view.header;
   const elapsedSecs = elapsed(view, now);
   const lastTick = liveAge(h.last_tick_s, view, now);
+  const stale = isStale(view, now);
   return v_flex().gap(6)
     .child(h_flex().items_center().gap(12)
       .child(h_flex().h(28).px(12).items_center().rounded(9).bg(t.solid)
@@ -92,6 +94,8 @@ export function header(v, t, now) {
       .child(windDown(t, h.wind_down))
       .child(div().text_size(12).text_color(t.dim).child(clockText(now))))
     .child(h_flex().items_center().gap(14).text_size(11.5).text_color(t.dim)
+      .when(stale, (el) => el.child(div().font_semibold().text_color(t.blocked)
+        .child(`engine not running (view ${Math.floor(elapsedSecs)} s old)`)))
       .child(github(t, h.github ?? {}, elapsedSecs))
       .child(`last tick ${lastTick == null ? "never" : `${ago(lastTick)} ago`}`)
       .child(`orchestrator ${h.orch_label}`));
@@ -242,10 +246,11 @@ export function statusLine(v, t, now) {
 }
 
 // The selected row's actions on the left, the board's and the mod's own on the right.
-export function actionBar(v, t, entry, globals) {
+// With the engine stale the row actions are greyed: they still send, but may not apply.
+export function actionBar(v, t, entry, globals, stale) {
   const rowButtons = entry
     ? entry.actions.map((a) => button(t, `act-${a.id}`, a.label, {
-      key: a.key, tone: a.id === "remove" ? "blocked" : undefined,
+      key: a.key, tone: a.id === "remove" ? "blocked" : undefined, dim: stale,
       on: (_ev, cx) => v.press(a, entry, cx),
     }))
     : [];

@@ -6,6 +6,8 @@ export const REPO_PREFIX = "repo:";
 // A second press of the same action within this window confirms it (CONFIRM_SECS).
 export const CONFIRM_MS = 4000;
 export const FLASH_MS = 6000;
+// A view.json older than this has no headless dashboard writing it (CONTRACT.md).
+export const STALE_S = 15;
 // The kitchen-closed dialog cancels itself after this long (KITCHEN_SECS).
 export const KITCHEN_S = 15;
 // Global keys, and the view.json global action ids they stand for.
@@ -14,7 +16,7 @@ export const GLOBAL_KEYS = {
 };
 // Keys the selected row's own actions answer to: with a repo header selected
 // they say so instead of doing nothing.
-export const ROW_KEYS = ["v", "t", "o", "g", "n", "R", "e", "x", "z", "d", "delete"];
+export const ROW_KEYS = ["v", "t", "o", "g", "n", "R", "e", "x", "z", "d", "delete", "enter"];
 
 export const AGENT_GLYPH = {
   running: ["◐", "working"], waiting: ["⏸", "blocked"], idle: ["○", "dim"],
@@ -41,6 +43,7 @@ export function ago(secs) {
 // Seconds since view.json was written, so ages keep counting between writes.
 export const elapsed = (view, now) => Math.max(0, now / 1000 - (view.generated_at ?? 0));
 export const liveAge = (secs, view, now) => (secs == null ? null : secs + elapsed(view, now));
+export const isStale = (view, now) => elapsed(view, now) > STALE_S;
 
 // Board columns with the rows they show (Done hides closed rows unless asked),
 // and the Pick next tree as the lines it draws, plus every key the cursor can
