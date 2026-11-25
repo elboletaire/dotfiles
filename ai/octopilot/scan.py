@@ -182,11 +182,9 @@ def whoami(state):
 
 # --------------------------------------------------------------- agent hosts
 #
-# Every item runs in one of two backends, and its `session` id says which: the
-# herdr TUI's workspace (`w12`), or herdr-app's space (`sp<hex>`). The id
-# survives a restart where pane ids and agent names may not. New items spawn on
-# OCTOPILOT_BACKEND; existing ones keep theirs. Addresses are "herdr:<agent or
-# pane>" and "hc:<terminal>"; a bare one is the TUI's.
+# An item's session id names its backend: a TUI workspace (`w12`) or a herdr-app
+# space (`sp<hex>`). New items spawn on OCTOPILOT_BACKEND. Addresses are
+# "herdr:<agent>" and "hc:<terminal>"; a bare name is the spawn backend's.
 
 HERDR_WS = re.compile(r"^w[0-9A-Za-z]{1,8}$")
 HC_SPACE = re.compile(r"^sp[0-9a-f]+$")
@@ -522,6 +520,14 @@ class HcBackend:
                 return a["pane"]
         return found[0]["pane"] if found else None
 
+    def find(self, name):
+        """-> "hc:<terminal>" of the live terminal labelled octopilot.agent=<name>,
+        or None."""
+        code, data, _ = hc(["ls", "--json", "--label", f"octopilot.agent={name}"],
+                           timeout=10)
+        terms = (data or {}).get("terminals", []) if code == 0 else []
+        return f"hc:{terms[0]['address']}" if terms else None
+
     def status(self, target):
         _, info, _ = hc(["get", target, "--json"])
         return ((info or {}).get("status") or {}).get("state")
@@ -546,10 +552,11 @@ class HcBackend:
         code, _, raw = hc(["wait", target, "--timeout", "60"], timeout=90)
         return code, raw
 
-    def focus(self, session, target):
-        code, _, raw = app_do("space.select", ["--id", session])
+    def focus(self, session, target, timeout=60):
+        code, _, raw = app_do("space.select", ["--id", session], timeout=timeout)
         if code == 0:
-            code, _, raw = app_do("agent.focus", ["--terminal", target])
+            code, _, raw = app_do("agent.focus", ["--terminal", target],
+                                  timeout=timeout)
         return code == 0, raw
 
     def rename(self, entry, name):
@@ -662,10 +669,14 @@ def spawn_backend():
 
 
 def split_address(address):
-    """-> (backend, target) for "hc:t7", "herdr:<agent>" or a bare herdr agent."""
+    """-> (backend, target) for "hc:t7" or "herdr:<agent>". A bare name belongs
+    to the spawn backend: under hc, the terminal labelled with it."""
     for backend in (HC, HERDR):
         if address.startswith(backend.prefix):
             return backend, address[len(backend.prefix):]
+    if OCTOPILOT_BACKEND == "hc":
+        found = HC.find(address)
+        return HC, found[len(HC.prefix):] if found else address
     return HERDR, address
 
 
@@ -2207,7 +2218,11 @@ def snapshot(state):
 
 def orchestrator_target(state):
     """Where agent reports and dashboard commands are sent."""
-    return OCTOPILOT_ORCH or state.get("orch") or f"herdr:{ORCH_AGENT}"
+    if OCTOPILOT_ORCH or state.get("orch"):
+        return OCTOPILOT_ORCH or state["orch"]
+    if OCTOPILOT_BACKEND == "hc":
+        return HC.find(ORCH_AGENT) or f"hc:{ORCH_AGENT}"
+    return f"herdr:{ORCH_AGENT}"
 
 
 def item_or_exit(state, k):
@@ -2648,11 +2663,9 @@ def dispatch(cmd, args, state):
         print(f"unparked {k} -> holds a slot again")
         return 0
     if cmd == "detach":
-        # detach <key>: park an item without losing its work. Closes its
-        # workspace or space (agent stopped, worktree and branch kept) and
-        # drops the item from state, so it holds no slot and its PR/issue is
-        # proposed again like anything else. Reverse by hand: reopen the
-        # worktree, start claude in it, then `track`.
+        # detach <key>: close its workspace or space, keep the worktree and
+        # branch, and drop the item so it holds no slot. Reverse by hand: reopen
+        # the worktree, start claude in it, then `track`.
         k = args[1]
         it = state["items"].get(k)
         if not it:

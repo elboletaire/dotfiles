@@ -250,15 +250,6 @@ def repo_key(slug):
 
 # ----------------------------------------------------------------- backend
 
-def focus_hc_terminal(session, pane):
-    """Show a herdr-app terminal: its space, then the terminal -> bool. The
-    short timeouts keep a key press from freezing the screen."""
-    code, _, _ = scan.app_do("space.select", ["--id", session], timeout=10)
-    if code == 0:
-        code, _, _ = scan.app_do("agent.focus", ["--terminal", pane], timeout=10)
-    return code == 0
-
-
 class Hosts:
     """Where the agents live: herdr workspaces and herdr-app spaces, through
     scan.py so the dashboard and the orchestrator agree on them."""
@@ -278,7 +269,7 @@ class Hosts:
         target = (live.get(session) or {}).get("pane")
         if scan.backend_for(session) is scan.HC:
             if target:
-                return focus_hc_terminal(session, target)
+                return scan.HC.focus(session, target, timeout=10)[0]
             code, _, _ = scan.app_do("space.select", ["--id", session], timeout=10)
             return code == 0
         args = ["agent", "focus", target] if target else \
@@ -1459,15 +1450,13 @@ class Dashboard:
         """Show a herdr-app agent, by its terminal address or its
         octopilot.agent label -> bool."""
         if name:
-            code, data, _ = scan.hc(["ls", "--json", "--label",
-                                     f"octopilot.agent={name}"], timeout=10)
-            terms = (data or {}).get("terminals", []) if code == 0 else []
-            pane = terms[0]["address"] if terms else None
+            found = scan.HC.find(name)
+            pane = found[len(scan.HC.prefix):] if found else None
         if not pane:
             return False
         _, info, _ = scan.hc(["get", pane, "--json"], timeout=10)
         session = ((info or {}).get("labels") or {}).get("herdr.space")
-        return bool(session) and focus_hc_terminal(session, pane)
+        return bool(session) and scan.HC.focus(session, pane, timeout=10)[0]
 
     def focus_agent(self, backend, name):
         """Show the agent called name in the given backend -> bool."""
@@ -1479,9 +1468,8 @@ class Dashboard:
         """The prompter when there is one (that is where the user types),
         else the orchestrator itself. The dashboard's own backend is asked
         first, the other only when that fails."""
-        order = (scan.HC, scan.HERDR) if scan.OCTOPILOT_BACKEND == "hc" \
-            else (scan.HERDR, scan.HC)
-        if any(self.focus_agent(b, PROMPTER_AGENT) for b in order):
+        own = scan.HC if scan.OCTOPILOT_BACKEND == "hc" else scan.HERDR
+        if self.focus_agent(own, PROMPTER_AGENT):
             return
         _, hdr = self.m.build()
         backend, target = scan.split_address(hdr["orch"][0])

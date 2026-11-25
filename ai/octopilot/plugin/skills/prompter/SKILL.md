@@ -43,7 +43,7 @@ Read, never write:
 - `$A status`: the raw tracked items, with sessions, rounds and last reports.
 - `${OCTOPILOT_STATE_DIR:-$HOME/.local/state/octopilot}/events.jsonl`: what happened and when.
 - `gh` read-only commands, a worktree's files, `$A read <item>` to see what an
-  agent is doing.
+  agent is doing, and `$A focus <item>` to bring its window forward.
 
 Use the messenger skill's "Readable output" rules: the answer first, short
 lines, no prose paragraphs.
