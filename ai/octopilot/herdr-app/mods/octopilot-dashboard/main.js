@@ -6,7 +6,7 @@ import { View } from "gpui-kit";
 import { v_flex, h_flex, ScrollHandle, InputState } from "gpui-base";
 import {
   exec, readTextFile, watchFolder, nextCommand, checking, home, props, shared, run, layouts,
-  openOverlay, closeOverlay, notify, theme, window,
+  openOverlay, closeOverlay, notify, theme, window, focused,
 } from "herdr";
 import {
   CONFIRM_MS, FLASH_MS, KITCHEN_S, GLOBAL_KEYS, ROW_KEYS, arrange, resolveSel,
@@ -23,6 +23,8 @@ const MOD = "octopilot-dashboard";
 const KITCHEN_LAYOUT = "octopilot";
 // view.json is also read on a timer, besides the folder watch, in case a watch is lost.
 const POLL_MS = 2000;
+// How long a peek this pane opened is watched for its close before giving up.
+const PEEK_WATCH_MS = 10 * 60 * 1000;
 const NAV = { j: 1, down: 1, k: -1, up: -1, pagedown: 10, pageup: -10 };
 
 // dashboard.sh under the GUI's backend (hc) and this mod's state dir. herdr's exec()
@@ -73,12 +75,14 @@ export default class OctopilotDashboard extends View {
     this.prior = null;     // the press armed before the one being handled
     this.held = false;     // the key being handled is auto-repeating
     this.flash = null;     // { text, ok, at }
+    this.peeking = null;   // the peek this pane opened, until focus comes back: see followPeek
     this.scrolls = {
       running: ScrollHandle.new(), orch: ScrollHandle.new(), needs: ScrollHandle.new(),
       done: ScrollHandle.new(), pick: ScrollHandle.new(),
     };
     if (checking()) return;
     cx.timer.every(1000, (cx) => {
+      this.followPeek();
       if (window()?.visible !== false) cx.notify();   // the clock and the ages
     });
     cx.timer.every(POLL_MS, (cx) => {
@@ -438,12 +442,44 @@ export default class OctopilotDashboard extends View {
   perform(id, key, args, cx) {
     // A fixture with no state dir of its own must never act on the live octopilot.
     if (this.fixture && !this.stateExplicit) return this.say("Fixture mode: nothing was sent.", false, cx);
+    if (id === "peek" || id === "prompter") this.watchPeek();
     cx.spawn(async (cx) => {
       const res = await runAction(this.dir, this.stateExplicit, id, key, args);
       if (res.kitchen) this.openDialog("kitchen", { action: id, key, args, message: res.message });
       else this.say(res.message || (res.ok ? "done" : "failed"), res.ok, cx);
       cx.notify();
     });
+  }
+
+  // A peek over the tab takes the keyboard from this pane, and closing it does not
+  // send "focus" back (only a popup does). Note where the press came from.
+  watchPeek() {
+    const f = focused();
+    if (!f?.pane) return;
+    this.peeking = { since: Date.now(), pane: f.pane, tab: f.tab, before: f.terminal, terminal: null };
+  }
+
+  // On the clock tick: once the peek is closed and the focus is still in this pane's tab
+  // (here, or on nothing), take the keyboard back, once. Another pane focused by the user stays.
+  followPeek() {
+    const w = this.peeking;
+    if (!w) return;
+    if (Date.now() - w.since > PEEK_WATCH_MS) {
+      this.peeking = null;
+      return;
+    }
+    const f = focused();
+    if (!f) return;
+    // The peek's terminal is the first one focused after the press.
+    if (!w.terminal) {
+      if (f.terminal && f.terminal !== w.before) w.terminal = f.terminal;
+      return;
+    }
+    if (f.terminal === w.terminal) return;
+    const back = f.tab === w.tab && (f.pane === w.pane || (f.pane === null && f.terminal === null));
+    if (!back) return;
+    this.peeking = null;
+    this.handle.focus();
   }
 
   // ---- render ----
