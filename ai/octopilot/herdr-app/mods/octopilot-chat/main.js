@@ -111,6 +111,7 @@ export default class Chat extends View {
     this.unseen = 0;
     this.scrollEnd = true;
     this.following = true;     // the reader is at the end: see log
+    this.lastHeight = 0;       // content height at the last render: growth is not a scroll away
     this.reading = false;
     this.last = 0;
     this.focusWanted = false;  // the composer should take the keyboard once the agent is online
@@ -157,7 +158,7 @@ export default class Chat extends View {
   followTab() {
     const all = panes();
     const me = this.chatPane(all);
-    const shown = me !== null && me.tab === shownTab(all);
+    const shown = me !== null && me.tab === shownTab(spaces());
     const was = this.tabShown;
     this.tabShown = shown;
     if (!shown || was === true) return;
@@ -175,7 +176,7 @@ export default class Chat extends View {
     if (this.focusWanted) {
       const all = panes();
       const me = this.chatPane(all);
-      const shown = me !== null && me.tab === shownTab(all);
+      const shown = me !== null && me.tab === shownTab(spaces());
       if (!shown || this.focused || !keyboardFree(focused(), me.pane)) this.focusWanted = false;
       else if (this.online()) {
         this.focusWanted = false;
@@ -253,7 +254,7 @@ export default class Chat extends View {
       this.scrollEnd = true;
       this.following = true;
     }
-    const atBottom = this.atBottom();
+    const atBottom = this.following;
     let added = 0;
     for (const m of data?.messages ?? []) {
       const i = this.index.get(m.id);
@@ -572,6 +573,11 @@ export default class Chat extends View {
     ];
     // The request runs after this frame's layout, so a reader who follows the end gets it on every
     // frame: a message that grows after the request is brought in by the next one.
+    // A scrollbar drag moves the offset without a wheel event: when nothing asked for the end, the
+    // content did not grow and the view sits above the end, the reader has left it.
+    const height = this.scroll.content_size().height;
+    if (!this.scrollEnd && this.following && height <= this.lastHeight && !this.atBottom()) this.following = false;
+    this.lastHeight = height;
     if (this.scrollEnd || this.following) {
       this.scroll.scroll_to_item(items.length - 1);
       this.scrollEnd = false;
@@ -585,6 +591,14 @@ export default class Chat extends View {
       .gap(12)
       .overflow_y_scrollbar()
       .track_scroll(this.scroll)
+      .on_mouse_up("left", (_e, cx) => {
+        // The end of a scrollbar drag: decide again whether the transcript follows its end.
+        this.following = this.atBottom();
+        if (this.following && this.unseen > 0) {
+          this.unseen = 0;
+          cx.notify();
+        }
+      })
       .on_scroll_wheel((_e, cx) => cx.timer.after(60, (cx) => {
         const was = this.unseen;
         // Only a wheel scroll that lands decides whether the transcript follows its end.
