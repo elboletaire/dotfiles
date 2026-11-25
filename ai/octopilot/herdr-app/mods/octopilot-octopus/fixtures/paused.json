@@ -1,9 +1,0 @@
-{
-  "agent": "hc:t7",
-  "terminal": "t7",
-  "status": "idle",
-  "paused": true,
-  "text": "Paused. I will not start anything new until you say `resume`.",
-  "at": "2026-11-25T09:40:00Z",
-  "seq": 2
-}

@@ -1,9 +1,0 @@
-{
-  "agent": "hc:t7",
-  "terminal": "t7",
-  "status": "blocked",
-  "paused": false,
-  "text": "I need you on **#398**: the migration rewrites rows in `votes` and the plan has no rollback.\n\n- `go 398` runs it anyway\n- `no 398` drops it from the queue\n- or tell me what to change first",
-  "at": "2026-11-25T10:05:00Z",
-  "seq": 4
-}
