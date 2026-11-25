@@ -297,12 +297,13 @@ add_main_tab() {
   if [ -n "$chat" ] && [ -n "$tab" ]; then record_label "$(find_orch)" octopilot.chat "$tab:$chat"; fi
 }
 
-# Sizes the kitchen (pane $2) to KITCHEN_PX: the divider above it (the chat's bottom
-# edge, pane $1) goes down, so the kitchen ends at its minimum height plus KITCHEN_PX.
+# Sizes the kitchen (pane $2, in tab $3) to its minimum plus KITCHEN_PX: herdr resizes
+# only panes on screen, so the tab is shown first; "down" on the kitchen shrinks it.
 # Best effort: a refused move is warned about, and the kitchen keeps the split's size.
 size_kitchen() {
   local out
-  "$APP" do pane.resize --direction down --pane "$1" --px 10000 >/dev/null 2>&1 || true
+  "$APP" do tab.select --id "$3" >/dev/null 2>&1 || true
+  "$APP" do pane.resize --direction down --pane "$2" --px 10000 >/dev/null 2>&1 || true
   if ! out=$("$APP" do pane.resize --direction up --pane "$2" --px "$KITCHEN_PX" 2>&1); then
     echo "open-gui.sh: could not size pane $2 to $KITCHEN_PX px: $out" >&2
   fi
@@ -344,7 +345,7 @@ add_kitchen() {
     return 0
   fi
   name_mod_pane "$kitchen" "$(pane_name "$KITCHEN_PANE")"
-  size_kitchen "$chat" "$kitchen"
+  size_kitchen "$chat" "$kitchen" "$main"
   record_label "$orch" octopilot.kitchen "$main:$kitchen"
 }
 
