@@ -76,6 +76,8 @@ source "$DIR/config.sh"
 set +a
 # "herdr:<agent>".
 orch="${OCTOPILOT_ORCH:-$(jq -r '.orch // empty' "$STATE_FILE" 2>/dev/null || true)}"
+# An "hc:<t>" orch is the herdr-app's orchestrator, not a TUI agent.
+case $orch in hc:*) orch= ;; esac
 name="${orch#herdr:}"
 name="${name:-$ORCH_AGENT}"
 
