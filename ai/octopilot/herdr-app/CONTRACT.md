@@ -53,6 +53,7 @@ Log (one kitchen line, takoyaki's feed.ts `react()`):
 ```jsonc
 {"at": 1732530000.0, "kind": "report", "mood": "happy", "text": "ready repo#12: …", "good": true,
  "key": "owner/repo#12" /* null when the kind has no item */, "ms": 4000 /* how long the mood lasts */,
+ "tone": "good|bad|info" /* feed.ts's tone: good = green line, bad = red, info = plain */,
  "burst": "sparkle" /* steam|batter|sparkle|smoke|bang|heart|zzz|ink|null */}
 ```
 
@@ -64,9 +65,13 @@ Pan (takoyaki's pan and chef, from feed.ts `readKitchen()` and register.tsx `fra
   "balls": [{"key": "owner/repo#12", "label": "repo#12",
              "state": "raw|cooking|ready|capped|burnt|stalled",
              "heat": 0.4,                           // cooking age / 25 min, capped at 1 (feed.ts browns them)
-             "focus": true}],                       // the newest event's item, if it is on the pan (at most one)
+             "focus": true}],                       // the newest event's item, if it is on the pan (at most one).
+                                                    // No ball focused: the mod uses hole 0. While pan.busy the
+                                                    // focus walks along the pan, hole floor(t / 1.2 s) % balls
+                                                    // (register.tsx), so the mod animates it itself
                                                     // one per tracked item not DONE, oldest first, at most holes
-  "shelf": [{"key": "owner/repo#7", "label": "repo#7"}],   // DONE items, newest last, at most 8 (the newest 8)
+  "shelf": [{"key": "owner/repo#7", "label": "repo#7"}],   // the oldest 8 DONE items (scene.ts boxed.slice(0, 8)), oldest first
+  "shelf_total": 3,                                 // all DONE items, for "N on the shelf" (register.tsx)
   "chef": {"mood": "happy", "since": 1732530000.0,  // the transient mood, else the rest mood
            "ms": 4000,                              // the transient mood's duration; 0 when resting
            "resting": "sleep|busy|doze|idle"}       // paused, busy, idle for 10 min (doze), else idle

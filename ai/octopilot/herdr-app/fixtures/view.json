@@ -1,19 +1,19 @@
 {
   "v": 1,
-  "generated_at": 1795616702.7356691,
+  "generated_at": 1795617207.7228274,
   "header": {
-    "needs": 3,
-    "running": 3,
+    "needs": 2,
+    "running": 4,
     "pick": 66,
     "active": 2,
     "max_active": 8,
     "untracked": 0,
     "github": {
-      "state": "refreshing",
-      "age_s": 4,
+      "state": "ok",
+      "age_s": 5,
       "error": null
     },
-    "last_tick_s": 1913,
+    "last_tick_s": 2418,
     "orch_label": "octopilot",
     "paused": false,
     "wind_down": {
@@ -27,6 +27,73 @@
       "title": "🟡 Running",
       "entries": [
         {
+          "key": "vocdoni/vocdoni-app#2022",
+          "label": "vocdoni-app#2022 +8",
+          "kind": "STALLED",
+          "section": "running",
+          "title": "refactor(theme): prepare the theme for the Fil retheme",
+          "draft": false,
+          "url": "https://github.com/vocdoni/vocdoni-app/pull/2022",
+          "checks": "pass",
+          "agent": "running",
+          "rounds": 1,
+          "max_rounds": 3,
+          "quiet_s": 6091,
+          "stalled": false,
+          "needs": false,
+          "why": "STALLED",
+          "note": "working again · was stalled",
+          "pick_kind": "your PR",
+          "session": "w8X",
+          "backend": "herdr",
+          "pane": "w8X:p1",
+          "path": "/home/elboletaire/src/vocdoni/ui-scaffold/.worktrees/refactor-theme-fil-prep",
+          "branch": "refactor/theme-fil-prep",
+          "pr": 2022,
+          "stack": 9,
+          "open": true,
+          "parked": false,
+          "tracked": true,
+          "actions": [
+            {
+              "id": "focus",
+              "key": "Enter",
+              "label": "open",
+              "confirm": null
+            },
+            {
+              "id": "shell",
+              "key": "t",
+              "label": "shell",
+              "confirm": null
+            },
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            },
+            {
+              "id": "detach",
+              "key": "z",
+              "label": "detach",
+              "confirm": "press z again to detach vocdoni/vocdoni-app#2022 (worktree kept, untracked)"
+            },
+            {
+              "id": "park",
+              "key": "d",
+              "label": "done",
+              "confirm": "press d again to move vocdoni/vocdoni-app#2022 to Done (session kept, slot freed)"
+            },
+            {
+              "id": "remove",
+              "key": "Delete",
+              "label": "remove",
+              "confirm": "press del again to remove vocdoni/vocdoni-app#2022 (workspace and worktree deleted, untracked)"
+            }
+          ]
+        },
+        {
           "key": "vocdoni/argos-code#3",
           "label": "argos-code#3",
           "kind": "NEW",
@@ -38,7 +105,7 @@
           "agent": null,
           "rounds": 2,
           "max_rounds": 3,
-          "quiet_s": 112,
+          "quiet_s": 617,
           "stalled": false,
           "needs": false,
           "why": null,
@@ -93,7 +160,7 @@
           "agent": null,
           "rounds": 2,
           "max_rounds": 3,
-          "quiet_s": 112,
+          "quiet_s": 617,
           "stalled": false,
           "needs": false,
           "why": null,
@@ -154,7 +221,7 @@
           "agent": null,
           "rounds": 2,
           "max_rounds": 3,
-          "quiet_s": 112,
+          "quiet_s": 617,
           "stalled": false,
           "needs": false,
           "why": null,
@@ -215,73 +282,6 @@
       "title": "🔴 Needs you",
       "entries": [
         {
-          "key": "vocdoni/vocdoni-app#2022",
-          "label": "vocdoni-app#2022 +8",
-          "kind": "STALLED",
-          "section": "needs",
-          "title": "refactor(theme): prepare the theme for the Fil retheme",
-          "draft": false,
-          "url": "https://github.com/vocdoni/vocdoni-app/pull/2022",
-          "checks": "pass",
-          "agent": "idle",
-          "rounds": 1,
-          "max_rounds": 3,
-          "quiet_s": 5586,
-          "stalled": false,
-          "needs": true,
-          "why": "STALLED",
-          "note": "agent not reporting",
-          "pick_kind": "your PR",
-          "session": "w8X",
-          "backend": "herdr",
-          "pane": "w8X:p1",
-          "path": "/home/elboletaire/src/vocdoni/ui-scaffold/.worktrees/refactor-theme-fil-prep",
-          "branch": "refactor/theme-fil-prep",
-          "pr": 2022,
-          "stack": 9,
-          "open": true,
-          "parked": false,
-          "tracked": true,
-          "actions": [
-            {
-              "id": "focus",
-              "key": "Enter",
-              "label": "open",
-              "confirm": null
-            },
-            {
-              "id": "shell",
-              "key": "t",
-              "label": "shell",
-              "confirm": null
-            },
-            {
-              "id": "browser",
-              "key": "o",
-              "label": "browser",
-              "confirm": null
-            },
-            {
-              "id": "detach",
-              "key": "z",
-              "label": "detach",
-              "confirm": "press z again to detach vocdoni/vocdoni-app#2022 (worktree kept, untracked)"
-            },
-            {
-              "id": "park",
-              "key": "d",
-              "label": "done",
-              "confirm": "press d again to move vocdoni/vocdoni-app#2022 to Done (session kept, slot freed)"
-            },
-            {
-              "id": "remove",
-              "key": "Delete",
-              "label": "remove",
-              "confirm": "press del again to remove vocdoni/vocdoni-app#2022 (workspace and worktree deleted, untracked)"
-            }
-          ]
-        },
-        {
           "key": "vocdoni/dvote-protobuf#90",
           "label": "dvote-protobuf#90",
           "kind": "READY",
@@ -293,7 +293,7 @@
           "agent": "idle",
           "rounds": 2,
           "max_rounds": 3,
-          "quiet_s": 2260,
+          "quiet_s": 2765,
           "stalled": false,
           "needs": true,
           "why": "READY",
@@ -360,7 +360,7 @@
           "agent": null,
           "rounds": 2,
           "max_rounds": 3,
-          "quiet_s": 112,
+          "quiet_s": 617,
           "stalled": false,
           "needs": true,
           "why": "CAPPED",
@@ -433,7 +433,7 @@
           "agent": null,
           "rounds": 2,
           "max_rounds": 3,
-          "quiet_s": 112,
+          "quiet_s": 617,
           "stalled": false,
           "needs": false,
           "why": null,
@@ -494,7 +494,7 @@
           "agent": "idle",
           "rounds": 1,
           "max_rounds": 3,
-          "quiet_s": 11690,
+          "quiet_s": 12195,
           "stalled": false,
           "needs": false,
           "why": null,
@@ -561,7 +561,7 @@
           "agent": null,
           "rounds": 2,
           "max_rounds": 3,
-          "quiet_s": 112,
+          "quiet_s": 617,
           "stalled": false,
           "needs": false,
           "why": null,
@@ -3964,10 +3964,10 @@
   ],
   "activity": [
     {
-      "at": 1795616702,
-      "kind": "report",
+      "at": 1795617206,
+      "kind": "feedback",
       "key": "vocdoni-app#2022",
-      "detail": "ready PR open, CI green"
+      "detail": ""
     },
     {
       "at": 1795616655,
@@ -4007,6 +4007,7 @@
       "mood": "flip",
       "text": "tick · 0 cooking",
       "good": false,
+      "tone": "info",
       "key": null,
       "ms": 2500,
       "burst": "steam"
@@ -4017,6 +4018,7 @@
       "mood": "surprised",
       "text": "asked: go vocdoni/vocdoni-app#2022 (stack: 2022:refactor/theme-fil-prep 2023:feat/fil-theme 2032:feat/fil-dark 2031:f...",
       "good": false,
+      "tone": "info",
       "key": null,
       "ms": 2000,
       "burst": "bang"
@@ -4027,6 +4029,7 @@
       "mood": "pour",
       "text": "new order vocdoni-app#2022 Fil Theme Stack",
       "good": true,
+      "tone": "good",
       "key": "vocdoni/vocdoni-app#2022",
       "ms": 2500,
       "burst": "batter"
@@ -4037,6 +4040,7 @@
       "mood": "flip",
       "text": "→ vocdoni-app#2022 You own a stack of PRs in vocdoni/vocdoni-app, base `develop`. Bottom to top, ea",
       "good": false,
+      "tone": "info",
       "key": "vocdoni/vocdoni-app#2022",
       "ms": 1500,
       "burst": null
@@ -4047,6 +4051,7 @@
       "mood": "flip",
       "text": "review round vocdoni-app#2022",
       "good": false,
+      "tone": "info",
       "key": "vocdoni/vocdoni-app#2022",
       "ms": 2000,
       "burst": null
@@ -4057,6 +4062,7 @@
       "mood": "idle",
       "text": "review-base vocdoni-app#2022",
       "good": false,
+      "tone": "info",
       "key": null,
       "ms": 0,
       "burst": null
@@ -4067,6 +4073,7 @@
       "mood": "flip",
       "text": "tick · 1 cooking",
       "good": false,
+      "tone": "info",
       "key": null,
       "ms": 2500,
       "burst": "steam"
@@ -4077,6 +4084,7 @@
       "mood": "surprised",
       "text": "asked: go vocdoni/dvote-protobuf!89",
       "good": false,
+      "tone": "info",
       "key": null,
       "ms": 2000,
       "burst": "bang"
@@ -4087,6 +4095,7 @@
       "mood": "flip",
       "text": "tick · 1 cooking",
       "good": false,
+      "tone": "info",
       "key": null,
       "ms": 2500,
       "burst": "steam"
@@ -4097,6 +4106,7 @@
       "mood": "pour",
       "text": "new order dvote-protobuf!89 Relicense Lgpl",
       "good": true,
+      "tone": "good",
       "key": "vocdoni/dvote-protobuf!89",
       "ms": 2500,
       "burst": "batter"
@@ -4107,6 +4117,7 @@
       "mood": "flip",
       "text": "→ dvote-protobuf!89 You are working on vocdoni/dvote-protobuf issue #89, on branch `chore/relicense-",
       "good": false,
+      "tone": "info",
       "key": "vocdoni/dvote-protobuf!89",
       "ms": 1500,
       "burst": null
@@ -4117,6 +4128,7 @@
       "mood": "flip",
       "text": "review round dvote-protobuf!89",
       "good": false,
+      "tone": "info",
       "key": "vocdoni/dvote-protobuf!89",
       "ms": 2000,
       "burst": null
@@ -4127,6 +4139,7 @@
       "mood": "idle",
       "text": "review-base dvote-protobuf!89",
       "good": false,
+      "tone": "info",
       "key": null,
       "ms": 0,
       "burst": null
@@ -4137,6 +4150,7 @@
       "mood": "flip",
       "text": "review round dvote-protobuf!89",
       "good": false,
+      "tone": "info",
       "key": "vocdoni/dvote-protobuf!89",
       "ms": 2000,
       "burst": null
@@ -4147,6 +4161,7 @@
       "mood": "idle",
       "text": "review-base dvote-protobuf!89",
       "good": false,
+      "tone": "info",
       "key": null,
       "ms": 0,
       "burst": null
@@ -4157,6 +4172,7 @@
       "mood": "happy",
       "text": "ready dvote-protobuf!89: PR #90 relicenses to LGPL-3.0-or-later (COPYING + COPYING.LESSER), CI green, review clean\nRe...",
       "good": true,
+      "tone": "good",
       "key": "vocdoni/dvote-protobuf!89",
       "ms": 4000,
       "burst": "sparkle"
@@ -4167,6 +4183,7 @@
       "mood": "flip",
       "text": "tick · 2 cooking",
       "good": false,
+      "tone": "info",
       "key": null,
       "ms": 2500,
       "burst": "steam"
@@ -4177,6 +4194,7 @@
       "mood": "flip",
       "text": "tick · 2 cooking",
       "good": false,
+      "tone": "info",
       "key": null,
       "ms": 2500,
       "burst": "steam"
@@ -4187,19 +4205,21 @@
       "mood": "happy",
       "text": "ready vocdoni-app#2022: PR open, CI green",
       "good": true,
+      "tone": "good",
       "key": "vocdoni/vocdoni-app#2022",
       "ms": 4000,
       "burst": "sparkle"
     },
     {
-      "at": 1795616702,
-      "kind": "report",
-      "mood": "happy",
-      "text": "ready vocdoni-app#2022: PR open, CI green",
-      "good": true,
+      "at": 1795617206,
+      "kind": "feedback",
+      "mood": "flip",
+      "text": "feedback vocdoni-app#2022",
+      "good": false,
+      "tone": "info",
       "key": "vocdoni/vocdoni-app#2022",
-      "ms": 4000,
-      "burst": "sparkle"
+      "ms": 1500,
+      "burst": null
     }
   ],
   "pan": {
@@ -4239,7 +4259,7 @@
         "key": "vocdoni/oauth#7",
         "label": "oauth#7",
         "state": "capped",
-        "heat": 0.64,
+        "heat": 0.97,
         "focus": false
       },
       {
@@ -4264,10 +4284,11 @@
         "label": "vocdoni-app#2024"
       }
     ],
+    "shelf_total": 3,
     "chef": {
-      "mood": "happy",
-      "since": 1795616702,
-      "ms": 4000,
+      "mood": "idle",
+      "since": 1795617206,
+      "ms": 0,
       "resting": "idle"
     }
   },

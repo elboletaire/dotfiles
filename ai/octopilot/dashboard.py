@@ -1109,9 +1109,11 @@ def kitchen_reaction(ev):
         v = ev.get(name)
         return v if isinstance(v, str) else ""
 
-    def rx(mood, ms, burst=None, keyed=False, line=None, good=False):
+    def rx(mood, ms, burst=None, keyed=False, line=None, good=False, bad=False):
+        tone = "good" if good else "bad" if bad else "info"
         return {"mood": mood, "ms": ms, "burst": burst,
-                "key": key if keyed else None, "text": line, "good": good}
+                "key": key if keyed else None, "text": line,
+                "good": good, "tone": tone}
 
     if kind == "tick":
         active = ev.get("active")
@@ -1130,8 +1132,8 @@ def kitchen_reaction(ev):
         if state == "capped":
             return rx("happy", 3000, "steam", True, line)
         if state == "stalled":
-            return rx("worried", 3000, "smoke", True, line)
-        return rx("sad", 4500, "smoke", True, line)
+            return rx("worried", 3000, "smoke", True, line, bad=True)
+        return rx("sad", 4500, "smoke", True, line, bad=True)
     if kind == "request":
         return rx("surprised", 2000, "bang", line=f"asked: {text('text')}")
     if kind in ("cleanup", "merged"):
@@ -1143,13 +1145,14 @@ def kitchen_reaction(ev):
     if kind in ("round", "reviewed"):
         return rx("flip", 2000, None, True, f"review round {k}")
     if kind == "capped":
-        return rx("worried", 2500, None, True, f"out of review rounds {k}")
+        return rx("worried", 2500, None, True, f"out of review rounds {k}",
+                  bad=True)
     if kind == "feedback":
         return rx("flip", 1500, None, True, f"feedback {k}")
     if kind == "heartbeat":
         return rx("idle", 0, "steam", True)
     if kind == "reboot":
-        return rx("surprised", 2000, "bang", True, f"reboot {k}")
+        return rx("surprised", 2000, "bang", True, f"reboot {k}", bad=True)
     if kind in ("decline", "untrack", "detach"):
         return rx("worried", 1500, "ink", line=f"{kind} {k}".strip())
     if kind == "track":
@@ -1165,6 +1168,7 @@ def kitchen_view(evs):
         if r["text"]:
             out.append({"at": ev.get("at", 0), "kind": ev.get("kind") or "",
                         "mood": r["mood"], "text": r["text"], "good": r["good"],
+                        "tone": r["tone"],
                         "key": r["key"], "ms": r["ms"], "burst": r["burst"]})
     return out[-20:]
 
@@ -1205,8 +1209,8 @@ def kitchen_pan(model, hdr, evs, now, busy):
         balls.append({"key": key, "label": short(key),
                       "state": ball_state(item, snap_kinds.get(key)),
                       "heat": round(min(1.0, age / 25), 2)})
-    shelf = [{"key": b["key"], "label": b["label"]}
-             for b in balls if b["state"] == "done"][-8:]
+    served = [{"key": b["key"], "label": b["label"]}
+              for b in balls if b["state"] == "done"]
     on_pan = [b for b in balls if b["state"] != "done"][:holes]
     on_pan_keys = {b["key"] for b in on_pan}
     focus = next((r["key"] for r in map(kitchen_reaction, reversed(evs))
@@ -1235,7 +1239,7 @@ def kitchen_pan(model, hdr, evs, now, busy):
                         "resting": rest}
             break
     return {"holes": holes, "paused": paused, "busy": busy, "balls": on_pan,
-            "shelf": shelf, "chef": chef}
+            "shelf": served[:8], "shelf_total": len(served), "chef": chef}
 
 
 def orchestrator_busy(model, hdr):
@@ -2087,15 +2091,17 @@ def stable(node):
 def headless(model):
     """dashboard.sh --headless: the TUI's loops with no screen, and the view
     written to view.json for the herdr-app mods."""
-    stop = threading.Event()
+    # A plain list, not an Event: a signal handler that takes a lock the
+    # interrupted thread holds would wedge the daemon.
+    stopping = []
     for sig in (signal.SIGTERM, signal.SIGINT):
-        signal.signal(sig, lambda *_: stop.set())
+        signal.signal(sig, lambda signum, _frame: stopping.append(signum))
     model.poll_files()
     model.start()
     log(f"headless dashboard: writing {VIEW_FILE}")
     kick_seen = kick_mtime()
     last_sig, last_write, last_err = None, 0, None
-    while not stop.is_set():
+    while not stopping:
         try:
             model.poll_files()
             mtime = kick_mtime()
@@ -2115,7 +2121,7 @@ def headless(model):
                 last_err = repr(e)
                 log(f"view failed: {last_err}")
         # Half a second: a refresh action starts its scan within a second.
-        stop.wait(0.5)
+        time.sleep(0.5)
     log("headless dashboard: stopped")
     return 0
 
@@ -2125,7 +2131,7 @@ def headless(model):
 class ArgParser(argparse.ArgumentParser):
     def error(self, message):
         # --action always answers with one JSON line, usage errors included.
-        if "--action" in sys.argv:
+        if any(a == "--action" or a.startswith("--action=") for a in sys.argv):
             print(json.dumps({"ok": False, "message": message}))
             sys.exit(0)
         super().error(message)
