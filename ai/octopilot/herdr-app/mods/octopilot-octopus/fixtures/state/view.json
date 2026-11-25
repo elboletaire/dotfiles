@@ -1,0 +1,21 @@
+{
+  "v": 1,
+  "generated_at": 1795615212,
+  "header": {
+    "needs": 1, "running": 1, "pick": 4,
+    "active": 2, "max_active": 6, "untracked": 0,
+    "github": {"state": "ok", "age_s": 42, "error": null},
+    "last_tick_s": 120, "orch_label": "octopilot", "paused": false,
+    "wind_down": {"state": "no", "at": "16:00"}
+  },
+  "columns": [],
+  "pick": [],
+  "notes": [],
+  "activity": [],
+  "kitchen": [
+    {"at": 1795614312, "kind": "spawn", "mood": "pour", "text": "new order repo#401 Fix login redirect", "good": true},
+    {"at": 1795614612, "kind": "report", "mood": "sad", "text": "blocked repo#398: tests are red", "good": false},
+    {"at": 1795614972, "kind": "report", "mood": "worried", "text": "stalled repo#405: no commit in 40 min", "good": false},
+    {"at": 1795615152, "kind": "report", "mood": "happy", "text": "ready repo#401: PR open, CI green", "good": true}
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "agent": "hc:t7",
+  "terminal": "t7",
+  "status": "working",
+  "paused": false,
+  "text": "Pick 3 is in flight: the rebase on **#412** is running and `hc:t9` is reviewing #405.\n\nTwo more issues are queued behind them.",
+  "at": "2026-11-25T10:00:00Z",
+  "seq": 3
+}

@@ -1,0 +1,9 @@
+{
+  "agent": null,
+  "terminal": null,
+  "status": "done",
+  "paused": false,
+  "text": "#401 merged. Cleaning up its worktree and fanning out the rebase to the two stacked PRs on top of it.",
+  "at": "2026-11-25T10:12:00Z",
+  "seq": 6
+}
