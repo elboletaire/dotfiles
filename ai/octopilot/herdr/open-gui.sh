@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # The GUI twin of open.sh: the Octopilot space in herdr-app, with three tabs:
 #   OCTOPILOT: the octopilot-dashboard and octopilot-chat mods
-#   engine: the orchestrator, the prompter and the headless dashboard, as hc terminals;
-#     parked after building (no pane, still running), so the tab goes away
-#   Octopilot (code changes): a claude for changing octopilot itself
+#   engine: the orchestrator, the prompter, the headless dashboard and the code
+#     agent (a claude for changing octopilot itself), as hc terminals; parked
+#     after building (no pane, still running), so the tab goes away
+#   Octopilot (code changes): the octopilot-chat mod over the code agent
 # Each claude is labelled octopilot.agent=<name> and octopilot.session=<uuid>
 # (its transcript, read by scan.py speech and chat). --terminals builds the
 # TUI-style layout instead. --show-engine keeps the engine tab visible (no park).
@@ -70,6 +71,10 @@ envs+=("${scope[@]+"${scope[@]}"}")
 
 # The props of the mods, which read their octopilot from them.
 MOD_PROPS="$(jq -nc --arg dir "$DIR" --arg state "$STATE_DIR" '{dir: $dir, state_dir: $state}')"
+# The code tab's chat mod: the code agent it talks to, and its copy.
+CODE_PROPS="$(jq -nc --argjson mod "$MOD_PROPS" --arg agent "$CODE_AGENT" \
+  '$mod + {agent: $agent, title: "Code changes", subject: "the code changes agent",
+    chips: ["status of the last change", "what did you change?", "run the checks"]}')"
 
 # `herdr-app ...` with its output on stdout; a failure stops here with the
 # output it printed, so a refused command says why.
@@ -106,9 +111,11 @@ new_session() {
 SETTINGS="$(OCTOPILOT_DIR="$DIR" "$DIR/scan.sh" plugin-settings)"
 
 # argv for a claude session: its session id (empty: none), optionally started
-# with a prompt.
+# with a prompt, in a folder (empty: the pane's own, `env -C` otherwise).
 session_argv() {
-  local args=(env "${envs[@]}" claude)
+  local args=(env)
+  if [ -n "${3:-}" ]; then args+=(-C "$3"); fi
+  args+=("${envs[@]}" claude)
   if [ -n "$SETTINGS" ]; then args+=(--settings "$SETTINGS"); fi
   if [ -n "${1:-}" ]; then args+=(--session-id "$1"); fi
   if [ -n "${2:-}" ]; then args+=("$2"); fi
@@ -236,9 +243,43 @@ add_main_tab() {
     --mod octopilot-chat --props "$MOD_PROPS" >/dev/null
 }
 
-# The code-changes tab with its claude, unless this checkout's code agent runs
-# already (another checkout's is left alone).
+# The code agent, an engine terminal in the cwd of the dotfiles root: beside the
+# orchestrator's pane, or in a tab of the space while it is parked.
+start_code_agent() {
+  local session term
+  session=$(new_session)
+  term=$(start_engine_term "$1" "$2" right "$(session_argv "$session" "" "$CODE_CWD")" code)
+  name_agent "$term" "$CODE_AGENT" "$session"
+  echo "$term"
+}
+
+# The code-changes tab: the chat mod over this checkout's code agent, started when
+# missing. An old-style terminal tab of that name gives its agent up (parked, not killed).
 add_code_tab() {
+  local space=$1 pane=$2 code tab
+  code=$(find_agent "$CODE_AGENT")
+  if [ -z "$code" ]; then code=$(start_code_agent "$space" "$pane"); fi
+  tab=$(locate "$code" | cut -f2)
+  if [ -n "$tab" ] && [ "$tab" = "$(tab_named "$space" "$CODE_TAB")" ]; then
+    "$HC" label "$code" "octopilot.space=$space" >/dev/null
+    app do terminal.park --terminal "$code" >/dev/null
+  fi
+  if ! code_mod_tab "$space"; then
+    app do tab.new --space "$space" --name "$CODE_TAB" --mod octopilot-chat \
+      --props "$CODE_PROPS" --focus false >/dev/null
+  fi
+}
+
+# True when the space has a code-changes tab whose only pane is a mod.
+code_mod_tab() {
+  "$APP" ls | jq -e --arg s "$1" --arg n "$CODE_TAB" \
+    '.spaces[] | select(.id == $s) | .tabs[] | select(.name == $n and (.terminals | length == 0))' \
+    >/dev/null
+}
+
+# The --terminals code tab: a terminal tab with its claude in the dotfiles root,
+# unless this checkout's code agent runs already (another checkout's is left alone).
+add_code_terminal_tab() {
   local created
   if [ -n "$(find_agent "$CODE_AGENT")" ]; then return 0; fi
   created=$(app do tab.new --space "$1" --name "$CODE_TAB" --folder "$CODE_CWD" \
@@ -289,7 +330,7 @@ space_of() {
 # This checkout's engine terminals that have no pane, as "label address" lines.
 parked_engine() {
   local label t
-  for label in "$ORCH_AGENT" "$PROMPTER_AGENT" "$HEADLESS_AGENT"; do
+  for label in "$ORCH_AGENT" "$PROMPTER_AGENT" "$HEADLESS_AGENT" "$CODE_AGENT"; do
     t=$(find_agent "$label")
     if [ -n "$t" ] && [ -z "$(locate "$t")" ]; then echo "$label $t"; fi
   done
@@ -297,14 +338,16 @@ parked_engine() {
 
 # Parks the engine's terminals (--show-engine keeps them shown): their panes go,
 # their processes keep running, and the engine tab empties and goes away. The
-# orchestrator also keeps its space in a label, for space_of.
+# orchestrator and the code agent also keep their space in a label, for space_of.
 park_engine() {
   local space=$1 label t
   if [ "$SHOW_ENGINE" = 1 ]; then return 0; fi
-  for label in "$ORCH_AGENT" "$PROMPTER_AGENT" "$HEADLESS_AGENT"; do
+  for label in "$ORCH_AGENT" "$PROMPTER_AGENT" "$HEADLESS_AGENT" "$CODE_AGENT"; do
     t=$(find_agent "$label")
     if [ -z "$t" ] || [ -z "$(locate "$t")" ]; then continue; fi
-    if [ "$label" = "$ORCH_AGENT" ]; then "$HC" label "$t" "octopilot.space=$space" >/dev/null; fi
+    if [ "$label" = "$ORCH_AGENT" ] || [ "$label" = "$CODE_AGENT" ]; then
+      "$HC" label "$t" "octopilot.space=$space" >/dev/null
+    fi
     app do terminal.park --terminal "$t" >/dev/null
   done
 }
@@ -414,7 +457,7 @@ if [ -n "$orch" ]; then
     fi
     app do tab.rename --id "$tab" --name "$MAIN_TAB" >/dev/null
     if [ -z "$(find_agent "$PROMPTER_AGENT")" ]; then add_prompter "$space" "$pane" down; fi
-    add_code_tab "$space"
+    add_code_terminal_tab "$space"
     app do agent.focus --terminal "$orch" >/dev/null
   else
     old=$(legacy_dashboard "$space")
@@ -426,7 +469,7 @@ if [ -n "$orch" ]; then
     if [ -n "$pane" ]; then app do tab.rename --id "$tab" --name "$ENGINE_TAB" >/dev/null; fi
     add_engine_agents "$space" "$pane"
     add_main_tab "$space"
-    add_code_tab "$space"
+    add_code_tab "$space" "$pane"
     focus_main "$space"
   fi
   finish "$space"
@@ -469,12 +512,12 @@ if [ "$TERMINALS" = 1 ]; then
     --argv "$(shell_argv "$(argv_json env "${envs[@]}" bash "$DIR/dashboard.sh")")")
   app do pane.rename --pane "$(jq -r '.pane' <<<"$dash")" --name dashboard >/dev/null
   add_prompter "$space" "$root" down
-  add_code_tab "$space"
+  add_code_terminal_tab "$space"
   app do agent.focus --terminal "$orch" >/dev/null
 else
   add_engine_agents "$space" "$root"
   add_main_tab "$space"
-  add_code_tab "$space"
+  add_code_tab "$space" "$root"
   focus_main "$space"
 fi
 finish "$space"
