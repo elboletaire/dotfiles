@@ -2410,7 +2410,7 @@ def inbox(state):
     return 0
 
 
-READ_ONLY = {"render", "status", "siblings", "snapshot", "wind-down"}
+READ_ONLY = {"render", "status", "siblings", "snapshot", "wind-down", "plugin-settings"}
 
 
 def plugin_settings():
@@ -2424,11 +2424,12 @@ def plugin_settings():
             settings = json.load(f)
     except (OSError, ValueError):
         settings = {}
+    env = settings.get("env") if isinstance(settings, dict) else None
+    listed = env.get("CLAUDE_CODE_PLUGIN_DIRS") if isinstance(env, dict) else None
     installed = os.path.realpath(os.path.join(INSTALLED_DIR, "plugin"))
     own = os.path.join(OCTOPILOT_DIR, "plugin")
     dirs, placed = [], False
-    for entry in (settings.get("env") or {}).get(
-            "CLAUDE_CODE_PLUGIN_DIRS", "").split(":"):
+    for entry in (listed if isinstance(listed, str) else "").split(":"):
         if not entry:
             continue
         if os.path.realpath(os.path.expanduser(entry)) == installed:
@@ -2593,7 +2594,7 @@ def dispatch(cmd, args, state):
         return 0
     if cmd == "plugin-settings":
         # plugin-settings: the --settings JSON for a worktree's claude, nothing
-        # on the live checkout (open-gui.sh and spawn use it).
+        # on the live checkout (open-gui.sh uses it).
         settings = plugin_settings()
         if settings:
             print(settings)
