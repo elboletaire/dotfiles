@@ -106,6 +106,10 @@ OCTOPILOT_ORCH_CWD="$HOME/src"
 # state and octopilot events update instantly; only PR/CI data waits for this.
 DASHBOARD_REFRESH_SECS=120
 
+# Backend new sessions spawn on: herdr (the TUI, default) or hc (the herdr-app
+# GUI); running sessions keep theirs.
+OCTOPILOT_BACKEND="${OCTOPILOT_BACKEND:-herdr}"
+
 # OCTOPILOT_STATE_DIR in the environment points octopilot at another state
 # (a sandbox, a second profile); unset, it is the usual XDG state dir.
 STATE_DIR="${OCTOPILOT_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/octopilot}"
