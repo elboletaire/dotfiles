@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # The GUI twin of open.sh: the Octopilot space in herdr-app, with three tabs:
 #   OCTOPILOT: the octopilot-dashboard and octopilot-chat mods
-#   engine: the orchestrator, the prompter, the headless dashboard and the code
-#     agent (a claude for changing octopilot itself), as hc terminals; parked
-#     after building (no pane, still running), so the tab goes away
-#   Octopilot (code changes): the octopilot-chat mod over the code agent
+#   engine: the orchestrator, the prompter and the headless dashboard, as hc
+#     terminals; parked after building (no pane, still running), so the tab goes away
+#   Octopilot (code changes): the code agent's own claude (a terminal, never parked)
+#     beside the octopilot-side panel
 # Each claude is labelled octopilot.agent=<name> and octopilot.session=<uuid>
 # (its transcript, read by scan.py speech and chat). --terminals builds the
 # TUI-style layout instead. --show-engine keeps the engine tab visible (no park).
@@ -27,6 +27,7 @@ CODE_AGENT="octopilot-code"            # scan.py's CODE_AGENT
 # The names of the mod panes: each mod finds its own in panes() by these (see ownPane in the mods).
 DASHBOARD_PANE="octopilot-dashboard"
 PROMPTER_PANE="octopilot-prompter"
+SIDE_PANE="octopilot-side"
 MAIN_TAB="OCTOPILOT"
 ENGINE_TAB="engine"
 CODE_TAB="Octopilot (code changes)"
@@ -74,10 +75,9 @@ envs+=("${scope[@]+"${scope[@]}"}")
 
 # The props of the mods, which read their octopilot from them.
 MOD_PROPS="$(jq -nc --arg dir "$DIR" --arg state "$STATE_DIR" '{dir: $dir, state_dir: $state}')"
-# The code tab's chat mod: the code agent it talks to, and its copy.
-CODE_PROPS="$(jq -nc --argjson mod "$MOD_PROPS" --arg agent "$CODE_AGENT" \
-  '$mod + {agent: $agent, title: "Code changes", subject: "the code changes agent",
-    chips: ["status of the last change", "what did you change?", "run the checks"]}')"
+# The code tab's side panel: the code agent it shows, and its title.
+SIDE_PROPS="$(jq -nc --argjson mod "$MOD_PROPS" --arg agent "$CODE_AGENT" \
+  '$mod + {agent: $agent, title: "Code changes"}')"
 
 # `herdr-app ...` with its output on stdout; a failure stops here with the
 # output it printed, so a refused command says why.
@@ -253,39 +253,115 @@ add_main_tab() {
   name_mod_pane "$(jq -r '.pane' <<<"$created")" "$PROMPTER_PANE"
 }
 
-# The code agent, an engine terminal in the cwd of the dotfiles root: beside the
-# orchestrator's pane, or in a tab of the space while it is parked.
-start_code_agent() {
-  local session term
+# The code agent's claude in a tab of its own, named CODE_TAB, in the dotfiles root.
+# Prints its terminal.
+start_code_tab() {
+  local session created term
   session=$(new_session)
-  term=$(start_engine_term "$1" "$2" right "$(session_argv "$session" "" "$CODE_CWD")" code)
+  created=$(app do tab.new --space "$1" --name "$CODE_TAB" \
+    --argv "$(session_argv "$session" "" "$CODE_CWD")" --focus false)
+  term=$(jq -r '.terminal' <<<"$created")
   name_agent "$term" "$CODE_AGENT" "$session"
   echo "$term"
 }
 
-# The code-changes tab: the chat mod over this checkout's code agent, started when
-# missing. An old-style terminal tab of that name gives its agent up (parked, not killed).
-add_code_tab() {
-  local space=$1 pane=$2 code tab
-  code=$(find_agent "$CODE_AGENT")
-  if [ -z "$code" ]; then code=$(start_code_agent "$space" "$pane"); fi
-  tab=$(locate "$code" | cut -f2)
-  if [ -n "$tab" ] && [ "$tab" = "$(tab_named "$space" "$CODE_TAB")" ]; then
-    "$HC" label "$code" "octopilot.space=$space" >/dev/null
-    app do terminal.park --terminal "$code" >/dev/null
-  fi
-  if ! code_mod_tab "$space"; then
-    created=$(app do tab.new --space "$space" --name "$CODE_TAB" --mod octopilot-chat \
-      --props "$CODE_PROPS" --focus false)
-    name_mod_pane "$(jq -r '.pane' <<<"$created")" "$CODE_AGENT"
-  fi
+# The terminals a tab holds, by id. herdr-app ls lists no mod panes.
+tab_terminals() {
+  "$APP" ls | jq -r --arg t "$1" '.spaces[].tabs[] | select(.id == $t) | .terminals[].terminal'
 }
 
-# True when the space has a code-changes tab whose only pane is a mod.
-code_mod_tab() {
-  "$APP" ls | jq -e --arg s "$1" --arg n "$CODE_TAB" \
-    '.spaces[] | select(.id == $s) | .tabs[] | select(.name == $n and (.terminals | length == 0))' \
-    >/dev/null
+# Waits (up to 10 s) until a terminal shows in a tab, and prints its "space tab pane".
+# herdr applies keep and park in the background, so the callers wait for them.
+await_shown() {
+  local i located
+  for i in $(seq 40); do
+    located=$(locate "$1")
+    if [ -n "$located" ]; then echo "$located"; return 0; fi
+    sleep 0.25
+  done
+  echo "open-gui.sh: $1 did not show in a tab" >&2
+  return 1
+}
+
+# Waits (up to 10 s) until a terminal has no pane.
+await_parked() {
+  local i
+  for i in $(seq 40); do
+    if [ -z "$(locate "$1")" ]; then return 0; fi
+    sleep 0.25
+  done
+  echo "open-gui.sh: $1 did not park" >&2
+  return 1
+}
+
+# Moves the code agent's claude into a tab of its own. Shown in another tab, or parked,
+# it is parked (its process keeps running) and kept again, which gives it a new tab of
+# its space; the old tab (the chat, or a terminal tab that holds only the agent) goes,
+# and the new one takes CODE_TAB's name. Prints the "space tab pane" it shows in.
+show_code_tab() {
+  local space=$1 code=$2 old=$3 located
+  if [ -n "$(locate "$code")" ]; then
+    app do terminal.park --terminal "$code" >/dev/null
+    await_parked "$code" >/dev/null
+  fi
+  "$HC" label "$code" "herdr.space=$space" "octopilot.space=$space" >/dev/null
+  app do terminal.keep --terminal "$code" >/dev/null
+  located=$(await_shown "$code")
+  if [ -n "$old" ] && [ "$old" != "$(cut -f2 <<<"$located")" ]; then
+    app do tab.close --id "$old" >/dev/null
+  fi
+  app do tab.rename --id "$(cut -f2 <<<"$located")" --name "$CODE_TAB" >/dev/null
+  echo "$located"
+}
+
+# The octopilot-side panel beside the agent's terminal, once. The pane this run recorded
+# on the agent (a label) is kept while it exists: pane.rename fails on a pane that is gone.
+add_side_panel() {
+  local code=$1 pane=$2 side created
+  side=$("$HC" get "$code" --json | jq -r '.labels["octopilot.side"] // empty')
+  if [ -n "$side" ] && "$APP" do pane.rename --pane "$side" --name "$SIDE_PANE" >/dev/null 2>&1; then
+    return 0
+  fi
+  created=$(app do pane.split --direction right --pane "$pane" --mod octopilot-side --props "$SIDE_PROPS")
+  side=$(jq -r '.pane' <<<"$created")
+  name_mod_pane "$side" "$SIDE_PANE"
+  "$HC" label "$code" "octopilot.side=$side" >/dev/null
+}
+
+# The code-changes tab: the code agent's claude in its own terminal, with the side panel
+# beside it. A rerun converts what an earlier one left: the chat mod tab, a terminal tab
+# without the panel, or the agent parked (its claude keeps running). A terminal in the
+# tab that is not the agent's is refused, never closed.
+add_code_tab() {
+  local space=$1 old code shown located t pane
+  old=$(tab_named "$space" "$CODE_TAB")
+  code=$(find_agent "$CODE_AGENT")
+  if [ -n "$old" ]; then
+    for t in $(tab_terminals "$old"); do
+      if [ "$t" != "$code" ]; then
+        echo "open-gui.sh: the $CODE_TAB tab holds $t, which is not the $CODE_AGENT agent;" \
+          "close it first" >&2
+        exit 1
+      fi
+    done
+  fi
+  if [ -z "$code" ]; then
+    # What is left of the old tab holds no terminal: the panel or the chat only.
+    if [ -n "$old" ]; then app do tab.close --id "$old" >/dev/null; fi
+    code=$(start_code_tab "$space")
+  else
+    shown=$(locate "$code" | cut -f2)
+    if [ -z "$shown" ] || [ "$shown" != "$old" ]; then
+      show_code_tab "$space" "$code" "$old" >/dev/null
+    fi
+  fi
+  located=$(locate "$code")
+  pane=$(cut -f3 <<<"$located")
+  if [ -z "$pane" ]; then
+    echo "open-gui.sh: the $CODE_AGENT terminal ($code) has no pane to split the panel from" >&2
+    exit 1
+  fi
+  add_side_panel "$code" "$pane"
 }
 
 # The --terminals code tab: a terminal tab with its claude in the dotfiles root,
@@ -341,7 +417,7 @@ space_of() {
 # This checkout's engine terminals that have no pane, as "label address" lines.
 parked_engine() {
   local label t
-  for label in "$ORCH_AGENT" "$PROMPTER_AGENT" "$HEADLESS_AGENT" "$CODE_AGENT"; do
+  for label in "$ORCH_AGENT" "$PROMPTER_AGENT" "$HEADLESS_AGENT"; do
     t=$(find_agent "$label")
     if [ -n "$t" ] && [ -z "$(locate "$t")" ]; then echo "$label $t"; fi
   done
@@ -349,14 +425,15 @@ parked_engine() {
 
 # Parks the engine's terminals (--show-engine keeps them shown): their panes go,
 # their processes keep running, and the engine tab empties and goes away. The
-# orchestrator and the code agent also keep their space in a label, for space_of.
+# orchestrator also keeps its space in a label, for space_of. The code agent is not
+# an engine terminal: it has its own tab.
 park_engine() {
   local space=$1 label t
   if [ "$SHOW_ENGINE" = 1 ]; then return 0; fi
-  for label in "$ORCH_AGENT" "$PROMPTER_AGENT" "$HEADLESS_AGENT" "$CODE_AGENT"; do
+  for label in "$ORCH_AGENT" "$PROMPTER_AGENT" "$HEADLESS_AGENT"; do
     t=$(find_agent "$label")
     if [ -z "$t" ] || [ -z "$(locate "$t")" ]; then continue; fi
-    if [ "$label" = "$ORCH_AGENT" ] || [ "$label" = "$CODE_AGENT" ]; then
+    if [ "$label" = "$ORCH_AGENT" ]; then
       "$HC" label "$t" "octopilot.space=$space" >/dev/null
     fi
     app do terminal.park --terminal "$t" >/dev/null
@@ -480,7 +557,7 @@ if [ -n "$orch" ]; then
     if [ -n "$pane" ]; then app do tab.rename --id "$tab" --name "$ENGINE_TAB" >/dev/null; fi
     add_engine_agents "$space" "$pane"
     add_main_tab "$space"
-    add_code_tab "$space" "$pane"
+    add_code_tab "$space"
     focus_main "$space"
   fi
   finish "$space"
@@ -528,7 +605,7 @@ if [ "$TERMINALS" = 1 ]; then
 else
   add_engine_agents "$space" "$root"
   add_main_tab "$space"
-  add_code_tab "$space" "$root"
+  add_code_tab "$space"
   focus_main "$space"
 fi
 finish "$space"

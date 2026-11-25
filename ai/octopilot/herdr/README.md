@@ -85,10 +85,10 @@ terminals run in herdr-core) as one space with three tabs:
 | Tab | Holds |
 |---|---|
 | **OCTOPILOT** | the `octopilot-dashboard` mod (the table below) and, beside it, the `octopilot-chat` mod: the prompter as a chat |
-| **engine** | the orchestrator (`octopilot`, `/octopilot:messenger`), the prompter (`octopilot-prompter`), `dashboard.sh --headless` (`octopilot-headless`) and the code agent (`octopilot-code`, a claude in the dotfiles root), each an hc terminal. Parked after building: they keep running with no pane, so the tab goes away (see below) |
-| **Octopilot (code changes)** | the `octopilot-chat` mod over the code agent: the same chat as the prompter's, with its own title, subject and chips (`props`: `agent`, `title`, `subject`, `chips`) |
+| **engine** | the orchestrator (`octopilot`, `/octopilot:messenger`), the prompter (`octopilot-prompter`) and `dashboard.sh --headless` (`octopilot-headless`), each an hc terminal. Parked after building: they keep running with no pane, so the tab goes away (see below) |
+| **Octopilot (code changes)** | the code agent's own claude (`octopilot-code`, a claude in the dotfiles root, an hc terminal that is never parked) and, beside it, the `octopilot-side` mod: the agent's status, its sub-agents, the model and the commands (`props`: `dir`, `state_dir`, `agent`, `title`) |
 
-The engine is hidden on purpose. After building, `open-gui.sh` parks its four
+The engine is hidden on purpose. After building, `open-gui.sh` parks its three
 terminals (`herdr-app do terminal.park`): the pane goes, the process keeps
 running and core keep is off, so the empty engine tab goes too. They are found
 by their `octopilot.agent` labels, not by panes, so a rerun finds them parked.
@@ -107,18 +107,30 @@ named `Octopilot` (or the code agent's), in a new tab that the run parks. An
 engine or code agent not running its claude (or the headless's uv) is ended
 and started again.
 
-The code tab's chat talks to the code agent through `scan.sh chat --agent
-octopilot-code` (`chat-send` and `chat-keys` take `--agent` too; the default is the
-prompter, and any other name is refused). The orchestrator's `send-code` still
-queues requests for it. A code agent started by an earlier run, in an old-style
-"Octopilot (code changes)" terminal tab, is converted on a rerun: its claude is
-parked (not killed) and the tab becomes the mod tab. With `--show-engine` the
-code agent stays shown in the engine tab, and a conversion still parks it, to be
-shown with `terminal.keep` like the other parked terminals.
+The code agent is not an engine terminal: its claude is the terminal of the code
+tab, so its pickers and sub-agents are Claude's own, and `--show-engine` does not
+touch it. The `octopilot-side` mod beside it shows the agent's status (herdr's
+`terminals()`), its sub-agents (the terminals whose `parent` it is, and Claude's own
+from `hc get`'s `records`, read-only), and sends `/model opus|sonnet|haiku`,
+`/compact`, `/clear` (confirmed) and `/resume` through `scan.sh chat-send --agent
+octopilot-code`. It sends one at a time and never while the agent waits on a prompt
+(the answer is typed in its terminal). `/resume` opens its picker in that terminal,
+which the panel then focuses. The panel narrows itself to 240 px once, by moving its
+divider with the agent's terminal (`pane.resize`). `chat`, `chat-send` and
+`chat-keys` take `--agent octopilot-code` too; the orchestrator's `send-code` still
+queues requests for the code agent.
+
+A code agent from an earlier run is converted on a rerun. A chat tab (the previous
+version's) or a parked agent: the claude is moved into a tab of its own, with
+`terminal.keep` (a parked agent is parked again first), its tab takes the name and
+the old chat tab goes. A terminal tab keeps its claude. Either way the panel goes
+beside the agent's terminal once: the run records the panel's pane on the agent
+(`octopilot.side` label) and keeps it while that pane exists. A tab that holds a
+terminal other than the agent's is refused, never closed.
 
 In the `--terminals` layout, the dashboard's `a` peeks the prompter (or the
 orchestrator), as the GUI layout does, and the code agent stays a terminal in its
-own "Octopilot (code changes)" tab.
+own "Octopilot (code changes)" tab (no side panel: the TUI layout has no mods).
 
 Every engine terminal starts through the user's interactive shell (`$SHELL -ic
 'exec "$@"'`), so the gateway env in `~/.zshrc.local` reaches claude. herdr-app
