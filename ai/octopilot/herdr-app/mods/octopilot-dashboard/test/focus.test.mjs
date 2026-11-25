@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { arrange, resolveSel, stepSel, jumpSel, soloPane, shownTab, keyboardFree } from "../model.js";
+import { arrange, resolveSel, stepSel, jumpSel, soloPane, ownPane, shownTab, keyboardFree } from "../model.js";
 
 const view = {
   columns: [
@@ -54,4 +54,15 @@ test("keyboardFree leaves the keyboard to a terminal or another pane", () => {
   assert.equal(keyboardFree({ pane: "p2", terminal: null }, "p1"), false);
   assert.equal(keyboardFree({ pane: "p1", terminal: "t9" }, "p1"), false);
   assert.equal(keyboardFree({ pane: null, terminal: "t9" }, "p1"), false);
+});
+
+test("ownPane prefers the pane named for it, else the mod's only pane", () => {
+  const named = [
+    { pane: "p1", mod: "octopilot-chat", name: "octopilot-prompter", tab: "t1" },
+    { pane: "p2", mod: "octopilot-chat", name: "octopilot-code", tab: "t2" },
+  ];
+  assert.equal(ownPane(named, "octopilot-chat", "octopilot-code").pane, "p2");
+  assert.equal(ownPane(named, "octopilot-chat", "octopilot-other"), null);
+  const solo = [{ pane: "p3", mod: "octopilot-dashboard", name: null, tab: "t1" }];
+  assert.equal(ownPane(solo, "octopilot-dashboard", "octopilot-dashboard").pane, "p3");
 });

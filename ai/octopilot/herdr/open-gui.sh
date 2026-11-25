@@ -24,6 +24,9 @@ ORCH_AGENT="octopilot"                 # scan.py's ORCH_AGENT
 PROMPTER_AGENT="octopilot-prompter"    # scan.py's PROMPTER_AGENT
 HEADLESS_AGENT="octopilot-headless"    # the engine tab's dashboard.sh --headless
 CODE_AGENT="octopilot-code"            # scan.py's CODE_AGENT
+# The names of the mod panes: each mod finds its own in panes() by these (see ownPane in the mods).
+DASHBOARD_PANE="octopilot-dashboard"
+PROMPTER_PANE="octopilot-prompter"
 MAIN_TAB="OCTOPILOT"
 ENGINE_TAB="engine"
 CODE_TAB="Octopilot (code changes)"
@@ -205,6 +208,11 @@ start_engine_term() {
   echo "$term"
 }
 
+# Names a mod pane after its role, so its copy finds its own pane in panes().
+name_mod_pane() {
+  app do pane.rename --pane "$1" --name "$2" >/dev/null
+}
+
 # Starts the prompter, labelled with its claude's session.
 add_prompter() {
   local session term
@@ -239,8 +247,10 @@ add_main_tab() {
     echo "open-gui.sh: the $MAIN_TAB tab has no pane to split the chat into" >&2
     exit 1
   fi
-  app do pane.split --direction right --pane "$pane" \
-    --mod octopilot-chat --props "$MOD_PROPS" >/dev/null
+  name_mod_pane "$pane" "$DASHBOARD_PANE"
+  created=$(app do pane.split --direction right --pane "$pane" \
+    --mod octopilot-chat --props "$MOD_PROPS")
+  name_mod_pane "$(jq -r '.pane' <<<"$created")" "$PROMPTER_PANE"
 }
 
 # The code agent, an engine terminal in the cwd of the dotfiles root: beside the
@@ -265,8 +275,9 @@ add_code_tab() {
     app do terminal.park --terminal "$code" >/dev/null
   fi
   if ! code_mod_tab "$space"; then
-    app do tab.new --space "$space" --name "$CODE_TAB" --mod octopilot-chat \
-      --props "$CODE_PROPS" --focus false >/dev/null
+    created=$(app do tab.new --space "$space" --name "$CODE_TAB" --mod octopilot-chat \
+      --props "$CODE_PROPS" --focus false)
+    name_mod_pane "$(jq -r '.pane' <<<"$created")" "$CODE_AGENT"
   fi
 }
 

@@ -92,6 +92,12 @@ export function soloPane(panes, mod) {
   return mine.length === 1 ? mine[0] : null;
 }
 
+// This copy's own pane: the one of its mod named for it (open-gui.sh names them), else
+// the mod's only pane, else null.
+export function ownPane(panes, mod, name) {
+  return panes.find((p) => p.mod === mod && p.name === name) ?? soloPane(panes, mod);
+}
+
 // The id of the shown tab, from spaces().
 export function shownTab(spaces) {
   return spaces.find((s) => s.active)?.tabs.find((t) => t.active)?.id ?? null;

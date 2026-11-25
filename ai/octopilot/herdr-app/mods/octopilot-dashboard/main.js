@@ -11,7 +11,7 @@ import {
 import {
   CONFIRM_MS, FLASH_MS, KITCHEN_S, GLOBAL_KEYS, ROW_KEYS, arrange, resolveSel,
   entryOf, stepSel, jumpSel, keyName, actionKey, parseAnswer, slugOf, isRepoKey, viewError, isStale,
-  soloPane, shownTab, keyboardFree,
+  ownPane, shownTab, keyboardFree,
 } from "./model.js";
 import {
   header, paused, column, pickPanel, activityPanel, notesRow, statusLine, actionBar,
@@ -20,6 +20,8 @@ import {
 import { kitchenDialog, investigateDialog } from "./dialogs.js";
 
 const MOD = "octopilot-dashboard";
+// The name open-gui.sh gives this pane (pane.rename), so it is found among the mod's panes.
+const PANE_NAME = "octopilot-dashboard";
 // The kitchen corner: the octopilot layout's floating kitchen block.
 const KITCHEN_LAYOUT = "octopilot";
 // view.json is also read on a timer, besides the folder watch, in case a watch is lost.
@@ -488,9 +490,9 @@ export default class OctopilotDashboard extends View {
   }
 
   // On the clock tick: when this pane's tab becomes the shown one, take the keyboard, once,
-  // unless a terminal or another pane of that tab has it. Only a lone dashboard pane knows its tab.
+  // unless a terminal or another pane of that tab has it.
   followTab() {
-    const me = soloPane(panes(), MOD);
+    const me = ownPane(panes(), MOD, PANE_NAME);
     const shown = me !== null && me.tab === shownTab(spaces());
     const was = this.tabShown;
     this.tabShown = shown;

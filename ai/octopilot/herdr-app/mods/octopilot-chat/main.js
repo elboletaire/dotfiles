@@ -47,6 +47,12 @@ function typedChar(e) {
   return ch;
 }
 
+// The only pane of a mod in the window, else null (several copies cannot be told apart).
+function soloPanes(mod) {
+  const mine = panes().filter((p) => p.mod === mod);
+  return mine.length === 1 ? mine[0] : null;
+}
+
 // Sentence start: "the prompter" -> "The prompter".
 function sentence(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -128,11 +134,12 @@ export default class Chat extends View {
   }
 
   // On the clock tick: when this pane's tab becomes the shown one, the composer takes the
-  // keyboard, once, unless a terminal or another pane of that tab has it. Only a lone chat
-  // pane knows its tab (several chats in the window cannot be told apart from panes()).
+  // keyboard, once, unless a terminal or another pane of that tab has it.
   followTab() {
-    const mine = panes().filter((p) => p.mod === "octopilot-chat");
-    const me = mine.length === 1 ? mine[0] : null;
+    // open-gui.sh names each chat pane after its agent (the code chat's) or the prompter.
+    const name = props()?.agent ?? "octopilot-prompter";
+    const me = panes().find((p) => p.mod === "octopilot-chat" && p.name === name)
+      ?? soloPanes("octopilot-chat");
     const active = spaces().find((s) => s.active)?.tabs.find((t) => t.active)?.id ?? null;
     const shown = me !== null && me.tab === active;
     const was = this.tabShown;
