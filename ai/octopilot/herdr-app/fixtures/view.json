@@ -27,13 +27,13 @@
       "title": "🟡 Running",
       "entries": [
         {
-          "key": "acme/widgets#2022",
-          "label": "widgets#2022 +8",
+          "key": "acme/widgets#120",
+          "label": "widgets#120 +8",
           "kind": "STALLED",
           "section": "running",
           "title": "Refactor theme tokens for the new palette",
           "draft": false,
-          "url": "https://github.com/acme/widgets/pull/2022",
+          "url": "https://github.com/acme/widgets/pull/120",
           "checks": "pass",
           "agent": "running",
           "rounds": 1,
@@ -49,7 +49,7 @@
           "pane": "w8X:p1",
           "path": "/home/user/src/acme/widgets/.worktrees/refactor-theme-tokens",
           "branch": "refactor/theme-tokens",
-          "pr": 2022,
+          "pr": 120,
           "stack": 9,
           "open": true,
           "parked": false,
@@ -77,31 +77,31 @@
               "id": "detach",
               "key": "z",
               "label": "detach",
-              "confirm": "press z again to detach acme/widgets#2022 (worktree kept, untracked)"
+              "confirm": "press z again to detach acme/widgets#120 (worktree kept, untracked)"
             },
             {
               "id": "park",
               "key": "d",
               "label": "done",
-              "confirm": "press d again to move acme/widgets#2022 to Done (session kept, slot freed)"
+              "confirm": "press d again to move acme/widgets#120 to Done (session kept, slot freed)"
             },
             {
               "id": "remove",
               "key": "Delete",
               "label": "remove",
-              "confirm": "press del again to remove acme/widgets#2022 (workspace and worktree deleted, untracked)"
+              "confirm": "press del again to remove acme/widgets#120 (workspace and worktree deleted, untracked)"
             }
           ],
           "driver": "agent"
         },
         {
-          "key": "acme/argos#3",
-          "label": "argos#3",
+          "key": "acme/sprockets#31",
+          "label": "sprockets#31",
           "kind": "NEW",
           "section": "running",
-          "title": "chore: relicense the tooling",
+          "title": "chore: update the license notes",
           "draft": false,
-          "url": "https://github.com/acme/argos/pull/3",
+          "url": "https://github.com/acme/sprockets/pull/3",
           "checks": null,
           "agent": null,
           "rounds": 0,
@@ -116,7 +116,7 @@
           "backend": null,
           "pane": null,
           "path": null,
-          "branch": "chore/relicense-lgpl-89",
+          "branch": "chore/docs-license-12",
           "pr": 3,
           "stack": 0,
           "open": false,
@@ -133,19 +133,19 @@
               "id": "detach",
               "key": "z",
               "label": "detach",
-              "confirm": "press z again to detach acme/argos#3 (worktree kept, untracked)"
+              "confirm": "press z again to detach acme/sprockets#31 (worktree kept, untracked)"
             },
             {
               "id": "park",
               "key": "d",
               "label": "done",
-              "confirm": "press d again to move acme/argos#3 to Done (session kept, slot freed)"
+              "confirm": "press d again to move acme/sprockets#31 to Done (session kept, slot freed)"
             },
             {
               "id": "remove",
               "key": "Delete",
               "label": "remove",
-              "confirm": "press del again to remove acme/argos#3 (workspace and worktree deleted, untracked)"
+              "confirm": "press del again to remove acme/sprockets#31 (workspace and worktree deleted, untracked)"
             }
           ],
           "driver": "agent"
@@ -155,7 +155,7 @@
           "label": "gizmo-sdk#14",
           "kind": "STALLED",
           "section": "running",
-          "title": "chore: relicense the tooling",
+          "title": "chore: update the license notes",
           "draft": false,
           "url": "https://github.com/acme/gizmo-sdk/pull/14",
           "checks": null,
@@ -172,7 +172,7 @@
           "backend": "hc",
           "pane": "t12",
           "path": null,
-          "branch": "chore/relicense-lgpl-89",
+          "branch": "chore/docs-license-12",
           "pr": 14,
           "stack": 0,
           "open": false,
@@ -223,7 +223,7 @@
           "label": "explorer#45",
           "kind": "NEW",
           "section": "running",
-          "title": "chore: relicense the tooling",
+          "title": "chore: update the license notes",
           "draft": false,
           "url": "https://github.com/acme/explorer/pull/45",
           "checks": null,
@@ -240,7 +240,7 @@
           "backend": "hc",
           "pane": "t13",
           "path": null,
-          "branch": "chore/relicense-lgpl-89",
+          "branch": "chore/docs-license-12",
           "pr": 45,
           "stack": 0,
           "open": false,
@@ -439,7 +439,7 @@
           "label": "ledger#90",
           "kind": "READY",
           "section": "needs",
-          "title": "chore: relicense to LGPL-3.0-or-later",
+          "title": "chore: update the license notes",
           "draft": false,
           "url": "https://github.com/acme/ledger/pull/90",
           "checks": "pass",
@@ -450,13 +450,13 @@
           "stalled": false,
           "needs": true,
           "why": "ready to merge",
-          "note": "ready: relicense done (COPYING files), CI green, review clean",
+          "note": "ready: license notes done (docs), CI green, review clean",
           "pick_kind": "your PR",
           "session": "w8Z",
           "backend": "herdr",
           "pane": "w8Z:p1",
-          "path": "/home/user/src/acme/ledger/.worktrees/chore-relicense-lgpl-89",
-          "branch": "chore/relicense-lgpl-89",
+          "path": "/home/user/src/acme/ledger/.worktrees/chore-docs-license-12",
+          "branch": "chore/docs-license-12",
           "pr": 90,
           "stack": 0,
           "open": true,
@@ -663,13 +663,13 @@
       "title": "💤 Done",
       "entries": [
         {
-          "key": "acme/billing#737",
-          "label": "billing#737",
+          "key": "acme/ledger#74",
+          "label": "ledger#74",
           "kind": "DONE",
           "section": "done",
           "title": "fix(csp): reuse a pending code on a repeated request",
           "draft": false,
-          "url": "https://github.com/acme/billing/pull/737",
+          "url": "https://github.com/acme/ledger/pull/737",
           "checks": "pass",
           "agent": null,
           "rounds": 2,
@@ -713,31 +713,31 @@
               "id": "detach",
               "key": "z",
               "label": "detach",
-              "confirm": "press z again to detach acme/billing#737 (worktree kept, untracked)"
+              "confirm": "press z again to detach acme/ledger#74 (worktree kept, untracked)"
             },
             {
               "id": "park",
               "key": "d",
               "label": "done",
-              "confirm": "press d again to move acme/billing#737 to Done (session kept, slot freed)"
+              "confirm": "press d again to move acme/ledger#74 to Done (session kept, slot freed)"
             },
             {
               "id": "remove",
               "key": "Delete",
               "label": "remove",
-              "confirm": "press del again to remove acme/billing#737 (workspace and worktree deleted, untracked)"
+              "confirm": "press del again to remove acme/ledger#74 (workspace and worktree deleted, untracked)"
             }
           ],
           "driver": "agent"
         },
         {
-          "key": "acme/billing#872",
-          "label": "billing#872",
+          "key": "acme/ledger#88",
+          "label": "ledger#88",
           "kind": "DONE",
           "section": "done",
           "title": "feat(api): announce a scheduled maintenance window",
           "draft": false,
-          "url": "https://github.com/acme/billing/pull/872",
+          "url": "https://github.com/acme/ledger/pull/872",
           "checks": "pass",
           "agent": "idle",
           "rounds": 1,
@@ -751,7 +751,7 @@
           "session": "w8W",
           "backend": "herdr",
           "pane": "w8W:p1",
-          "path": "/home/user/src/acme/billing/.worktrees/feat-maintenance-mode",
+          "path": "/home/user/src/acme/ledger/.worktrees/feat-maintenance-mode",
           "branch": "feat/maintenance-mode",
           "pr": 872,
           "stack": 0,
@@ -781,19 +781,19 @@
               "id": "detach",
               "key": "z",
               "label": "detach",
-              "confirm": "press z again to detach acme/billing#872 (worktree kept, untracked)"
+              "confirm": "press z again to detach acme/ledger#88 (worktree kept, untracked)"
             },
             {
               "id": "park",
               "key": "d",
               "label": "back",
-              "confirm": "press d again to move acme/billing#872 back to the board"
+              "confirm": "press d again to move acme/ledger#88 back to the board"
             },
             {
               "id": "remove",
               "key": "Delete",
               "label": "remove",
-              "confirm": "press del again to remove acme/billing#872 (workspace and worktree deleted, untracked)"
+              "confirm": "press del again to remove acme/ledger#88 (workspace and worktree deleted, untracked)"
             }
           ],
           "driver": "agent"
@@ -1904,20 +1904,20 @@
     {
       "at": 1795617206.0,
       "kind": "feedback",
-      "key": "widgets#2022",
+      "key": "widgets#120",
       "detail": ""
     },
     {
       "at": 1795616655.0,
       "kind": "report",
-      "key": "widgets#2022",
+      "key": "widgets#120",
       "detail": "ready PR open, CI green"
     },
     {
       "at": 1795614442.0,
       "kind": "report",
       "key": "ledger#90",
-      "detail": "ready: relicense done, CI green, review clean\nReviewed against main; nothing left open."
+      "detail": "ready: license notes done, CI green, review clean\nReviewed against main; nothing left open."
     },
     {
       "at": 1795614271.0,
@@ -1954,7 +1954,7 @@
       "at": 1795611067.0,
       "kind": "request",
       "mood": "surprised",
-      "text": "asked: go acme/widgets#2022 (stack of 9)",
+      "text": "asked: go acme/widgets#120 (stack of 9)",
       "good": false,
       "key": null,
       "ms": 2000,
@@ -1965,9 +1965,9 @@
       "at": 1795611090.0,
       "kind": "spawn",
       "mood": "pour",
-      "text": "new order widgets#2022 Refactor Theme Tokens",
+      "text": "new order widgets#120 Refactor Theme Tokens",
       "good": true,
-      "key": "acme/widgets#2022",
+      "key": "acme/widgets#120",
       "ms": 2500,
       "tone": "good",
       "burst": "batter"
@@ -1976,9 +1976,9 @@
       "at": 1795611095.0,
       "kind": "sent",
       "mood": "flip",
-      "text": "→ widgets#2022 You own a stack of PRs in acme/widgets, base `develop`.",
+      "text": "→ widgets#120 You own a stack of PRs in acme/widgets, base `develop`.",
       "good": false,
-      "key": "acme/widgets#2022",
+      "key": "acme/widgets#120",
       "ms": 1500,
       "tone": "info",
       "burst": null
@@ -1987,9 +1987,9 @@
       "at": 1795611116.0,
       "kind": "round",
       "mood": "flip",
-      "text": "review round widgets#2022",
+      "text": "review round widgets#120",
       "good": false,
-      "key": "acme/widgets#2022",
+      "key": "acme/widgets#120",
       "ms": 2000,
       "tone": "info",
       "burst": null
@@ -1998,7 +1998,7 @@
       "at": 1795611126.0,
       "kind": "review-base",
       "mood": "idle",
-      "text": "review-base widgets#2022",
+      "text": "review-base widgets#120",
       "good": false,
       "key": null,
       "ms": 0,
@@ -2031,7 +2031,7 @@
       "at": 1795613423.0,
       "kind": "spawn",
       "mood": "pour",
-      "text": "new order ledger#90 Relicense LGPL",
+      "text": "new order ledger#90 License notes",
       "good": true,
       "key": "acme/ledger#90",
       "ms": 2500,
@@ -2042,7 +2042,7 @@
       "at": 1795613428.0,
       "kind": "sent",
       "mood": "flip",
-      "text": "→ ledger#90 You are working on acme/ledger issue #89 on a relicense branch.",
+      "text": "→ ledger#90 You are working on acme/ledger issue #89 on a docs branch.",
       "good": false,
       "key": "acme/ledger#90",
       "ms": 1500,
@@ -2097,7 +2097,7 @@
       "at": 1795614442.0,
       "kind": "report",
       "mood": "happy",
-      "text": "ready ledger#90: relicense done, CI green, review clean",
+      "text": "ready ledger#90: license notes done, CI green, review clean",
       "good": true,
       "key": "acme/ledger#90",
       "ms": 4000,
@@ -2141,9 +2141,9 @@
       "at": 1795616655.0,
       "kind": "report",
       "mood": "happy",
-      "text": "ready widgets#2022: PR open, CI green",
+      "text": "ready widgets#120: PR open, CI green",
       "good": true,
-      "key": "acme/widgets#2022",
+      "key": "acme/widgets#120",
       "ms": 4000,
       "tone": "good",
       "burst": "sparkle"
@@ -2152,9 +2152,9 @@
       "at": 1795617206.0,
       "kind": "feedback",
       "mood": "flip",
-      "text": "feedback widgets#2022",
+      "text": "feedback widgets#120",
       "good": false,
-      "key": "acme/widgets#2022",
+      "key": "acme/widgets#120",
       "ms": 1500,
       "tone": "info",
       "burst": null
@@ -2166,8 +2166,8 @@
     "busy": false,
     "balls": [
       {
-        "key": "acme/argos#3",
-        "label": "argos#3",
+        "key": "acme/sprockets#31",
+        "label": "sprockets#31",
         "state": "raw",
         "heat": 0.1,
         "focus": false
@@ -2215,8 +2215,8 @@
         "focus": false
       },
       {
-        "key": "acme/widgets#2022",
-        "label": "widgets#2022",
+        "key": "acme/widgets#120",
+        "label": "widgets#120",
         "state": "cooking",
         "heat": 0.4,
         "focus": true
@@ -2224,12 +2224,12 @@
     ],
     "shelf": [
       {
-        "key": "acme/billing#737",
-        "label": "billing#737"
+        "key": "acme/ledger#74",
+        "label": "ledger#74"
       },
       {
-        "key": "acme/billing#872",
-        "label": "billing#872"
+        "key": "acme/ledger#88",
+        "label": "ledger#88"
       },
       {
         "key": "acme/widgets#2024",
