@@ -214,7 +214,9 @@ export default class Chat extends View {
     if (props()?.fixture) return { code: -1, error: "Fixture mode: nothing was sent." };
     try {
       const r = await exec(scanPath(), args, { timeout: 20000 });
-      return { code: r.code, error: r.stderr.trim() };
+      let error = r.stderr.trim();
+      if (!error) try { error = JSON.parse(r.stdout)?.error ?? ""; } catch {}
+      return { code: r.code, error };
     } catch (e) {
       return { code: -1, error: String(e?.message ?? e) };
     }
@@ -265,7 +267,7 @@ export default class Chat extends View {
     if (r.code === 4) this.answering = false;
     else if (r.code !== 0) {
       this.answering = false;
-      this.notice = r.error || `scan.sh exited ${r.code}`;
+      this.notice = this.sendNotice(r);
     }
     await this.sync(cx, false);
     cx.notify();
