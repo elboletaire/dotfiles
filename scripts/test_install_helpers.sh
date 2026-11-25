@@ -286,6 +286,74 @@ fi
 seed_ai "manifest-v1" "$PLAIN_LOCK"
 
 echo ""
+echo "=== Test 4f: a global lock with native blocks survives when the tracked lock says the same ==="
+seed_ai "manifest-v1" "$PLAIN_LOCK"
+reset_global_apm
+printf '%s\n' "$NATIVE_LOCK_A" > "$HOME/.apm/apm.lock.yaml"
+out=$(install_skills 2>&1) || fail "install_skills failed: $out"
+if grep -q native_plugin "$HOME/.apm/apm.lock.yaml" && [[ "$out" != *"changed"* ]]; then
+  pass "the global lock that APM wrote for this HOME is kept"
+else
+  fail "install_skills rewrote the global lock: $(cat "$HOME/.apm/apm.lock.yaml")"
+fi
+echo ""
+echo "=== Test 4g: a newer tracked lock keeps the native blocks of the global lock ==="
+seed_ai "manifest-v1" "$PLAIN_LOCK
+# bumped"
+reset_global_apm
+printf '%s\n' "$NATIVE_LOCK_A" > "$HOME/.apm/apm.lock.yaml"
+out=$(install_skills 2>&1) || fail "install_skills failed: $out"
+if grep -q 'native_plugin' "$HOME/.apm/apm.lock.yaml" && grep -q '# bumped' "$HOME/.apm/apm.lock.yaml" &&
+   grep -q 'path: /home/a/.agents/plugins' "$HOME/.apm/apm.lock.yaml"; then
+  pass "the global lock takes the tracked content with this HOME's native blocks"
+else
+  fail "native blocks not carried over: $(cat "$HOME/.apm/apm.lock.yaml")"
+fi
+PLAIN_BUMPED="$PLAIN_LOCK
+# bumped"
+seed_ai "manifest-v1" "$PLAIN_LOCK"
+
+echo ""
+echo "=== Test 4h: install_skills refuses an apm older than 0.39 ==="
+echo 0.33.0 > "$APM_VERSION_FILE"
+out=$(install_skills 2>&1) && rc=0 || rc=$?
+echo 0.39.0 > "$APM_VERSION_FILE"
+if [ "$rc" -ne 0 ] && [[ "$out" == *"install.sh ai"* ]]; then
+  pass "install_skills tells the user to run install.sh ai"
+else
+  fail "install_skills accepted apm 0.33.0 (rc=$rc): $out"
+fi
+
+echo ""
+echo "=== Test 4i: a failed migration install names the backup and the fix ==="
+reset_global_apm
+printf '%s\n' "dependencies:" "  apm:" "    - /Users/someone/.dotfiles/ai" > "$HOME/.apm/apm.yml"
+mkdir -p "$HOME/.agents/skills/find-skills"
+export MOCK_APM_FAIL=1
+out=$(install_skills 2>&1) && rc=0 || rc=$?
+unset MOCK_APM_FAIL
+if [ "$rc" -ne 0 ] && [[ "$out" == *"legacy-skills-"* ]] && [[ "$out" == *"install.sh ai"* ]]; then
+  pass "the error says where the moved skills are and what to run"
+else
+  fail "migration failure message unclear (rc=$rc): $out"
+fi
+seed_ai "manifest-v1" "$PLAIN_LOCK"
+
+echo ""
+echo "=== Test 4j: skills-bump retires the 0.33 package and cleans legacy skills first ==="
+reset_global_apm
+printf '%s\n' "dependencies:" "  apm:" "    - /Users/someone/.dotfiles/ai" > "$HOME/.apm/apm.yml"
+mkdir -p "$HOME/.agents/skills/aoe"
+out=$(skills_bump 2>&1) || fail "skills_bump failed: $out"
+if [ ! -e "$HOME/.agents/skills/aoe" ] && [[ "$out" == *"Retiring the local"* ]] &&
+   [ -d "$oldfiles/legacy-skills-$(date +%Y%m%d)/.agents/skills/aoe" ]; then
+  pass "skills-bump moves the legacy and old-package skills aside before updating"
+else
+  fail "skills-bump did not retire first: $out"
+fi
+seed_ai "manifest-v1" "$PLAIN_LOCK"
+
+echo ""
 echo "=== Test 4c: update and ai paths install skills but never bump them ==="
 reset_global_apm
 : > "$TESTDIR/calls.log"
@@ -319,7 +387,9 @@ echo ""
 echo "=== Test 4d: a global manifest with a local package retires its skills once ==="
 reset_global_apm
 mkdir -p "$HOME/.agents/skills/brainstorming" "$HOME/.claude/skills/brainstorming" \
-  "$HOME/.agents/skills/find-skills" "$HOME/.agents/skills/aoe"
+  "$HOME/.agents/skills/find-skills" "$HOME/.agents/skills/aoe" \
+  "$HOME/.claude/hooks/contributing/hooks"
+printf '%s\n' '[{"_apm_source": "vocdoni/skills/plugins/vocdoni-contributing"}]' > "$HOME/.claude/apm-hooks.json"
 cat > "$HOME/.apm/apm.yml" <<'YML'
 dependencies:
   apm:
@@ -342,7 +412,8 @@ _retire_local_apm_package "$HOME/.apm" "$DOTFILES/ai/apm.lock.yaml" > "$TESTDIR/
 retired="$oldfiles/legacy-skills-$(date +%Y%m%d)"
 if [ -d "$retired/.agents/skills/brainstorming" ] && [ -d "$retired/.claude/skills/brainstorming" ] &&
    [ -d "$retired/.agents/skills/find-skills" ] && [ ! -e "$HOME/.agents/skills/find-skills" ] &&
-   [ -d "$HOME/.agents/skills/aoe" ]; then
+   [ -f "$retired/.claude/apm-hooks.json" ] && [ -d "$retired/.claude/hooks/contributing" ] &&
+   [ ! -e "$HOME/.claude/apm-hooks.json" ] && [ -d "$HOME/.agents/skills/aoe" ]; then
   pass "skills of the old local package and of the new lock move aside; unrelated skills stay"
 else
   fail "retirement moved the wrong things: $(cat "$TESTDIR/retire.log")"

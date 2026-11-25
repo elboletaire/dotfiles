@@ -175,38 +175,12 @@ install_apm() {
   fi
 }
 
-# Copies the tracked manifest and lock into the global APM dir. The old file is
-# removed first: a symlink there would make cp write through it into the repo.
+# Copies the tracked manifest and lock into the global APM dir. The lock goes
+# through _sync_global_lock, which keeps the native plugin blocks APM wrote.
 _copy_apm_files() {
-  local from=$1 to=$2 f
-  for f in apm.yml apm.lock.yaml; do
-    rm -f "$to/$f" && cp "$from/$f" "$to/$f" || return 1
-  done
-}
-
-# Skill dir names that the given APM locks deploy under ~/.agents/skills or
-# ~/.claude/skills.
-_apm_skill_names() {
-  grep -hE '^  - \.(agents|claude)/skills/[^/]+' "$@" 2>/dev/null |
-    sed -E 's#^  - \.(agents|claude)/skills/([^/]+).*#\2#' | sort -u
-}
-
-# Once the old global manifest lists ai/ as a local package, its deployed skills
-# block the new install: APM refuses to replace files it does not manage. Moves
-# those skills aside (to the legacy backup) so APM deploys them fresh.
-_retire_local_apm_package() {
-  local apm_home=$1 new_lock=$2
-  local backup=$oldfiles/legacy-skills-$(date +%Y%m%d) name root path
-  grep -qE '^[[:space:]]*-[[:space:]]+/' "$apm_home/apm.yml" 2>/dev/null || return 0
-  echo "Retiring the local dotfiles APM package: its skills move aside"
-  for name in $(_apm_skill_names "$apm_home/apm.lock.yaml" "$new_lock"); do
-    for root in .agents .claude; do
-      path="$HOME/$root/skills/$name"
-      if [ -e "$path" ] || [ -L "$path" ]; then
-        _move_legacy "$path" "$backup"
-      fi
-    done
-  done
+  local from=$1 to=$2
+  rm -f "$to/apm.yml" && cp "$from/apm.yml" "$to/apm.yml" || return 1
+  _sync_global_lock "$from/apm.lock.yaml" "$to/apm.lock.yaml"
 }
 
 # Prints an APM lock without its native plugin blocks. APM records the per-HOME
@@ -221,19 +195,104 @@ sys.stdout.write(text)
 PY
 }
 
+# Prints the lock $1 with the native plugin blocks of the lock $2 put back into
+# the dependency with the same alias, so APM still knows the plugin it deployed.
+_with_native_blocks() {
+  python3 - "$1" "$2" <<'PY'
+import re, sys
+split = r"(?m)^(?=- repo_url: )"
+native = {}
+for block in re.split(split, open(sys.argv[2]).read()):
+    alias = re.search(r"(?m)^  alias: (.+)$", block)
+    parts = re.findall(r"(?m)^  native_plugin:\n(?:    .*\n)+|^  native_declared:\n(?:  - .*\n)+", block)
+    if alias and parts:
+        native[alias.group(1).strip()] = "".join(parts)
+out = []
+for block in re.split(split, open(sys.argv[1]).read()):
+    alias = re.search(r"(?m)^  alias: (.+)$", block)
+    if alias and alias.group(1).strip() in native:
+        block = re.sub(r"(?m)^(  alias: .+\n)", lambda m: m.group(1) + native[alias.group(1).strip()], block, count=1)
+    out.append(block)
+sys.stdout.write("".join(out))
+PY
+}
+
+# Makes the global lock $2 match the tracked lock $1. It is left alone when it
+# already has the same portable content: rewriting it would make APM forget
+# the native plugin it deployed.
+_sync_global_lock() {
+  local tracked=$1 global=$2 portable merged existing=/dev/null
+  if [ -f "$global" ]; then
+    existing=$global
+    portable="$(mktemp)" || return 1
+    if _portable_apm_lock "$global" > "$portable" && cmp -s "$portable" "$tracked"; then
+      rm -f "$portable"
+      return 0
+    fi
+    rm -f "$portable"
+  fi
+  merged="$(mktemp)" || return 1
+  if ! _with_native_blocks "$tracked" "$existing" > "$merged"; then
+    rm -f "$merged"
+    return 1
+  fi
+  rm -f "$global" && mv "$merged" "$global"
+}
+
+# Skill dir names that the given APM locks deploy under ~/.agents/skills or
+# ~/.claude/skills.
+_apm_skill_names() {
+  grep -hE '^  - \.(agents|claude)/skills/[^/]+' "$@" 2>/dev/null |
+    sed -E 's#^  - \.(agents|claude)/skills/([^/]+).*#\2#' | sort -u
+}
+
+# Once the old global manifest lists ai/ as a local package (0.33 wrote it as an
+# absolute path ending in /ai), its deployed skills block the new install: APM
+# refuses to replace files it does not manage. Moves those skills aside, and
+# the 0.33 hook files, to the legacy backup so APM deploys them fresh.
+_retire_local_apm_package() {
+  local apm_home=$1 new_lock=$2
+  local backup=$oldfiles/legacy-skills-$(date +%Y%m%d) name root path
+  grep -qE '^[[:space:]]*-[[:space:]]+/([^[:space:]]*/)?ai/?[[:space:]]*$' "$apm_home/apm.yml" 2>/dev/null || return 0
+  echo "Retiring the local dotfiles APM package: its skills move aside"
+  apm_retired_backup=$backup
+  for path in "$HOME/.claude/apm-hooks.json" "$HOME/.claude/hooks/contributing"; do
+    if [ -e "$path" ] || [ -L "$path" ]; then
+      _move_legacy "$path" "$backup"
+    fi
+  done
+  for name in $(_apm_skill_names "$apm_home/apm.lock.yaml" "$new_lock"); do
+    for root in .agents .claude; do
+      path="$HOME/$root/skills/$name"
+      if [ -e "$path" ] || [ -L "$path" ]; then
+        _move_legacy "$path" "$backup"
+      fi
+    done
+  done
+}
+
 install_skills() {
   # Installs the skills from ai/apm.yml globally. The locked commits decide what
   # gets installed, so this reproduces ai/apm.lock.yaml; only skills-bump moves them.
-  local ai=$dotfiles/ai apm_home=$HOME/.apm
+  local ai=$dotfiles/ai apm_home=$HOME/.apm portable
+  if ! _apm_at_least "$(_apm_version)" "$apm_min_version"; then
+    echo "ERROR: apm $apm_min_version or newer is required; run 'install.sh ai' first" >&2
+    return 1
+  fi
+  apm_retired_backup=""
   mkdir -p "$apm_home" || return 1
   _retire_local_apm_package "$apm_home" "$ai/apm.lock.yaml"
   _copy_apm_files "$ai" "$apm_home" || return 1
   if ! (cd "$apm_home" && apm install -g --target agent-skills,claude); then
     echo "ERROR: apm install -g failed; ai/ unchanged" >&2
+    if [ -n "$apm_retired_backup" ]; then
+      echo "ERROR: the skills moved by the one-time migration are in $apm_retired_backup;" >&2
+      echo "ERROR: fix the error above and run 'install.sh ai' again to deploy them" >&2
+    fi
     return 1
   fi
-  # APM rewrites the lock only when apm.yml changed (or its format did); keep it.
-  local portable
+  # APM rewrites the lock only when apm.yml changed. The native plugin blocks
+  # stay in ~/.apm: the tracked lock is the portable form.
   portable="$(mktemp)" || return 1
   if ! _portable_apm_lock "$apm_home/apm.lock.yaml" > "$portable"; then
     rm -f "$portable"
@@ -248,17 +307,32 @@ install_skills() {
 
 skills_bump() {
   # The only path that moves skill versions: each dependency goes to the latest
-  # commit of its ref. The new files are copied back to ai/ only after success.
-  local ai=$dotfiles/ai apm_home=$HOME/.apm
+  # commit of its ref. ai/ is replaced only after apm update and the strip succeed.
+  local ai=$dotfiles/ai apm_home=$HOME/.apm lock
   mkdir -p "$apm_home" || return 1
+  _retire_local_apm_package "$apm_home" "$ai/apm.lock.yaml"
+  _cleanup_legacy_skills
   _copy_apm_files "$ai" "$apm_home" || return 1
   if ! (cd "$apm_home" && apm update -g --yes --target agent-skills,claude); then
     echo "ERROR: apm update -g failed; ai/ unchanged" >&2
     return 1
   fi
-  cp "$apm_home/apm.yml" "$ai/apm.yml" || return 1
-  _portable_apm_lock "$apm_home/apm.lock.yaml" > "$ai/apm.lock.yaml" || return 1
-  if git -C "$dotfiles" diff --quiet -- ai/; then
+  lock="$(mktemp)" || return 1
+  if ! _portable_apm_lock "$apm_home/apm.lock.yaml" > "$lock"; then
+    rm -f "$lock"
+    echo "ERROR: could not strip the bumped lock; ai/ unchanged" >&2
+    return 1
+  fi
+  if ! { cp "$apm_home/apm.yml" "$ai/apm.yml" && cp "$lock" "$ai/apm.lock.yaml"; }; then
+    rm -f "$lock"
+    echo "ERROR: could not write ai/; restore it from git" >&2
+    return 1
+  fi
+  rm -f "$lock"
+  # Shows the change when dotfiles is a git checkout; otherwise nothing to show.
+  if ! git -C "$dotfiles" rev-parse --git-dir &>/dev/null; then
+    echo "Updated ai/apm.yml and ai/apm.lock.yaml"
+  elif git -C "$dotfiles" diff --quiet -- ai/; then
     echo "No skill version moved."
   else
     git -C "$dotfiles" diff --stat -- ai/
