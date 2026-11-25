@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Live dashboard for Octopilot: load config.sh, hand off to dashboard.py
 # (run by uv, which provides `rich` without touching the system Python).
+# Modes: the TUI (default), --once (one frame), --headless (the loops, with the
+# view in view.json), --action <id> [key] [--arg k=v] (one action, JSON out).
 set -euo pipefail
 # A herdr server started by a remote client has a bare PATH; uv lives here.
 PATH="$HOME/.local/bin:$PATH"

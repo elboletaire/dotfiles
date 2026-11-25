@@ -21,6 +21,8 @@ actions. `$DIR` is the octopilot code dir (`props().dir`, else
 
 ## view.json (written atomically by `dashboard.sh --headless`, on change and at least every 5 s)
 
+Mods treat a view whose `generated_at` is older than 15 s as stale (no headless dashboard running).
+
 ```jsonc
 {
   "v": 1, "generated_at": 1732530000.0,           // epoch seconds
@@ -42,8 +44,38 @@ actions. `$DIR` is the octopilot code dir (`props().dir`, else
   "pick": [ {"repo": "owner/repo", "entries": [Entry]} ],   // scan order, never re-sorted; Entry.index = the # shown
   "notes": [ {"kind": "UNCLONED|STALE|UNKNOWN", "key": "owner/repo#12"} ],
   "activity": [ {"at": 1732530000.0, "kind": "report", "key": "repo#12", "detail": "ready: tests pass"} ],  // last 6, no ticks, newest first
-  "kitchen": [ {"at": 1732530000.0, "kind": "report", "mood": "happy", "text": "ready repo#12: …", "good": true} ], // last 20, takoyaki feed.ts mapping
+  "kitchen": [Log],                                 // last 20 events that have a line (heartbeats have none), oldest first
+  "pan": Pan,
   "global_actions": [Action]                        // refresh, pause|resume, investigate, toggle_done, prompter
+}
+```
+
+Log (one kitchen line, takoyaki's feed.ts `react()`):
+```jsonc
+{"at": 1732530000.0, "kind": "report", "mood": "happy", "text": "ready repo#12: …", "good": true,
+ "key": "owner/repo#12" /* null when the kind has no item */, "ms": 4000 /* how long the mood lasts */,
+ "tone": "good|bad|info" /* feed.ts's tone: good = green line, bad = red, info = plain */,
+ "burst": "sparkle" /* steam|batter|sparkle|smoke|bang|heart|zzz|ink|null */}
+```
+
+Pan (takoyaki's pan and chef, from feed.ts `readKitchen()` and register.tsx `frame()`/`resting()`):
+```jsonc
+{
+  "holes": 6,                                       // header max_active
+  "paused": false, "busy": false,                   // busy = the orchestrator's agent is running
+  "balls": [{"key": "owner/repo#12", "label": "repo#12",
+             "state": "raw|cooking|ready|capped|burnt|stalled",
+             "heat": 0.4,                           // cooking age / 25 min, capped at 1 (feed.ts browns them)
+             "focus": true}],                       // the newest event's item, if it is on the pan (at most one).
+                                                    // No ball focused: the mod uses hole 0. While pan.busy the
+                                                    // focus walks along the pan, hole floor(t / 1.2 s) % balls
+                                                    // (register.tsx), so the mod animates it itself
+                                                    // one per tracked item not DONE, oldest first, at most holes
+  "shelf": [{"key": "owner/repo#7", "label": "repo#7"}],   // the oldest 8 DONE items (scene.ts boxed.slice(0, 8)), oldest first
+  "shelf_total": 3,                                 // all DONE items, for "N on the shelf" (register.tsx)
+  "chef": {"mood": "happy", "since": 1732530000.0,  // the transient mood, else the rest mood
+           "ms": 4000,                              // the transient mood's duration; 0 when resting
+           "resting": "sleep|busy|doze|idle"}       // paused, busy, idle for 10 min (doze), else idle
 }
 ```
 
@@ -64,7 +96,7 @@ Entry:
 Action:
 ```jsonc
 {"id": "remove", "key": "Delete", "label": "remove",
- "confirm": "⚠ its agent is working -- remove repo#12? (workspace and worktree deleted, untracked)" /* null = no confirm */,
+ "confirm": "⚠ its agent is working -- press del again to remove owner/repo#12 (workspace and worktree deleted, untracked)" /* null = no confirm */,
  "args": ["repo", "question", "read_only"] /* investigate only */}
 ```
 Row action ids (TUI key): `focus` (Enter), `peek` (v), `shell` (t), `browser` (o), `go` (g), `no` (n), `grant` (R),
@@ -79,7 +111,10 @@ Runs the same code path as the TUI key (refusals, messages, wind-down rules). Pr
 `{"ok": true, "message": "queued for the orchestrator: go …"}`.
 `go` past wind-down without `--arg confirmed=1` returns `{"ok": false, "kitchen": true, "message": "🍳 The kitchen is closed (past 16:00)"}`;
 the mod shows the kitchen-closed dialog and re-sends with `confirmed=1`. Same for `investigate`.
-`refresh` kicks the headless daemon (it must start a GitHub refresh within a second).
+`refresh` kicks the headless daemon (it must start a GitHub refresh within a second); with no daemon running
+(view.json older than 15 s) it returns `{"ok": false, "message": "no headless dashboard running"}`.
+Every call prints exactly one JSON line and exits 0, usage errors included. A row action on a row whose
+action is refused (`v` with no live agent, `o` on an investigation) returns the TUI's refusal message, `ok: false`.
 Focus/peek/shell on hc rows may be done by the mod directly with `run()` using `session`/`pane`/`path`, but
 `--action` must also work for them (and is the only way for herdr rows).
 

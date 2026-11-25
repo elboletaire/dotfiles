@@ -1,0 +1,1098 @@
+{
+  "v": 1,
+  "generated_at": 1795615610.3828876,
+  "header": {
+    "needs": 4,
+    "running": 4,
+    "pick": 6,
+    "active": 4,
+    "max_active": 6,
+    "untracked": 1,
+    "github": {
+      "state": "ok",
+      "age_s": 42,
+      "error": null
+    },
+    "last_tick_s": 120,
+    "orch_label": "octopilot",
+    "paused": false,
+    "wind_down": {
+      "state": "no",
+      "at": "16:00"
+    }
+  },
+  "columns": [
+    {
+      "id": "running",
+      "title": "🟡 Running",
+      "entries": [
+        {
+          "key": "vocdoni/vocdoni-app#452",
+          "label": "vocdoni-app#452",
+          "kind": "WORKING",
+          "section": "running",
+          "title": "feat: sort proposals by deadline",
+          "draft": false,
+          "url": "https://github.com/vocdoni/vocdoni-app/pull/452",
+          "checks": "pending",
+          "agent": "running",
+          "rounds": null,
+          "max_rounds": 3,
+          "quiet_s": 340,
+          "stalled": false,
+          "needs": false,
+          "why": "",
+          "note": "implementing; tests running",
+          "pick_kind": null,
+          "session": "w41",
+          "backend": "herdr",
+          "pane": "t7",
+          "path": "/home/dev/src/vocdoni-app/.worktrees/feat/sort-deadline",
+          "branch": "feat/sort-deadline",
+          "pr": 452,
+          "stack": 1,
+          "open": true,
+          "parked": false,
+          "tracked": true,
+          "actions": [
+            {
+              "id": "peek",
+              "key": "v",
+              "label": "peek",
+              "confirm": null
+            },
+            {
+              "id": "shell",
+              "key": "t",
+              "label": "shell",
+              "confirm": null
+            },
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            },
+            {
+              "id": "detach",
+              "key": "z",
+              "label": "detach",
+              "confirm": null
+            },
+            {
+              "id": "remove",
+              "key": "Delete",
+              "label": "remove",
+              "confirm": "⚠ its agent is working -- remove vocdoni-app#452? (workspace and worktree deleted, untracked)"
+            }
+          ]
+        },
+        {
+          "key": "vocdoni/vocdoni-sdk#1190",
+          "label": "vocdoni-sdk#1190 +2",
+          "kind": "WORKING",
+          "section": "running",
+          "title": "Census3 token holders: pagination",
+          "draft": true,
+          "url": "https://github.com/vocdoni/vocdoni-sdk/pull/1190",
+          "checks": "none",
+          "agent": "running",
+          "rounds": 1,
+          "max_rounds": 3,
+          "quiet_s": 95,
+          "stalled": false,
+          "needs": false,
+          "why": "",
+          "note": "re-review requested",
+          "pick_kind": null,
+          "session": "w52",
+          "backend": "hc",
+          "pane": "t12",
+          "path": "/home/dev/src/vocdoni-sdk/.worktrees/feat/census3-pages",
+          "branch": "feat/census3-pages",
+          "pr": 1190,
+          "stack": 3,
+          "open": true,
+          "parked": false,
+          "tracked": true,
+          "actions": [
+            {
+              "id": "peek",
+              "key": "v",
+              "label": "peek",
+              "confirm": null
+            },
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            },
+            {
+              "id": "detach",
+              "key": "z",
+              "label": "detach",
+              "confirm": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "orch",
+      "title": "⏭ Next tick",
+      "entries": [
+        {
+          "key": "vocdoni/vocdoni-app#447",
+          "label": "vocdoni-app#447",
+          "kind": "MERGED",
+          "section": "orch",
+          "title": "chore: drop the legacy poll",
+          "draft": false,
+          "url": "https://github.com/vocdoni/vocdoni-app/pull/447",
+          "checks": "pass",
+          "agent": null,
+          "rounds": null,
+          "max_rounds": 3,
+          "quiet_s": null,
+          "stalled": false,
+          "needs": false,
+          "why": "",
+          "note": "cleanup + rebase fan-out",
+          "pick_kind": null,
+          "session": "w38",
+          "backend": "herdr",
+          "pane": "t3",
+          "path": "/home/dev/src/vocdoni-app/.worktrees/work",
+          "branch": "feat/447",
+          "pr": 447,
+          "stack": 1,
+          "open": true,
+          "parked": false,
+          "tracked": true,
+          "actions": [
+            {
+              "id": "peek",
+              "key": "v",
+              "label": "peek",
+              "confirm": null
+            },
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            }
+          ]
+        },
+        {
+          "key": "vocdoni/vocdoni-sdk#1186",
+          "label": "vocdoni-sdk#1186",
+          "kind": "REVIEW",
+          "section": "orch",
+          "title": "fix: retry the relayer on 502",
+          "draft": false,
+          "url": "https://github.com/vocdoni/vocdoni-sdk/pull/1186",
+          "checks": "pass",
+          "agent": "idle",
+          "rounds": 2,
+          "max_rounds": 3,
+          "quiet_s": 600,
+          "stalled": false,
+          "needs": false,
+          "why": "",
+          "note": "reboot for review",
+          "pick_kind": null,
+          "session": "hc-9",
+          "backend": "hc",
+          "pane": "t9",
+          "path": "/home/dev/src/vocdoni-sdk/.worktrees/work",
+          "branch": "feat/1186",
+          "pr": 1186,
+          "stack": 1,
+          "open": true,
+          "parked": false,
+          "tracked": true,
+          "actions": [
+            {
+              "id": "peek",
+              "key": "v",
+              "label": "peek",
+              "confirm": null
+            },
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            },
+            {
+              "id": "detach",
+              "key": "z",
+              "label": "detach",
+              "confirm": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "needs",
+      "title": "🔴 Needs you",
+      "entries": [
+        {
+          "key": "vocdoni/vocdoni-app#438",
+          "label": "vocdoni-app#438",
+          "kind": "READY",
+          "section": "needs",
+          "title": "fix: receipts for failed votes",
+          "draft": false,
+          "url": "https://github.com/vocdoni/vocdoni-app/pull/438",
+          "checks": "pass",
+          "agent": "idle",
+          "rounds": 2,
+          "max_rounds": 3,
+          "quiet_s": 1800,
+          "stalled": false,
+          "needs": true,
+          "why": "ready to merge",
+          "note": "ready to merge",
+          "pick_kind": null,
+          "session": "w29",
+          "backend": "herdr",
+          "pane": "t4",
+          "path": "/home/dev/src/vocdoni-app/.worktrees/work",
+          "branch": "feat/438",
+          "pr": 438,
+          "stack": 1,
+          "open": true,
+          "parked": false,
+          "tracked": true,
+          "actions": [
+            {
+              "id": "focus",
+              "key": "Enter",
+              "label": "focus",
+              "confirm": null
+            },
+            {
+              "id": "peek",
+              "key": "v",
+              "label": "peek",
+              "confirm": null
+            },
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            },
+            {
+              "id": "detach",
+              "key": "z",
+              "label": "detach",
+              "confirm": null
+            },
+            {
+              "id": "park",
+              "key": "d",
+              "label": "done",
+              "confirm": null
+            },
+            {
+              "id": "remove",
+              "key": "Delete",
+              "label": "remove",
+              "confirm": null
+            }
+          ]
+        },
+        {
+          "key": "vocdoni/vocdoni-app#401",
+          "label": "vocdoni-app#401",
+          "kind": "CAPPED",
+          "section": "needs",
+          "title": "refactor: census snapshot cache",
+          "draft": false,
+          "url": "https://github.com/vocdoni/vocdoni-app/pull/401",
+          "checks": "fail",
+          "agent": "idle",
+          "rounds": 3,
+          "max_rounds": 3,
+          "quiet_s": 5400,
+          "stalled": false,
+          "needs": true,
+          "why": "out of review rounds",
+          "note": "out of review rounds",
+          "pick_kind": null,
+          "session": "w22",
+          "backend": "herdr",
+          "pane": "t6",
+          "path": "/home/dev/src/vocdoni-app/.worktrees/work",
+          "branch": "feat/401",
+          "pr": 401,
+          "stack": 1,
+          "open": true,
+          "parked": false,
+          "tracked": true,
+          "actions": [
+            {
+              "id": "peek",
+              "key": "v",
+              "label": "peek",
+              "confirm": null
+            },
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            },
+            {
+              "id": "grant",
+              "key": "R",
+              "label": "another round",
+              "confirm": "press R again to grant vocdoni-app#401 another 3 review rounds"
+            },
+            {
+              "id": "park",
+              "key": "d",
+              "label": "done",
+              "confirm": null
+            },
+            {
+              "id": "remove",
+              "key": "Delete",
+              "label": "remove",
+              "confirm": null
+            }
+          ]
+        },
+        {
+          "key": "vocdoni/vocdoni-sdk#1183",
+          "label": "vocdoni-sdk#1183",
+          "kind": "STALLED",
+          "section": "needs",
+          "title": "docs: ballot modes table",
+          "draft": false,
+          "url": "https://github.com/vocdoni/vocdoni-sdk/pull/1183",
+          "checks": "fail",
+          "agent": "waiting",
+          "rounds": 1,
+          "max_rounds": 3,
+          "quiet_s": 2700,
+          "stalled": true,
+          "needs": true,
+          "why": "agent not reporting",
+          "note": "agent not reporting",
+          "pick_kind": null,
+          "session": "hc-4",
+          "backend": "hc",
+          "pane": "t11",
+          "path": "/home/dev/src/vocdoni-sdk/.worktrees/work",
+          "branch": "feat/1183",
+          "pr": 1183,
+          "stack": 1,
+          "open": true,
+          "parked": false,
+          "tracked": true,
+          "actions": [
+            {
+              "id": "peek",
+              "key": "v",
+              "label": "peek",
+              "confirm": null
+            },
+            {
+              "id": "shell",
+              "key": "t",
+              "label": "shell",
+              "confirm": null
+            },
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            },
+            {
+              "id": "detach",
+              "key": "z",
+              "label": "detach",
+              "confirm": null
+            },
+            {
+              "id": "park",
+              "key": "d",
+              "label": "done",
+              "confirm": null
+            },
+            {
+              "id": "remove",
+              "key": "Delete",
+              "label": "remove",
+              "confirm": null
+            }
+          ]
+        },
+        {
+          "key": "vocdoni/vocdoni-sdk#1172",
+          "label": "vocdoni-sdk#1172",
+          "kind": "PUSHED",
+          "section": "needs",
+          "title": "feat: wallet signer adapter",
+          "draft": false,
+          "url": "https://github.com/vocdoni/vocdoni-sdk/pull/1172",
+          "checks": "pass",
+          "agent": "idle",
+          "rounds": 1,
+          "max_rounds": 3,
+          "quiet_s": 7200,
+          "stalled": false,
+          "needs": true,
+          "why": "stale: pushed, never re-requested",
+          "note": "stale: pushed, never re-requested",
+          "pick_kind": null,
+          "session": "w17",
+          "backend": "herdr",
+          "pane": "t2",
+          "path": "/home/dev/src/vocdoni-sdk/.worktrees/work",
+          "branch": "feat/1172",
+          "pr": 1172,
+          "stack": 1,
+          "open": true,
+          "parked": false,
+          "tracked": true,
+          "actions": [
+            {
+              "id": "rereview",
+              "key": "e",
+              "label": "re-review",
+              "confirm": null
+            },
+            {
+              "id": "ack",
+              "key": "x",
+              "label": "ack",
+              "confirm": "press x again to ack the new commits on vocdoni-sdk#1172"
+            },
+            {
+              "id": "peek",
+              "key": "v",
+              "label": "peek",
+              "confirm": null
+            },
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            },
+            {
+              "id": "detach",
+              "key": "z",
+              "label": "detach",
+              "confirm": null
+            },
+            {
+              "id": "remove",
+              "key": "Delete",
+              "label": "remove",
+              "confirm": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "done",
+      "title": "💤 Done",
+      "entries": [
+        {
+          "key": "vocdoni/vocdoni-app#430",
+          "label": "vocdoni-app#430",
+          "kind": "DONE",
+          "section": "done",
+          "title": "docs: census quickstart",
+          "draft": false,
+          "url": "https://github.com/vocdoni/vocdoni-app/pull/430",
+          "checks": "pass",
+          "agent": null,
+          "rounds": null,
+          "max_rounds": 3,
+          "quiet_s": null,
+          "stalled": false,
+          "needs": false,
+          "why": "",
+          "note": "parked, session kept",
+          "pick_kind": null,
+          "session": "w12",
+          "backend": "herdr",
+          "pane": "t1",
+          "path": "/home/dev/src/vocdoni-app/.worktrees/work",
+          "branch": "feat/430",
+          "pr": 430,
+          "stack": 1,
+          "open": true,
+          "parked": true,
+          "tracked": true,
+          "actions": [
+            {
+              "id": "peek",
+              "key": "v",
+              "label": "peek",
+              "confirm": null
+            },
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            },
+            {
+              "id": "detach",
+              "key": "z",
+              "label": "detach",
+              "confirm": null
+            },
+            {
+              "id": "unpark",
+              "key": "d",
+              "label": "undone",
+              "confirm": null
+            },
+            {
+              "id": "remove",
+              "key": "Delete",
+              "label": "remove",
+              "confirm": null
+            }
+          ]
+        },
+        {
+          "key": "vocdoni/vocdoni-app#420",
+          "label": "vocdoni-app#420",
+          "kind": "DONE",
+          "section": "done",
+          "title": "chore: bump the lockfile",
+          "draft": false,
+          "url": "https://github.com/vocdoni/vocdoni-app/pull/420",
+          "checks": "pass",
+          "agent": null,
+          "rounds": null,
+          "max_rounds": 3,
+          "quiet_s": null,
+          "stalled": false,
+          "needs": false,
+          "why": "",
+          "note": "merged",
+          "pick_kind": null,
+          "session": null,
+          "backend": null,
+          "pane": null,
+          "path": null,
+          "branch": "feat/420",
+          "pr": 420,
+          "stack": 1,
+          "open": false,
+          "parked": false,
+          "tracked": false,
+          "actions": [
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            }
+          ]
+        },
+        {
+          "key": "vocdoni/vocdoni-sdk#1160",
+          "label": "vocdoni-sdk#1160",
+          "kind": "GONE",
+          "section": "done",
+          "title": "fix: typo in the README",
+          "draft": false,
+          "url": "https://github.com/vocdoni/vocdoni-sdk/pull/1160",
+          "checks": "none",
+          "agent": null,
+          "rounds": null,
+          "max_rounds": 3,
+          "quiet_s": null,
+          "stalled": false,
+          "needs": false,
+          "why": "",
+          "note": "workspace closed",
+          "pick_kind": null,
+          "session": null,
+          "backend": null,
+          "pane": null,
+          "path": null,
+          "branch": "feat/1160",
+          "pr": 1160,
+          "stack": 1,
+          "open": false,
+          "parked": false,
+          "tracked": false,
+          "actions": [
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            }
+          ]
+        },
+        {
+          "key": "vocdoni/vocdoni-sdk#1150",
+          "label": "vocdoni-sdk#1150",
+          "kind": "DONE",
+          "section": "done",
+          "title": "test: snapshot the census encoder",
+          "draft": false,
+          "url": "https://github.com/vocdoni/vocdoni-sdk/pull/1150",
+          "checks": "pass",
+          "agent": null,
+          "rounds": null,
+          "max_rounds": 3,
+          "quiet_s": null,
+          "stalled": false,
+          "needs": false,
+          "why": "",
+          "note": "merged",
+          "pick_kind": null,
+          "session": null,
+          "backend": null,
+          "pane": null,
+          "path": null,
+          "branch": "feat/1150",
+          "pr": 1150,
+          "stack": 1,
+          "open": false,
+          "parked": false,
+          "tracked": false,
+          "actions": [
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            }
+          ]
+        }
+      ],
+      "hidden": 3
+    }
+  ],
+  "pick": [
+    {
+      "repo": "vocdoni/vocdoni-app",
+      "entries": [
+        {
+          "key": "vocdoni/vocdoni-app!457",
+          "label": "vocdoni-app!457",
+          "kind": "PROPOSE",
+          "section": "pick",
+          "title": "Batch the vote receipts",
+          "draft": false,
+          "url": "https://github.com/vocdoni/vocdoni-app/issues/457",
+          "checks": "none",
+          "agent": null,
+          "rounds": null,
+          "max_rounds": 3,
+          "quiet_s": null,
+          "stalled": false,
+          "needs": false,
+          "why": "",
+          "note": "",
+          "pick_kind": "issue",
+          "session": null,
+          "backend": null,
+          "pane": null,
+          "path": null,
+          "branch": "feat/457",
+          "pr": null,
+          "stack": 1,
+          "open": true,
+          "parked": false,
+          "tracked": false,
+          "actions": [
+            {
+              "id": "go",
+              "key": "g",
+              "label": "go",
+              "confirm": "press g again to send 'go vocdoni/vocdoni-app!457' to the orchestrator"
+            },
+            {
+              "id": "no",
+              "key": "n",
+              "label": "no",
+              "confirm": "press n again to send 'no vocdoni/vocdoni-app!457' to the orchestrator"
+            },
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            }
+          ],
+          "index": 1
+        },
+        {
+          "key": "vocdoni/vocdoni-app#463",
+          "label": "vocdoni-app#463",
+          "kind": "PROPOSE",
+          "section": "pick",
+          "title": "Review: relayer retry backoff",
+          "draft": false,
+          "url": "https://github.com/vocdoni/vocdoni-app/pull/463",
+          "checks": "none",
+          "agent": null,
+          "rounds": null,
+          "max_rounds": 3,
+          "quiet_s": null,
+          "stalled": false,
+          "needs": false,
+          "why": "",
+          "note": "",
+          "pick_kind": "review only",
+          "session": null,
+          "backend": null,
+          "pane": null,
+          "path": null,
+          "branch": "feat/463",
+          "pr": 463,
+          "stack": 1,
+          "open": true,
+          "parked": false,
+          "tracked": false,
+          "actions": [
+            {
+              "id": "go",
+              "key": "g",
+              "label": "go",
+              "confirm": null
+            },
+            {
+              "id": "no",
+              "key": "n",
+              "label": "no",
+              "confirm": null
+            },
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            }
+          ],
+          "index": 2
+        },
+        {
+          "key": "vocdoni/vocdoni-app#466",
+          "label": "vocdoni-app#466",
+          "kind": "PROPOSE",
+          "section": "pick",
+          "title": "Adopt the stale dark-mode tokens PR",
+          "draft": false,
+          "url": "https://github.com/vocdoni/vocdoni-app/pull/466",
+          "checks": "none",
+          "agent": null,
+          "rounds": null,
+          "max_rounds": 3,
+          "quiet_s": null,
+          "stalled": false,
+          "needs": false,
+          "why": "",
+          "note": "",
+          "pick_kind": "adopt PR",
+          "session": null,
+          "backend": null,
+          "pane": null,
+          "path": null,
+          "branch": "feat/466",
+          "pr": 466,
+          "stack": 1,
+          "open": true,
+          "parked": false,
+          "tracked": false,
+          "actions": [
+            {
+              "id": "go",
+              "key": "g",
+              "label": "go",
+              "confirm": null
+            },
+            {
+              "id": "no",
+              "key": "n",
+              "label": "no",
+              "confirm": null
+            },
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            }
+          ],
+          "index": 3
+        }
+      ]
+    },
+    {
+      "repo": "vocdoni/vocdoni-sdk",
+      "entries": [
+        {
+          "key": "vocdoni/vocdoni-sdk!1196",
+          "label": "vocdoni-sdk!1196",
+          "kind": "PROPOSE",
+          "section": "pick",
+          "title": "Add a CSP auth example",
+          "draft": false,
+          "url": "https://github.com/vocdoni/vocdoni-sdk/issues/1196",
+          "checks": "none",
+          "agent": null,
+          "rounds": null,
+          "max_rounds": 3,
+          "quiet_s": null,
+          "stalled": false,
+          "needs": false,
+          "why": "",
+          "note": "",
+          "pick_kind": "issue",
+          "session": null,
+          "backend": null,
+          "pane": null,
+          "path": null,
+          "branch": "feat/1196",
+          "pr": null,
+          "stack": 1,
+          "open": true,
+          "parked": false,
+          "tracked": false,
+          "actions": [
+            {
+              "id": "go",
+              "key": "g",
+              "label": "go",
+              "confirm": null
+            },
+            {
+              "id": "no",
+              "key": "n",
+              "label": "no",
+              "confirm": null
+            },
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            }
+          ],
+          "index": 4
+        },
+        {
+          "key": "vocdoni/vocdoni-sdk#1199",
+          "label": "vocdoni-sdk#1199",
+          "kind": "PROPOSE",
+          "section": "pick",
+          "title": "Your PR: ballot encoding edge cases",
+          "draft": false,
+          "url": "https://github.com/vocdoni/vocdoni-sdk/pull/1199",
+          "checks": "none",
+          "agent": null,
+          "rounds": null,
+          "max_rounds": 3,
+          "quiet_s": null,
+          "stalled": false,
+          "needs": false,
+          "why": "",
+          "note": "",
+          "pick_kind": "your PR",
+          "session": null,
+          "backend": null,
+          "pane": null,
+          "path": null,
+          "branch": "feat/1199",
+          "pr": 1199,
+          "stack": 1,
+          "open": true,
+          "parked": false,
+          "tracked": false,
+          "actions": [
+            {
+              "id": "go",
+              "key": "g",
+              "label": "go",
+              "confirm": null
+            },
+            {
+              "id": "no",
+              "key": "n",
+              "label": "no",
+              "confirm": null
+            },
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            }
+          ],
+          "index": 5
+        }
+      ]
+    },
+    {
+      "repo": "vocdoni/vocdoni-contributing",
+      "entries": [
+        {
+          "key": "vocdoni/vocdoni-contributing#22",
+          "label": "vocdoni-contributing#22",
+          "kind": "PROPOSE",
+          "section": "pick",
+          "title": "Review: plugin install through APM",
+          "draft": false,
+          "url": "https://github.com/vocdoni/vocdoni-contributing/pull/22",
+          "checks": "none",
+          "agent": null,
+          "rounds": null,
+          "max_rounds": 3,
+          "quiet_s": null,
+          "stalled": false,
+          "needs": false,
+          "why": "",
+          "note": "",
+          "pick_kind": "review only",
+          "session": null,
+          "backend": null,
+          "pane": null,
+          "path": null,
+          "branch": "feat/22",
+          "pr": 22,
+          "stack": 1,
+          "open": true,
+          "parked": false,
+          "tracked": false,
+          "actions": [
+            {
+              "id": "go",
+              "key": "g",
+              "label": "go",
+              "confirm": null
+            },
+            {
+              "id": "no",
+              "key": "n",
+              "label": "no",
+              "confirm": null
+            },
+            {
+              "id": "browser",
+              "key": "o",
+              "label": "browser",
+              "confirm": null
+            }
+          ],
+          "index": 6
+        }
+      ]
+    }
+  ],
+  "notes": [
+    {
+      "kind": "UNCLONED",
+      "key": "vocdoni/vocdoni-contributing#22"
+    },
+    {
+      "kind": "STALE",
+      "key": "vocdoni/vocdoni-app#401"
+    }
+  ],
+  "activity": [
+    {
+      "at": 1795615590.3828876,
+      "kind": "report",
+      "key": "vocdoni/vocdoni-app#438",
+      "detail": "ready: tests pass"
+    },
+    {
+      "at": 1795615515.3828876,
+      "kind": "spawn",
+      "key": "vocdoni/vocdoni-sdk#1190",
+      "detail": "agent started"
+    },
+    {
+      "at": 1795615370.3828876,
+      "kind": "sent",
+      "key": "vocdoni/vocdoni-app#401",
+      "detail": "re-review requested"
+    },
+    {
+      "at": 1795615000.3828876,
+      "kind": "cleanup",
+      "key": "vocdoni/vocdoni-app#447",
+      "detail": "workspace removed, rebase fan-out"
+    },
+    {
+      "at": 1795614310.3828876,
+      "kind": "report",
+      "key": "vocdoni/vocdoni-sdk#1183",
+      "detail": "stalled: no report for 35m"
+    },
+    {
+      "at": 1795613610.3828876,
+      "kind": "capped",
+      "key": "vocdoni/vocdoni-app#401",
+      "detail": "out of review rounds (3/3)"
+    }
+  ],
+  "kitchen": [
+    {
+      "at": 1795615310.3828876,
+      "kind": "report",
+      "mood": "happy",
+      "text": "ready vocdoni-app#438: tests pass",
+      "good": true
+    }
+  ],
+  "global_actions": [
+    {
+      "id": "refresh",
+      "key": "r",
+      "label": "refresh",
+      "confirm": null
+    },
+    {
+      "id": "pause",
+      "key": "P",
+      "label": "pause",
+      "confirm": "press P again to pause octopilot"
+    },
+    {
+      "id": "investigate",
+      "key": "i",
+      "label": "investigate",
+      "confirm": null,
+      "args": [
+        "repo",
+        "question",
+        "read_only"
+      ]
+    },
+    {
+      "id": "prompter",
+      "key": "a",
+      "label": "prompter",
+      "confirm": null
+    },
+    {
+      "id": "toggle_done",
+      "key": "D",
+      "label": "done",
+      "confirm": null
+    }
+  ]
+}
