@@ -22,6 +22,8 @@ When starting new coding projects, the preferred languages and tools are the fol
 If you consider that some of these tools aren't suitable enough and want to propose a different language or toolset, ask directly the user after explaining your issues with the requested toolset.
 </STARTING_NEW_PROJECTS>
 
+Never use corepack for pnpm (or any package manager): no corepack shim, no `corepack install -g`, no global pins; they break my other projects. pnpm is a plain `npm install -g pnpm` in the nvm node, which switches to each project's `packageManager` version on its own. For a version mismatch, rely on that or use another nvm node version, and ask before installing global tools.
+
 Previews (designs, logos, mockups, reports) are local files: write a self-contained `.html` and give me its path (or `! open <path>`). Don't publish or deploy them anywhere, Artifacts included, unless I ask for that explicitly.
 
 @RTK.md
