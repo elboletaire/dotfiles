@@ -9,59 +9,67 @@ dependencies:
     - git: https://github.com/vercel-labs/skills.git
       path: skills/find-skills
       alias: find-skills
-      ref: e781cb4d07433dfe1d19e924ed45cc61738c55ec
+      ref: main
     - git: https://github.com/obra/superpowers.git
       path: skills/using-superpowers
       alias: using-superpowers
-      ref: 22f0b463e7a5e579904dd6211a520321035526f7
+      ref: main
     - git: https://github.com/github/awesome-copilot.git
       path: skills/github-issues
       alias: github-issues
-      ref: eaaffd5d020b756a2777a4b1b161d2bdc126d9a0
+      ref: main
     - git: https://github.com/github/awesome-copilot.git
       path: skills/git-commit
       alias: git-commit
-      ref: eaaffd5d020b756a2777a4b1b161d2bdc126d9a0
+      ref: main
     - git: https://github.com/obra/superpowers.git
       path: skills/brainstorming
       alias: brainstorming
-      ref: 22f0b463e7a5e579904dd6211a520321035526f7
+      ref: main
     - git: https://github.com/obra/superpowers.git
       path: skills/systematic-debugging
       alias: systematic-debugging
-      ref: 22f0b463e7a5e579904dd6211a520321035526f7
+      ref: main
     - git: https://github.com/obra/superpowers.git
       path: skills/test-driven-development
       alias: test-driven-development
-      ref: 22f0b463e7a5e579904dd6211a520321035526f7
+      ref: main
     - git: https://github.com/obra/superpowers.git
       path: skills/writing-plans
       alias: writing-plans
-      ref: 22f0b463e7a5e579904dd6211a520321035526f7
+      ref: main
     - git: https://github.com/obra/superpowers.git
       path: skills/executing-plans
       alias: executing-plans
-      ref: 22f0b463e7a5e579904dd6211a520321035526f7
+      ref: main
     - git: https://github.com/intellectronica/agent-skills.git
       path: skills/context7
       alias: context7
-      ref: 9b0e00ad1b941165e2506545bbfddafa34cf2cb8
+      ref: main
     - git: https://github.com/anthropics/skills.git
       path: skills/skill-creator
       alias: skill-creator
-      ref: 2c5958ecac7cee2b583967a2c4981d0f4a75c579
+      ref: main
     - git: https://github.com/mangmax/obscura-browser-skill.git
       alias: obscura-browser
-      ref: f285dfdac5c3188fc4c3574eee487ae793ae9b50
+      ref: main
     - git: https://github.com/herdrdev/herdr.git
       path: skills/herdr
       alias: herdr
-      ref: 2ecf19a92fc3a7fff75b6ce3655ef04f4625ec01
+      ref: master
     - git: https://github.com/vocdoni/skills.git
       path: plugins/vocdoni-comments/skills/comments
       alias: comments
-      ref: 175a70ad7e9a6c6cd85f547d3914c7c38b059a1e
+      ref: main
     - git: https://github.com/vocdoni/skills.git
-      path: plugins/vocdoni-contributing
+      path: plugins/vocdoni-contributing/skills/contributing
       alias: contributing
-      ref: 175a70ad7e9a6c6cd85f547d3914c7c38b059a1e
+      ref: main
+    - git: https://github.com/vercel-labs/agent-browser.git
+      path: skills/agent-browser
+      alias: agent-browser
+      ref: main
+    - git: https://github.com/github/awesome-copilot.git
+      path: skills/create-readme
+      alias: create-readme
+      ref: main

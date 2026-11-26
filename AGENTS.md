@@ -35,8 +35,9 @@ Shell and tools:
 
 AI (`ai/`):
 
-- `apm.yml`, `apm.lock.yaml`: the skills, pinned to full commit SHAs, installed
-  through APM (Agent Package Manager).
+- `apm.yml`, `apm.lock.yaml`: the skills. `apm.yml` names each dependency's
+  branch; `apm.lock.yaml` pins the commit, and only `skills-bump` moves it.
+  Installed through APM (Agent Package Manager, 0.39 or newer).
 - `claude/`: global Claude Code instructions (`CLAUDE.md`), `settings.json`,
   subagents in `agents/`.
 - `pi/`: global Pi instructions (`AGENTS.md`), subagents in `agents/`.
@@ -62,7 +63,13 @@ Nothing is copied: `scripts/install.sh` creates symlinks.
   - `ai/prompts` to `~/.pi/agent/prompts` and `~/.claude/commands`
   - `ai/pi/agents` to `~/.pi/agent/agents`, `ai/pi/AGENTS.md` to `~/.pi/agent/AGENTS.md`
   - `ai/claude/CLAUDE.md` to `~/.claude/CLAUDE.md`, `ai/claude/agents` to `~/.claude/agents`
-  - the APM skills, installed globally to `~/.agents/skills/` and `~/.claude/skills/`
+- `install_skills`: copies `ai/apm.yml` and `ai/apm.lock.yaml` to `~/.apm/` (as
+  regular files) and runs `apm install -g --target agent-skills,claude` there, which
+  deploys the skills to `~/.agents/skills/` and `~/.claude/skills/`. A lock APM
+  rewrites is copied back to `ai/`. Every dependency must be a plain skill path:
+  a native plugin would record per-machine paths in the lock.
+  `~/.apm/apm.yml` is owned by the dotfiles and overwritten: add global deps in
+  `ai/apm.yml`.
 - `merge_claude_settings`: merges `ai/claude/settings.json` into
   `~/.claude/settings.json`, keeping keys other tools wrote. It sets
   `CLAUDE_CODE_PLUGIN_DIRS`, which loads the Claude plugins of
@@ -77,10 +84,11 @@ Nothing is copied: `scripts/install.sh` creates symlinks.
 | `install` | Full setup of a new machine: system packages, nvm, Claude Code and Pi, APM, herdr with herdr-app and herdr-core, uv, submodules, symlinks, AI config, herdr links, login shell, vim plugins. Files it replaces go to `~/old_dotfiles`. |
 | `update` | Refreshes the same pieces without system packages or submodule ref bumps. Reinstalls herdr-app only when its version changed. |
 | `ai` | Refreshes only the AI stack: agents, herdr, rtk, skills, AI links, settings, herdr links. |
-| `ai-config` | Relinks prompts, instructions, agents and pinned skills. Installs nothing and makes no backups, except the legacy cleanup below. |
+| `ai-config` | Relinks prompts, instructions, agents and the locked skills. Installs no agents or tooling and makes no backups, except the legacy cleanup below. |
+| `skills-bump` | Moves every skill to the latest commit of its branch (`apm update -g`), copies `ai/apm.yml` and `ai/apm.lock.yaml` back and shows `git diff --stat -- ai/`. The only command that changes skill versions; `install`, `update`, `ai` and `ai-config` install the locked commits. |
 | `herdr` | Repairs the herdr setup: installs herdr if missing, its agent integrations, config and plugin links. Does not upgrade herdr or touch herdr-app (`install`, `update` and `ai` do). |
 
-`install`, `update`, `ai` and `ai-config` all start with the legacy cleanup: agent-deck and aoe are removed, and their state moves to `~/old_dotfiles/legacy-session-managers-<date>/`.
+`install`, `update`, `ai` and `ai-config` all start with the legacy cleanup: agent-deck and aoe are uninstalled (Homebrew or pacman), their binaries, hooks in `~/.claude/settings.json` and skills are removed, and their state moves to `~/old_dotfiles/legacy-session-managers-<date>/`.
 
 ## herdr
 

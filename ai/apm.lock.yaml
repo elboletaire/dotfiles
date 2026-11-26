@@ -1,12 +1,15 @@
-lockfile_version: '1'
-apm_version: 0.32.0
+lockfile_version: '4'
+apm_version: 0.39.0
+manifest_targets:
+- agent-skills
+- claude
 dependencies:
 - repo_url: anthropics/skills
   alias: skill-creator
   name: skill-creator
   host: github.com
   resolved_commit: 2c5958ecac7cee2b583967a2c4981d0f4a75c579
-  resolved_ref: 2c5958ecac7cee2b583967a2c4981d0f4a75c579
+  resolved_ref: main
   version: unknown
   virtual_path: skills/skill-creator
   is_virtual: true
@@ -87,38 +90,74 @@ dependencies:
     .claude/skills/skill-creator/scripts/run_eval.py: sha256:43e3b8f80dbf69c343967ba77e268fae991d9fa3ed68b32a0ff02532cd48657f
     .claude/skills/skill-creator/scripts/run_loop.py: sha256:7bd6f674203168520517eec94c55f493c0d154339b061b4d7c0f0dad187d0f21
     .claude/skills/skill-creator/scripts/utils.py: sha256:3af8ae62c40c73ab712207436a0d9a981e845f25c5a7040229eb189cc8e45bb1
-  content_hash: sha256:b2bfe91d69ca99994c0566baede889e7d2b9bb8791c6b6106c5d387392f717f6
+  content_hash: sha256:412558e2d4103a965f8bd319273797a4787f1d4635c2b16f1df0d77d7e0680f4
+- repo_url: github/awesome-copilot
+  alias: create-readme
+  name: create-readme
+  host: github.com
+  resolved_commit: 93fc8b9ee3ef56b9b5e7261e6ce92d314cb2c1cf
+  resolved_ref: main
+  version: unknown
+  virtual_path: skills/create-readme
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/create-readme
+  - .agents/skills/create-readme/LICENSE
+  - .agents/skills/create-readme/SKILL.md
+  - .claude/skills/create-readme
+  - .claude/skills/create-readme/LICENSE
+  - .claude/skills/create-readme/SKILL.md
+  deployed_file_hashes:
+    .agents/skills/create-readme/LICENSE: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
+    .agents/skills/create-readme/SKILL.md: sha256:a93f9161bef324e3a1550fc79d4f01b660a3fb7eadc4455677d9ace4da2965ac
+    .claude/skills/create-readme/LICENSE: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
+    .claude/skills/create-readme/SKILL.md: sha256:a93f9161bef324e3a1550fc79d4f01b660a3fb7eadc4455677d9ace4da2965ac
+  content_hash: sha256:8cf0a4c359d1cfe2a1a478ea7fd67d9c133083f2e408f6f742389d6e6448981d
+  carried_licenses:
+  - path: LICENSE
+    source: LICENSE
+    hash: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
 - repo_url: github/awesome-copilot
   alias: git-commit
   name: git-commit
   host: github.com
   resolved_commit: eaaffd5d020b756a2777a4b1b161d2bdc126d9a0
-  resolved_ref: eaaffd5d020b756a2777a4b1b161d2bdc126d9a0
+  resolved_ref: main
   version: unknown
   virtual_path: skills/git-commit
   is_virtual: true
   package_type: claude_skill
   deployed_files:
   - .agents/skills/git-commit
+  - .agents/skills/git-commit/LICENSE
   - .agents/skills/git-commit/SKILL.md
   - .claude/skills/git-commit
+  - .claude/skills/git-commit/LICENSE
   - .claude/skills/git-commit/SKILL.md
   deployed_file_hashes:
+    .agents/skills/git-commit/LICENSE: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
     .agents/skills/git-commit/SKILL.md: sha256:a95bb7e996516a1c73df745b0598ba650d7161eb1da559712e8fabb5dacb7c5c
+    .claude/skills/git-commit/LICENSE: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
     .claude/skills/git-commit/SKILL.md: sha256:a95bb7e996516a1c73df745b0598ba650d7161eb1da559712e8fabb5dacb7c5c
-  content_hash: sha256:8f5a47c99951ec09853abf3231c76f48caac5d6b84ea912dd4997e6996885c0b
+  content_hash: sha256:4dd3e1b182db4b2313a255c68bc07abb93a6398c10f3a8b8a75758f77cff99b8
+  carried_licenses:
+  - path: LICENSE
+    source: LICENSE
+    hash: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
 - repo_url: github/awesome-copilot
   alias: github-issues
   name: github-issues
   host: github.com
   resolved_commit: eaaffd5d020b756a2777a4b1b161d2bdc126d9a0
-  resolved_ref: eaaffd5d020b756a2777a4b1b161d2bdc126d9a0
+  resolved_ref: main
   version: unknown
   virtual_path: skills/github-issues
   is_virtual: true
   package_type: claude_skill
   deployed_files:
   - .agents/skills/github-issues
+  - .agents/skills/github-issues/LICENSE
   - .agents/skills/github-issues/SKILL.md
   - .agents/skills/github-issues/references/dependencies.md
   - .agents/skills/github-issues/references/images.md
@@ -131,6 +170,7 @@ dependencies:
   - .agents/skills/github-issues/references/sub-issues.md
   - .agents/skills/github-issues/references/templates.md
   - .claude/skills/github-issues
+  - .claude/skills/github-issues/LICENSE
   - .claude/skills/github-issues/SKILL.md
   - .claude/skills/github-issues/references/dependencies.md
   - .claude/skills/github-issues/references/images.md
@@ -143,6 +183,7 @@ dependencies:
   - .claude/skills/github-issues/references/sub-issues.md
   - .claude/skills/github-issues/references/templates.md
   deployed_file_hashes:
+    .agents/skills/github-issues/LICENSE: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
     .agents/skills/github-issues/SKILL.md: sha256:c7859f993a8c8cfbff117830be1532e82e8b8e913297a40f8e685a662eaf3183
     .agents/skills/github-issues/references/dependencies.md: sha256:9503d23ba104de1aae51176e4f29d3cf6b85c83e3421252a4808140d60eba571
     .agents/skills/github-issues/references/images.md: sha256:585c89a02e1b79e702b4b88f2771cb8dadca9fdf98798ca72a83deb76623b219
@@ -154,6 +195,7 @@ dependencies:
     .agents/skills/github-issues/references/search.md: sha256:e73499b778efaaac7a90fd6a7c0359f30a89a7a62c25b27d994274e7f7ae172e
     .agents/skills/github-issues/references/sub-issues.md: sha256:333339143e4a4ef0dfeb575cf0f18da2ca78d6388e2b9ba4b77daad7c1ce29a8
     .agents/skills/github-issues/references/templates.md: sha256:8202c0277a34033acd44ed960a236f31a5b7a74d98769dffac497f2267279fed
+    .claude/skills/github-issues/LICENSE: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
     .claude/skills/github-issues/SKILL.md: sha256:c7859f993a8c8cfbff117830be1532e82e8b8e913297a40f8e685a662eaf3183
     .claude/skills/github-issues/references/dependencies.md: sha256:9503d23ba104de1aae51176e4f29d3cf6b85c83e3421252a4808140d60eba571
     .claude/skills/github-issues/references/images.md: sha256:585c89a02e1b79e702b4b88f2771cb8dadca9fdf98798ca72a83deb76623b219
@@ -165,51 +207,71 @@ dependencies:
     .claude/skills/github-issues/references/search.md: sha256:e73499b778efaaac7a90fd6a7c0359f30a89a7a62c25b27d994274e7f7ae172e
     .claude/skills/github-issues/references/sub-issues.md: sha256:333339143e4a4ef0dfeb575cf0f18da2ca78d6388e2b9ba4b77daad7c1ce29a8
     .claude/skills/github-issues/references/templates.md: sha256:8202c0277a34033acd44ed960a236f31a5b7a74d98769dffac497f2267279fed
-  content_hash: sha256:cbc5ad90df9f48cf90ac690d7c6bcd5f2d1d232c808f5f8da4d555628f4f882e
+  content_hash: sha256:3996f8c8b02f0303fda0d662c34086594de2b7d749b847b39a1a51ea7edf937e
+  carried_licenses:
+  - path: LICENSE
+    source: LICENSE
+    hash: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
 - repo_url: herdrdev/herdr
   alias: herdr
   name: herdr
   host: github.com
   resolved_commit: 2ecf19a92fc3a7fff75b6ce3655ef04f4625ec01
-  resolved_ref: 2ecf19a92fc3a7fff75b6ce3655ef04f4625ec01
+  resolved_ref: master
   version: unknown
   virtual_path: skills/herdr
   is_virtual: true
   package_type: claude_skill
   deployed_files:
   - .agents/skills/herdr
+  - .agents/skills/herdr/LICENSE
   - .agents/skills/herdr/SKILL.md
   - .claude/skills/herdr
+  - .claude/skills/herdr/LICENSE
   - .claude/skills/herdr/SKILL.md
   deployed_file_hashes:
+    .agents/skills/herdr/LICENSE: sha256:c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4
     .agents/skills/herdr/SKILL.md: sha256:fbd9d502767f7dff29c211505a0bd9ba34e980ed4cc456247e2adc1642883984
+    .claude/skills/herdr/LICENSE: sha256:c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4
     .claude/skills/herdr/SKILL.md: sha256:fbd9d502767f7dff29c211505a0bd9ba34e980ed4cc456247e2adc1642883984
-  content_hash: sha256:72177e911f55467de8737174072ec6bb08e30bbf62bceabcb69678e944398b18
+  content_hash: sha256:e1ffcc42d4bcf4792f8fb358850055a305a552427b834e74ef3d1dd646483b6d
+  carried_licenses:
+  - path: LICENSE
+    source: LICENSE
+    hash: sha256:c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4
 - repo_url: intellectronica/agent-skills
   alias: context7
   name: context7
   host: github.com
   resolved_commit: 9b0e00ad1b941165e2506545bbfddafa34cf2cb8
-  resolved_ref: 9b0e00ad1b941165e2506545bbfddafa34cf2cb8
+  resolved_ref: main
   version: unknown
   virtual_path: skills/context7
   is_virtual: true
   package_type: claude_skill
   deployed_files:
   - .agents/skills/context7
+  - .agents/skills/context7/LICENSE.txt
   - .agents/skills/context7/SKILL.md
   - .claude/skills/context7
+  - .claude/skills/context7/LICENSE.txt
   - .claude/skills/context7/SKILL.md
   deployed_file_hashes:
+    .agents/skills/context7/LICENSE.txt: sha256:8086d35fe85c31edba067005aa982a702faef484f2c77cd0b58c926975eba2a9
     .agents/skills/context7/SKILL.md: sha256:e1c404ae31f71cb1ef108abfbd153f5761f1ed715a9d9e4c2067e61ff673f42f
+    .claude/skills/context7/LICENSE.txt: sha256:8086d35fe85c31edba067005aa982a702faef484f2c77cd0b58c926975eba2a9
     .claude/skills/context7/SKILL.md: sha256:e1c404ae31f71cb1ef108abfbd153f5761f1ed715a9d9e4c2067e61ff673f42f
-  content_hash: sha256:fccbea654f8e35824a8bdce3e059e206efeb6c1fab9f6c096c3867e761081983
+  content_hash: sha256:30d4313262e8b65ab03357e7a9c45f3955c76401f6d0fe8ac590d3d284c7d4e0
+  carried_licenses:
+  - path: LICENSE.txt
+    source: LICENSE.txt
+    hash: sha256:8086d35fe85c31edba067005aa982a702faef484f2c77cd0b58c926975eba2a9
 - repo_url: mangmax/obscura-browser-skill
   alias: obscura-browser
   name: obscura-browser
   host: github.com
   resolved_commit: f285dfdac5c3188fc4c3574eee487ae793ae9b50
-  resolved_ref: f285dfdac5c3188fc4c3574eee487ae793ae9b50
+  resolved_ref: main
   version: unknown
   package_type: claude_skill
   deployed_files:
@@ -244,19 +306,20 @@ dependencies:
     .claude/skills/obscura-browser/references/local-dev-tunnels.md: sha256:d9e821adc20983f140d6e2a8cffbc37dff9dce4039ff8fcf6dee9bcf3f15fafc
     .claude/skills/obscura-browser/scripts/command_templates.py: sha256:2c79fef8b46f09572b5e745f0ab590505d38248a038683f5e2bb8ff59659b4a4
     .claude/skills/obscura-browser/scripts/detect_obscura.py: sha256:ac3dca9b1a76edd1d09d9e410dfa403f6e3ecd3c96656313fd8ccf72c85955af
-  content_hash: sha256:996f4d424adee7c3b23269a31e7cdcababa66a66ff1483af0eb0803056366187
+  content_hash: sha256:050ea83a48693128676b22bd3d0f58e15672e0cb87b5bae6388c1bf21a291f38
 - repo_url: obra/superpowers
   alias: brainstorming
   name: brainstorming
   host: github.com
   resolved_commit: 22f0b463e7a5e579904dd6211a520321035526f7
-  resolved_ref: 22f0b463e7a5e579904dd6211a520321035526f7
+  resolved_ref: main
   version: unknown
   virtual_path: skills/brainstorming
   is_virtual: true
   package_type: claude_skill
   deployed_files:
   - .agents/skills/brainstorming
+  - .agents/skills/brainstorming/LICENSE
   - .agents/skills/brainstorming/SKILL.md
   - .agents/skills/brainstorming/builder-check-prompt.md
   - .agents/skills/brainstorming/scripts/frame-template.html
@@ -266,6 +329,7 @@ dependencies:
   - .agents/skills/brainstorming/scripts/stop-server.sh
   - .agents/skills/brainstorming/visual-companion.md
   - .claude/skills/brainstorming
+  - .claude/skills/brainstorming/LICENSE
   - .claude/skills/brainstorming/SKILL.md
   - .claude/skills/brainstorming/builder-check-prompt.md
   - .claude/skills/brainstorming/scripts/frame-template.html
@@ -275,6 +339,7 @@ dependencies:
   - .claude/skills/brainstorming/scripts/stop-server.sh
   - .claude/skills/brainstorming/visual-companion.md
   deployed_file_hashes:
+    .agents/skills/brainstorming/LICENSE: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
     .agents/skills/brainstorming/SKILL.md: sha256:2c9ca71f94886f9ca9f4aef055f7cafb3e1a9bdf3aeebf8f4cb547c69405d207
     .agents/skills/brainstorming/builder-check-prompt.md: sha256:36d51a4723d6f0a3ce5811a0ea3b3a8424f07533947e1355f5d8cb8cce40c55e
     .agents/skills/brainstorming/scripts/frame-template.html: sha256:6a8a4e58bd6a44b904e2e3c57de774481d909204597e1498de53f1b2fecc4c4e
@@ -283,6 +348,7 @@ dependencies:
     .agents/skills/brainstorming/scripts/start-server.sh: sha256:314dd68dc00e8dd94c7491aca8a5f004c7fddffc161e2b07482f29f48d13659a
     .agents/skills/brainstorming/scripts/stop-server.sh: sha256:0b5ccbbd57f62d3ed88993f7940b5ee0e5c0fc9b21c550c623da4f6292e47daf
     .agents/skills/brainstorming/visual-companion.md: sha256:6ffcb038b53254bd31debaa15e12dcd4ff24bd63d690e0b644ac6396701cf2e2
+    .claude/skills/brainstorming/LICENSE: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
     .claude/skills/brainstorming/SKILL.md: sha256:2c9ca71f94886f9ca9f4aef055f7cafb3e1a9bdf3aeebf8f4cb547c69405d207
     .claude/skills/brainstorming/builder-check-prompt.md: sha256:36d51a4723d6f0a3ce5811a0ea3b3a8424f07533947e1355f5d8cb8cce40c55e
     .claude/skills/brainstorming/scripts/frame-template.html: sha256:6a8a4e58bd6a44b904e2e3c57de774481d909204597e1498de53f1b2fecc4c4e
@@ -291,46 +357,59 @@ dependencies:
     .claude/skills/brainstorming/scripts/start-server.sh: sha256:314dd68dc00e8dd94c7491aca8a5f004c7fddffc161e2b07482f29f48d13659a
     .claude/skills/brainstorming/scripts/stop-server.sh: sha256:0b5ccbbd57f62d3ed88993f7940b5ee0e5c0fc9b21c550c623da4f6292e47daf
     .claude/skills/brainstorming/visual-companion.md: sha256:6ffcb038b53254bd31debaa15e12dcd4ff24bd63d690e0b644ac6396701cf2e2
-  content_hash: sha256:a6dca5258b3d3e753f4d5dc1208cf34eaf0e3a7ece1066cdc38426e7338a61ce
+  content_hash: sha256:a95ce90f18a892b8c1cb6e5d91cc6948329a2a9b14ae47ce808b7bd383ac8ab7
+  carried_licenses:
+  - path: LICENSE
+    source: LICENSE
+    hash: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
 - repo_url: obra/superpowers
   alias: executing-plans
   name: executing-plans
   host: github.com
   resolved_commit: 22f0b463e7a5e579904dd6211a520321035526f7
-  resolved_ref: 22f0b463e7a5e579904dd6211a520321035526f7
+  resolved_ref: main
   version: unknown
   virtual_path: skills/executing-plans
   is_virtual: true
   package_type: claude_skill
   deployed_files:
   - .agents/skills/executing-plans
+  - .agents/skills/executing-plans/LICENSE
   - .agents/skills/executing-plans/SKILL.md
   - .agents/skills/executing-plans/scripts/task-done
   - .agents/skills/executing-plans/scripts/task-start
   - .claude/skills/executing-plans
+  - .claude/skills/executing-plans/LICENSE
   - .claude/skills/executing-plans/SKILL.md
   - .claude/skills/executing-plans/scripts/task-done
   - .claude/skills/executing-plans/scripts/task-start
   deployed_file_hashes:
+    .agents/skills/executing-plans/LICENSE: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
     .agents/skills/executing-plans/SKILL.md: sha256:deaf176fa179827e80f2ea3101db3ea90fdf562ebef340eba761e4687940f5f5
     .agents/skills/executing-plans/scripts/task-done: sha256:ac0b5ebafc7d471507b7e94d88da77a11f187ba277c8d48fefaf8ff3e4fee50e
     .agents/skills/executing-plans/scripts/task-start: sha256:4ae7ce3b6777c3240af786197836a6b4bbf3b0ee831c25f147c149ea8db54a21
+    .claude/skills/executing-plans/LICENSE: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
     .claude/skills/executing-plans/SKILL.md: sha256:deaf176fa179827e80f2ea3101db3ea90fdf562ebef340eba761e4687940f5f5
     .claude/skills/executing-plans/scripts/task-done: sha256:ac0b5ebafc7d471507b7e94d88da77a11f187ba277c8d48fefaf8ff3e4fee50e
     .claude/skills/executing-plans/scripts/task-start: sha256:4ae7ce3b6777c3240af786197836a6b4bbf3b0ee831c25f147c149ea8db54a21
-  content_hash: sha256:9b972fedd6b6d97319a0b1ccfb8b491a69da5417894232948359645f65a5ec74
+  content_hash: sha256:9a8cfb953b7251a6a7ecb5ccf89fe2645b7009bf618eaa9e222d728d2933b29a
+  carried_licenses:
+  - path: LICENSE
+    source: LICENSE
+    hash: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
 - repo_url: obra/superpowers
   alias: systematic-debugging
   name: systematic-debugging
   host: github.com
   resolved_commit: 22f0b463e7a5e579904dd6211a520321035526f7
-  resolved_ref: 22f0b463e7a5e579904dd6211a520321035526f7
+  resolved_ref: main
   version: unknown
   virtual_path: skills/systematic-debugging
   is_virtual: true
   package_type: claude_skill
   deployed_files:
   - .agents/skills/systematic-debugging
+  - .agents/skills/systematic-debugging/LICENSE
   - .agents/skills/systematic-debugging/SKILL.md
   - .agents/skills/systematic-debugging/condition-based-waiting-example.ts
   - .agents/skills/systematic-debugging/condition-based-waiting.md
@@ -338,6 +417,7 @@ dependencies:
   - .agents/skills/systematic-debugging/find-polluter.sh
   - .agents/skills/systematic-debugging/root-cause-tracing.md
   - .claude/skills/systematic-debugging
+  - .claude/skills/systematic-debugging/LICENSE
   - .claude/skills/systematic-debugging/SKILL.md
   - .claude/skills/systematic-debugging/condition-based-waiting-example.ts
   - .claude/skills/systematic-debugging/condition-based-waiting.md
@@ -345,54 +425,69 @@ dependencies:
   - .claude/skills/systematic-debugging/find-polluter.sh
   - .claude/skills/systematic-debugging/root-cause-tracing.md
   deployed_file_hashes:
+    .agents/skills/systematic-debugging/LICENSE: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
     .agents/skills/systematic-debugging/SKILL.md: sha256:51c6435d98c83c42c96ba7c35725a0b2c376cd487fb1a4e6bd0ddbe7e33ef202
     .agents/skills/systematic-debugging/condition-based-waiting-example.ts: sha256:40ae5ebe497fdf310200e43fe986552546d0a22837c0d39e855db1cfd33eb88e
     .agents/skills/systematic-debugging/condition-based-waiting.md: sha256:e89fec8400d6cd50f43407cec9fab50976ba4d55d0ec2eb51c0bd68036b54c26
     .agents/skills/systematic-debugging/defense-in-depth.md: sha256:1e175fb86fc357e58c6aebf5441e481e1b7868b4380c0456b63a17eefbd18ba7
     .agents/skills/systematic-debugging/find-polluter.sh: sha256:dd7b8f13c4cc2a24b33ff87b18da9248f3e1c80a085c3316224f69ff0fa5c43c
     .agents/skills/systematic-debugging/root-cause-tracing.md: sha256:75b933b6a8c40bdb2031b10f21654395b56ec6ab6bc7b018c18d3fe57aeb7fb8
+    .claude/skills/systematic-debugging/LICENSE: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
     .claude/skills/systematic-debugging/SKILL.md: sha256:51c6435d98c83c42c96ba7c35725a0b2c376cd487fb1a4e6bd0ddbe7e33ef202
     .claude/skills/systematic-debugging/condition-based-waiting-example.ts: sha256:40ae5ebe497fdf310200e43fe986552546d0a22837c0d39e855db1cfd33eb88e
     .claude/skills/systematic-debugging/condition-based-waiting.md: sha256:e89fec8400d6cd50f43407cec9fab50976ba4d55d0ec2eb51c0bd68036b54c26
     .claude/skills/systematic-debugging/defense-in-depth.md: sha256:1e175fb86fc357e58c6aebf5441e481e1b7868b4380c0456b63a17eefbd18ba7
     .claude/skills/systematic-debugging/find-polluter.sh: sha256:dd7b8f13c4cc2a24b33ff87b18da9248f3e1c80a085c3316224f69ff0fa5c43c
     .claude/skills/systematic-debugging/root-cause-tracing.md: sha256:75b933b6a8c40bdb2031b10f21654395b56ec6ab6bc7b018c18d3fe57aeb7fb8
-  content_hash: sha256:9357c267a1f6597275e07b1b6513ee2530501e81018064e518e446b642bc2d88
+  content_hash: sha256:91ba6f70076fba9e8868162fd9b53fd35ef9bfe5a9469d683c4ed2bf82c906e4
+  carried_licenses:
+  - path: LICENSE
+    source: LICENSE
+    hash: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
 - repo_url: obra/superpowers
   alias: test-driven-development
   name: test-driven-development
   host: github.com
   resolved_commit: 22f0b463e7a5e579904dd6211a520321035526f7
-  resolved_ref: 22f0b463e7a5e579904dd6211a520321035526f7
+  resolved_ref: main
   version: unknown
   virtual_path: skills/test-driven-development
   is_virtual: true
   package_type: claude_skill
   deployed_files:
   - .agents/skills/test-driven-development
+  - .agents/skills/test-driven-development/LICENSE
   - .agents/skills/test-driven-development/SKILL.md
   - .agents/skills/test-driven-development/writing-good-tests.md
   - .claude/skills/test-driven-development
+  - .claude/skills/test-driven-development/LICENSE
   - .claude/skills/test-driven-development/SKILL.md
   - .claude/skills/test-driven-development/writing-good-tests.md
   deployed_file_hashes:
+    .agents/skills/test-driven-development/LICENSE: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
     .agents/skills/test-driven-development/SKILL.md: sha256:64b03fce4aee5a97a93160cea8111f3ba13a17b7c001db4bd5836d67fd10705d
     .agents/skills/test-driven-development/writing-good-tests.md: sha256:51471c853306ff92ca8bb41dcaea05f31c0e46b03651f8f3c99754b7172f4ae1
+    .claude/skills/test-driven-development/LICENSE: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
     .claude/skills/test-driven-development/SKILL.md: sha256:64b03fce4aee5a97a93160cea8111f3ba13a17b7c001db4bd5836d67fd10705d
     .claude/skills/test-driven-development/writing-good-tests.md: sha256:51471c853306ff92ca8bb41dcaea05f31c0e46b03651f8f3c99754b7172f4ae1
-  content_hash: sha256:3cfe4ebb6fa7288f668d87880d279c8e48f7a92b63415e296857060f5ce22e05
+  content_hash: sha256:4ca95bd3f3736de5e5069a7628d2761a5d16afd65c1b7d380e253a978ce6be04
+  carried_licenses:
+  - path: LICENSE
+    source: LICENSE
+    hash: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
 - repo_url: obra/superpowers
   alias: using-superpowers
   name: using-superpowers
   host: github.com
   resolved_commit: 22f0b463e7a5e579904dd6211a520321035526f7
-  resolved_ref: 22f0b463e7a5e579904dd6211a520321035526f7
+  resolved_ref: main
   version: unknown
   virtual_path: skills/using-superpowers
   is_virtual: true
   package_type: claude_skill
   deployed_files:
   - .agents/skills/using-superpowers
+  - .agents/skills/using-superpowers/LICENSE
   - .agents/skills/using-superpowers/SKILL.md
   - .agents/skills/using-superpowers/references/antigravity-tools.md
   - .agents/skills/using-superpowers/references/claude-code-tools.md
@@ -402,6 +497,7 @@ dependencies:
   - .agents/skills/using-superpowers/references/muse-tools.md
   - .agents/skills/using-superpowers/references/pi-tools.md
   - .claude/skills/using-superpowers
+  - .claude/skills/using-superpowers/LICENSE
   - .claude/skills/using-superpowers/SKILL.md
   - .claude/skills/using-superpowers/references/antigravity-tools.md
   - .claude/skills/using-superpowers/references/claude-code-tools.md
@@ -411,6 +507,7 @@ dependencies:
   - .claude/skills/using-superpowers/references/muse-tools.md
   - .claude/skills/using-superpowers/references/pi-tools.md
   deployed_file_hashes:
+    .agents/skills/using-superpowers/LICENSE: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
     .agents/skills/using-superpowers/SKILL.md: sha256:82c5c8866ad7f5dd4440ce66bd7806ba48a2f13771beae5cf112e53f08fe36ba
     .agents/skills/using-superpowers/references/antigravity-tools.md: sha256:4880f6de3da4e32f9659ebe7a72b9e0ebfff04e028c2ed96173f86d0387a04c0
     .agents/skills/using-superpowers/references/claude-code-tools.md: sha256:21479a3fee27448cab8748a3b5687e53bb257883bda9c070426f9a1ab5cebf1b
@@ -419,6 +516,7 @@ dependencies:
     .agents/skills/using-superpowers/references/hermes-tools.md: sha256:e2185c976a3c87503910e05e2aea58cc89bc8e569bb624b93df9958ac47a9190
     .agents/skills/using-superpowers/references/muse-tools.md: sha256:5a1da5c575fe18456ca71cd47ebfd8a38c745f8d82a67fe64d5b83080000eeb3
     .agents/skills/using-superpowers/references/pi-tools.md: sha256:703dbc83d23ecab9c6f388460c38abc482e9dee2fe6772a8c7a255152ad3a4d5
+    .claude/skills/using-superpowers/LICENSE: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
     .claude/skills/using-superpowers/SKILL.md: sha256:82c5c8866ad7f5dd4440ce66bd7806ba48a2f13771beae5cf112e53f08fe36ba
     .claude/skills/using-superpowers/references/antigravity-tools.md: sha256:4880f6de3da4e32f9659ebe7a72b9e0ebfff04e028c2ed96173f86d0387a04c0
     .claude/skills/using-superpowers/references/claude-code-tools.md: sha256:21479a3fee27448cab8748a3b5687e53bb257883bda9c070426f9a1ab5cebf1b
@@ -427,105 +525,201 @@ dependencies:
     .claude/skills/using-superpowers/references/hermes-tools.md: sha256:e2185c976a3c87503910e05e2aea58cc89bc8e569bb624b93df9958ac47a9190
     .claude/skills/using-superpowers/references/muse-tools.md: sha256:5a1da5c575fe18456ca71cd47ebfd8a38c745f8d82a67fe64d5b83080000eeb3
     .claude/skills/using-superpowers/references/pi-tools.md: sha256:703dbc83d23ecab9c6f388460c38abc482e9dee2fe6772a8c7a255152ad3a4d5
-  content_hash: sha256:0b78e28dc7e74e990e1236fee094db82f507bbbde99bef379d4766958732974f
+  content_hash: sha256:6d52fffb2b15ed7544a2286f97ceebf65d1c6654ab2bd4e1329ff3872c9903d4
+  carried_licenses:
+  - path: LICENSE
+    source: LICENSE
+    hash: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
 - repo_url: obra/superpowers
   alias: writing-plans
   name: writing-plans
   host: github.com
   resolved_commit: 22f0b463e7a5e579904dd6211a520321035526f7
-  resolved_ref: 22f0b463e7a5e579904dd6211a520321035526f7
+  resolved_ref: main
   version: unknown
   virtual_path: skills/writing-plans
   is_virtual: true
   package_type: claude_skill
   deployed_files:
   - .agents/skills/writing-plans
+  - .agents/skills/writing-plans/LICENSE
   - .agents/skills/writing-plans/SKILL.md
   - .claude/skills/writing-plans
+  - .claude/skills/writing-plans/LICENSE
   - .claude/skills/writing-plans/SKILL.md
   deployed_file_hashes:
+    .agents/skills/writing-plans/LICENSE: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
     .agents/skills/writing-plans/SKILL.md: sha256:a6c67c1900064347c2a329990dd3c555657c51c3ec53b259a08aa01a2c26139a
+    .claude/skills/writing-plans/LICENSE: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
     .claude/skills/writing-plans/SKILL.md: sha256:a6c67c1900064347c2a329990dd3c555657c51c3ec53b259a08aa01a2c26139a
-  content_hash: sha256:c2647b5bf067be353a893e5a39a632cbbeb7ad81e61fa5ae227ece5490029073
+  content_hash: sha256:e134213556f4c4f34c7c7c6ce1c5304b578c5b86ba25e9ae6e2d673e4cf6e075
+  carried_licenses:
+  - path: LICENSE
+    source: LICENSE
+    hash: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
+- repo_url: vercel-labs/agent-browser
+  alias: agent-browser
+  name: agent-browser
+  host: github.com
+  resolved_commit: f0a98351ec920bd826b22c98dacf8414f04b9832
+  resolved_ref: main
+  version: unknown
+  virtual_path: skills/agent-browser
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/agent-browser
+  - .agents/skills/agent-browser/LICENSE
+  - .agents/skills/agent-browser/SKILL.md
+  - .claude/skills/agent-browser
+  - .claude/skills/agent-browser/LICENSE
+  - .claude/skills/agent-browser/SKILL.md
+  deployed_file_hashes:
+    .agents/skills/agent-browser/LICENSE: sha256:014bb31e83d5c2e76aea1cc6e82217346ab41362f32cb355ad0f5c10aa0aeaff
+    .agents/skills/agent-browser/SKILL.md: sha256:7d46deeb0101e84f8d70fd2e5cd18e3b6017edfb973607ff23e95e22c92ce73e
+    .claude/skills/agent-browser/LICENSE: sha256:014bb31e83d5c2e76aea1cc6e82217346ab41362f32cb355ad0f5c10aa0aeaff
+    .claude/skills/agent-browser/SKILL.md: sha256:7d46deeb0101e84f8d70fd2e5cd18e3b6017edfb973607ff23e95e22c92ce73e
+  content_hash: sha256:32cd55dc4673dc5f7e27502d06d0ae5cd357ba858aed26bad4d37938e1e17fdb
+  carried_licenses:
+  - path: LICENSE
+    source: LICENSE
+    hash: sha256:014bb31e83d5c2e76aea1cc6e82217346ab41362f32cb355ad0f5c10aa0aeaff
 - repo_url: vercel-labs/skills
   alias: find-skills
   name: find-skills
   host: github.com
   resolved_commit: e781cb4d07433dfe1d19e924ed45cc61738c55ec
-  resolved_ref: e781cb4d07433dfe1d19e924ed45cc61738c55ec
+  resolved_ref: main
   version: unknown
   virtual_path: skills/find-skills
   is_virtual: true
   package_type: claude_skill
   deployed_files:
   - .agents/skills/find-skills
+  - .agents/skills/find-skills/LICENSE
   - .agents/skills/find-skills/SKILL.md
   - .claude/skills/find-skills
+  - .claude/skills/find-skills/LICENSE
   - .claude/skills/find-skills/SKILL.md
   deployed_file_hashes:
+    .agents/skills/find-skills/LICENSE: sha256:661142e53c313d2bb5e1b055f5c0a39001450ff1b5e27b89dc4bc7de9a6352ca
     .agents/skills/find-skills/SKILL.md: sha256:c00eeea0e13e74fe4a9d84ba0a8542205a1b736d65f13134fe1a6647eb14976f
+    .claude/skills/find-skills/LICENSE: sha256:661142e53c313d2bb5e1b055f5c0a39001450ff1b5e27b89dc4bc7de9a6352ca
     .claude/skills/find-skills/SKILL.md: sha256:c00eeea0e13e74fe4a9d84ba0a8542205a1b736d65f13134fe1a6647eb14976f
-  content_hash: sha256:913b9d37d0d54047dd65222bb8c67b2bf04e3cb87dcad1729068d7a8b2c8c396
+  content_hash: sha256:aeacfcbfeb7855c5b15790e996fb6b62dc72d4c920947f6b46764e25eb6bd855
+  carried_licenses:
+  - path: LICENSE
+    source: LICENSE
+    hash: sha256:661142e53c313d2bb5e1b055f5c0a39001450ff1b5e27b89dc4bc7de9a6352ca
 - repo_url: vocdoni/skills
   alias: comments
   name: comments
   host: github.com
   resolved_commit: 175a70ad7e9a6c6cd85f547d3914c7c38b059a1e
-  resolved_ref: 175a70ad7e9a6c6cd85f547d3914c7c38b059a1e
+  resolved_ref: main
   version: unknown
   virtual_path: plugins/vocdoni-comments/skills/comments
   is_virtual: true
   package_type: claude_skill
   deployed_files:
   - .agents/skills/comments
+  - .agents/skills/comments/LICENSE
   - .agents/skills/comments/SKILL.md
   - .agents/skills/comments/trim.md
   - .claude/skills/comments
+  - .claude/skills/comments/LICENSE
   - .claude/skills/comments/SKILL.md
   - .claude/skills/comments/trim.md
   deployed_file_hashes:
+    .agents/skills/comments/LICENSE: sha256:8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef
     .agents/skills/comments/SKILL.md: sha256:c241f20fc237cdb997364b2f356ca8d43ef416ef16fd5dae0adc2e005de25ce4
     .agents/skills/comments/trim.md: sha256:52608169fbdfff0b51975bf76839e81bb4b29f27b21697393fde2175f502aa5c
+    .claude/skills/comments/LICENSE: sha256:8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef
     .claude/skills/comments/SKILL.md: sha256:c241f20fc237cdb997364b2f356ca8d43ef416ef16fd5dae0adc2e005de25ce4
     .claude/skills/comments/trim.md: sha256:52608169fbdfff0b51975bf76839e81bb4b29f27b21697393fde2175f502aa5c
-  content_hash: sha256:e8a4e34d81e7dacd200a7c42310c74510819f0cc651b645c12e961b13853693b
+  content_hash: sha256:24180dea0b48b4ff55377b30b5378c0853dce84990d6db7fd1eaa9179d277a94
+  carried_licenses:
+  - path: LICENSE
+    source: LICENSE
+    hash: sha256:8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef
 - repo_url: vocdoni/skills
   alias: contributing
-  name: vocdoni-contributing
+  name: contributing
   host: github.com
   resolved_commit: 175a70ad7e9a6c6cd85f547d3914c7c38b059a1e
-  resolved_ref: 175a70ad7e9a6c6cd85f547d3914c7c38b059a1e
-  version: 0.3.0
-  virtual_path: plugins/vocdoni-contributing
+  resolved_ref: main
+  version: unknown
+  virtual_path: plugins/vocdoni-contributing/skills/contributing
   is_virtual: true
-  package_type: skill_bundle
+  package_type: claude_skill
   deployed_files:
   - .agents/skills/contributing
+  - .agents/skills/contributing/LICENSE
   - .agents/skills/contributing/SKILL.md
-  - .claude/hooks/contributing/hooks/session-start.sh
   - .claude/skills/contributing
+  - .claude/skills/contributing/LICENSE
   - .claude/skills/contributing/SKILL.md
   deployed_file_hashes:
+    .agents/skills/contributing/LICENSE: sha256:8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef
     .agents/skills/contributing/SKILL.md: sha256:1fcf63770e74c8c6c1473bfd161cb3b644c914342bad7863e1b6bc7b9732369a
-    .claude/hooks/contributing/hooks/session-start.sh: sha256:df0e337223b60d4d4bf3fdb4fa6990eb819c913e2ec3f905db110121142dc3dd
+    .claude/skills/contributing/LICENSE: sha256:8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef
     .claude/skills/contributing/SKILL.md: sha256:1fcf63770e74c8c6c1473bfd161cb3b644c914342bad7863e1b6bc7b9732369a
-  content_hash: sha256:9544512874dc59152e59c91afb747354d204d3aa39ad18958eb71120424b41ef
-  declared_license: AGPL-3.0-or-later
+  content_hash: sha256:7fdca035f7765b2fb4dcdc6d60362a47db2130bb8f6faa477edf405efeaffe20
+  carried_licenses:
+  - path: LICENSE
+    source: LICENSE
+    hash: sha256:8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef
 deployments:
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/agent-browser
+  runtime: null
+  scope: user
+  owners:
+  - vercel-labs/agent-browser/skills/agent-browser
+  active_owner: vercel-labs/agent-browser/skills/agent-browser
+  content_hash: null
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/agent-browser/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - vercel-labs/agent-browser/skills/agent-browser
+  active_owner: vercel-labs/agent-browser/skills/agent-browser
+  content_hash: sha256:014bb31e83d5c2e76aea1cc6e82217346ab41362f32cb355ad0f5c10aa0aeaff
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/agent-browser/SKILL.md
+  runtime: null
+  scope: user
+  owners:
+  - vercel-labs/agent-browser/skills/agent-browser
+  active_owner: vercel-labs/agent-browser/skills/agent-browser
+  content_hash: sha256:7d46deeb0101e84f8d70fd2e5cd18e3b6017edfb973607ff23e95e22c92ce73e
 - kind: project-relative
   target: agent-skills
   value: .agents/skills/brainstorming
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/brainstorming
   active_owner: obra/superpowers/skills/brainstorming
   content_hash: null
 - kind: project-relative
   target: agent-skills
+  value: .agents/skills/brainstorming/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/brainstorming
+  active_owner: obra/superpowers/skills/brainstorming
+  content_hash: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
+- kind: project-relative
+  target: agent-skills
   value: .agents/skills/brainstorming/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/brainstorming
   active_owner: obra/superpowers/skills/brainstorming
@@ -534,7 +728,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/brainstorming/builder-check-prompt.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/brainstorming
   active_owner: obra/superpowers/skills/brainstorming
@@ -543,7 +737,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/brainstorming/scripts/frame-template.html
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/brainstorming
   active_owner: obra/superpowers/skills/brainstorming
@@ -552,7 +746,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/brainstorming/scripts/helper.js
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/brainstorming
   active_owner: obra/superpowers/skills/brainstorming
@@ -561,7 +755,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/brainstorming/scripts/server.cjs
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/brainstorming
   active_owner: obra/superpowers/skills/brainstorming
@@ -570,7 +764,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/brainstorming/scripts/start-server.sh
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/brainstorming
   active_owner: obra/superpowers/skills/brainstorming
@@ -579,7 +773,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/brainstorming/scripts/stop-server.sh
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/brainstorming
   active_owner: obra/superpowers/skills/brainstorming
@@ -588,7 +782,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/brainstorming/visual-companion.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/brainstorming
   active_owner: obra/superpowers/skills/brainstorming
@@ -597,16 +791,25 @@ deployments:
   target: agent-skills
   value: .agents/skills/comments
   runtime: null
-  scope: project
+  scope: user
   owners:
   - vocdoni/skills/plugins/vocdoni-comments/skills/comments
   active_owner: vocdoni/skills/plugins/vocdoni-comments/skills/comments
   content_hash: null
 - kind: project-relative
   target: agent-skills
+  value: .agents/skills/comments/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - vocdoni/skills/plugins/vocdoni-comments/skills/comments
+  active_owner: vocdoni/skills/plugins/vocdoni-comments/skills/comments
+  content_hash: sha256:8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef
+- kind: project-relative
+  target: agent-skills
   value: .agents/skills/comments/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - vocdoni/skills/plugins/vocdoni-comments/skills/comments
   active_owner: vocdoni/skills/plugins/vocdoni-comments/skills/comments
@@ -615,7 +818,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/comments/trim.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - vocdoni/skills/plugins/vocdoni-comments/skills/comments
   active_owner: vocdoni/skills/plugins/vocdoni-comments/skills/comments
@@ -624,16 +827,25 @@ deployments:
   target: agent-skills
   value: .agents/skills/context7
   runtime: null
-  scope: project
+  scope: user
   owners:
   - intellectronica/agent-skills/skills/context7
   active_owner: intellectronica/agent-skills/skills/context7
   content_hash: null
 - kind: project-relative
   target: agent-skills
+  value: .agents/skills/context7/LICENSE.txt
+  runtime: null
+  scope: user
+  owners:
+  - intellectronica/agent-skills/skills/context7
+  active_owner: intellectronica/agent-skills/skills/context7
+  content_hash: sha256:8086d35fe85c31edba067005aa982a702faef484f2c77cd0b58c926975eba2a9
+- kind: project-relative
+  target: agent-skills
   value: .agents/skills/context7/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - intellectronica/agent-skills/skills/context7
   active_owner: intellectronica/agent-skills/skills/context7
@@ -642,34 +854,79 @@ deployments:
   target: agent-skills
   value: .agents/skills/contributing
   runtime: null
-  scope: project
+  scope: user
   owners:
-  - vocdoni/skills/plugins/vocdoni-contributing
-  active_owner: vocdoni/skills/plugins/vocdoni-contributing
+  - vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  active_owner: vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
   content_hash: null
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/contributing/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  active_owner: vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  content_hash: sha256:8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef
 - kind: project-relative
   target: agent-skills
   value: .agents/skills/contributing/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
-  - vocdoni/skills/plugins/vocdoni-contributing
-  active_owner: vocdoni/skills/plugins/vocdoni-contributing
+  - vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  active_owner: vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
   content_hash: sha256:1fcf63770e74c8c6c1473bfd161cb3b644c914342bad7863e1b6bc7b9732369a
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/create-readme
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/create-readme
+  active_owner: github/awesome-copilot/skills/create-readme
+  content_hash: null
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/create-readme/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/create-readme
+  active_owner: github/awesome-copilot/skills/create-readme
+  content_hash: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/create-readme/SKILL.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/create-readme
+  active_owner: github/awesome-copilot/skills/create-readme
+  content_hash: sha256:a93f9161bef324e3a1550fc79d4f01b660a3fb7eadc4455677d9ace4da2965ac
 - kind: project-relative
   target: agent-skills
   value: .agents/skills/executing-plans
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/executing-plans
   active_owner: obra/superpowers/skills/executing-plans
   content_hash: null
 - kind: project-relative
   target: agent-skills
+  value: .agents/skills/executing-plans/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/executing-plans
+  active_owner: obra/superpowers/skills/executing-plans
+  content_hash: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
+- kind: project-relative
+  target: agent-skills
   value: .agents/skills/executing-plans/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/executing-plans
   active_owner: obra/superpowers/skills/executing-plans
@@ -678,7 +935,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/executing-plans/scripts/task-done
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/executing-plans
   active_owner: obra/superpowers/skills/executing-plans
@@ -687,7 +944,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/executing-plans/scripts/task-start
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/executing-plans
   active_owner: obra/superpowers/skills/executing-plans
@@ -696,16 +953,25 @@ deployments:
   target: agent-skills
   value: .agents/skills/find-skills
   runtime: null
-  scope: project
+  scope: user
   owners:
   - vercel-labs/skills/skills/find-skills
   active_owner: vercel-labs/skills/skills/find-skills
   content_hash: null
 - kind: project-relative
   target: agent-skills
+  value: .agents/skills/find-skills/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - vercel-labs/skills/skills/find-skills
+  active_owner: vercel-labs/skills/skills/find-skills
+  content_hash: sha256:661142e53c313d2bb5e1b055f5c0a39001450ff1b5e27b89dc4bc7de9a6352ca
+- kind: project-relative
+  target: agent-skills
   value: .agents/skills/find-skills/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - vercel-labs/skills/skills/find-skills
   active_owner: vercel-labs/skills/skills/find-skills
@@ -714,16 +980,25 @@ deployments:
   target: agent-skills
   value: .agents/skills/git-commit
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/git-commit
   active_owner: github/awesome-copilot/skills/git-commit
   content_hash: null
 - kind: project-relative
   target: agent-skills
+  value: .agents/skills/git-commit/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/git-commit
+  active_owner: github/awesome-copilot/skills/git-commit
+  content_hash: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
+- kind: project-relative
+  target: agent-skills
   value: .agents/skills/git-commit/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/git-commit
   active_owner: github/awesome-copilot/skills/git-commit
@@ -732,16 +1007,25 @@ deployments:
   target: agent-skills
   value: .agents/skills/github-issues
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
   content_hash: null
 - kind: project-relative
   target: agent-skills
+  value: .agents/skills/github-issues/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
+- kind: project-relative
+  target: agent-skills
   value: .agents/skills/github-issues/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
@@ -750,7 +1034,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/github-issues/references/dependencies.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
@@ -759,7 +1043,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/github-issues/references/images.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
@@ -768,7 +1052,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/github-issues/references/issue-fields.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
@@ -777,7 +1061,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/github-issues/references/issue-types.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
@@ -786,7 +1070,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/github-issues/references/labels.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
@@ -795,7 +1079,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/github-issues/references/milestones.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
@@ -804,7 +1088,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/github-issues/references/projects.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
@@ -813,7 +1097,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/github-issues/references/search.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
@@ -822,7 +1106,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/github-issues/references/sub-issues.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
@@ -831,7 +1115,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/github-issues/references/templates.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
@@ -840,16 +1124,25 @@ deployments:
   target: agent-skills
   value: .agents/skills/herdr
   runtime: null
-  scope: project
+  scope: user
   owners:
   - herdrdev/herdr/skills/herdr
   active_owner: herdrdev/herdr/skills/herdr
   content_hash: null
 - kind: project-relative
   target: agent-skills
+  value: .agents/skills/herdr/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - herdrdev/herdr/skills/herdr
+  active_owner: herdrdev/herdr/skills/herdr
+  content_hash: sha256:c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4
+- kind: project-relative
+  target: agent-skills
   value: .agents/skills/herdr/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - herdrdev/herdr/skills/herdr
   active_owner: herdrdev/herdr/skills/herdr
@@ -858,7 +1151,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/obscura-browser
   runtime: null
-  scope: project
+  scope: user
   owners:
   - mangmax/obscura-browser-skill
   active_owner: mangmax/obscura-browser-skill
@@ -867,7 +1160,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/obscura-browser/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - mangmax/obscura-browser-skill
   active_owner: mangmax/obscura-browser-skill
@@ -876,7 +1169,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/obscura-browser/agents/openai.yaml
   runtime: null
-  scope: project
+  scope: user
   owners:
   - mangmax/obscura-browser-skill
   active_owner: mangmax/obscura-browser-skill
@@ -885,7 +1178,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/obscura-browser/references/cdp-integration.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - mangmax/obscura-browser-skill
   active_owner: mangmax/obscura-browser-skill
@@ -894,7 +1187,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/obscura-browser/references/cli-cheatsheet.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - mangmax/obscura-browser-skill
   active_owner: mangmax/obscura-browser-skill
@@ -903,7 +1196,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/obscura-browser/references/local-dev-tunnels.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - mangmax/obscura-browser-skill
   active_owner: mangmax/obscura-browser-skill
@@ -912,7 +1205,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/obscura-browser/scripts/command_templates.py
   runtime: null
-  scope: project
+  scope: user
   owners:
   - mangmax/obscura-browser-skill
   active_owner: mangmax/obscura-browser-skill
@@ -921,7 +1214,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/obscura-browser/scripts/detect_obscura.py
   runtime: null
-  scope: project
+  scope: user
   owners:
   - mangmax/obscura-browser-skill
   active_owner: mangmax/obscura-browser-skill
@@ -930,7 +1223,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/skill-creator
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -939,7 +1232,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/skill-creator/LICENSE.txt
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -948,7 +1241,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/skill-creator/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -957,7 +1250,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/skill-creator/agents/analyzer.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -966,7 +1259,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/skill-creator/agents/comparator.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -975,7 +1268,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/skill-creator/agents/grader.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -984,7 +1277,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/skill-creator/assets/eval_review.html
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -993,7 +1286,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/skill-creator/eval-viewer/generate_review.py
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1002,7 +1295,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/skill-creator/eval-viewer/viewer.html
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1011,7 +1304,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/skill-creator/references/schemas.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1020,7 +1313,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/skill-creator/scripts/__init__.py
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1029,7 +1322,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/skill-creator/scripts/aggregate_benchmark.py
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1038,7 +1331,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/skill-creator/scripts/generate_report.py
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1047,7 +1340,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/skill-creator/scripts/improve_description.py
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1056,7 +1349,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/skill-creator/scripts/package_skill.py
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1065,7 +1358,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/skill-creator/scripts/quick_validate.py
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1074,7 +1367,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/skill-creator/scripts/run_eval.py
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1083,7 +1376,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/skill-creator/scripts/run_loop.py
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1092,7 +1385,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/skill-creator/scripts/utils.py
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1101,16 +1394,25 @@ deployments:
   target: agent-skills
   value: .agents/skills/systematic-debugging
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/systematic-debugging
   active_owner: obra/superpowers/skills/systematic-debugging
   content_hash: null
 - kind: project-relative
   target: agent-skills
+  value: .agents/skills/systematic-debugging/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/systematic-debugging
+  active_owner: obra/superpowers/skills/systematic-debugging
+  content_hash: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
+- kind: project-relative
+  target: agent-skills
   value: .agents/skills/systematic-debugging/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/systematic-debugging
   active_owner: obra/superpowers/skills/systematic-debugging
@@ -1119,7 +1421,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/systematic-debugging/condition-based-waiting-example.ts
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/systematic-debugging
   active_owner: obra/superpowers/skills/systematic-debugging
@@ -1128,7 +1430,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/systematic-debugging/condition-based-waiting.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/systematic-debugging
   active_owner: obra/superpowers/skills/systematic-debugging
@@ -1137,7 +1439,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/systematic-debugging/defense-in-depth.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/systematic-debugging
   active_owner: obra/superpowers/skills/systematic-debugging
@@ -1146,7 +1448,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/systematic-debugging/find-polluter.sh
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/systematic-debugging
   active_owner: obra/superpowers/skills/systematic-debugging
@@ -1155,7 +1457,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/systematic-debugging/root-cause-tracing.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/systematic-debugging
   active_owner: obra/superpowers/skills/systematic-debugging
@@ -1164,16 +1466,25 @@ deployments:
   target: agent-skills
   value: .agents/skills/test-driven-development
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/test-driven-development
   active_owner: obra/superpowers/skills/test-driven-development
   content_hash: null
 - kind: project-relative
   target: agent-skills
+  value: .agents/skills/test-driven-development/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/test-driven-development
+  active_owner: obra/superpowers/skills/test-driven-development
+  content_hash: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
+- kind: project-relative
+  target: agent-skills
   value: .agents/skills/test-driven-development/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/test-driven-development
   active_owner: obra/superpowers/skills/test-driven-development
@@ -1182,7 +1493,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/test-driven-development/writing-good-tests.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/test-driven-development
   active_owner: obra/superpowers/skills/test-driven-development
@@ -1191,16 +1502,25 @@ deployments:
   target: agent-skills
   value: .agents/skills/using-superpowers
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/using-superpowers
   active_owner: obra/superpowers/skills/using-superpowers
   content_hash: null
 - kind: project-relative
   target: agent-skills
+  value: .agents/skills/using-superpowers/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/using-superpowers
+  active_owner: obra/superpowers/skills/using-superpowers
+  content_hash: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
+- kind: project-relative
+  target: agent-skills
   value: .agents/skills/using-superpowers/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/using-superpowers
   active_owner: obra/superpowers/skills/using-superpowers
@@ -1209,7 +1529,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/using-superpowers/references/antigravity-tools.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/using-superpowers
   active_owner: obra/superpowers/skills/using-superpowers
@@ -1218,7 +1538,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/using-superpowers/references/claude-code-tools.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/using-superpowers
   active_owner: obra/superpowers/skills/using-superpowers
@@ -1227,7 +1547,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/using-superpowers/references/codex-tools.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/using-superpowers
   active_owner: obra/superpowers/skills/using-superpowers
@@ -1236,7 +1556,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/using-superpowers/references/gemini-tools.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/using-superpowers
   active_owner: obra/superpowers/skills/using-superpowers
@@ -1245,7 +1565,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/using-superpowers/references/hermes-tools.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/using-superpowers
   active_owner: obra/superpowers/skills/using-superpowers
@@ -1254,7 +1574,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/using-superpowers/references/muse-tools.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/using-superpowers
   active_owner: obra/superpowers/skills/using-superpowers
@@ -1263,7 +1583,7 @@ deployments:
   target: agent-skills
   value: .agents/skills/using-superpowers/references/pi-tools.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/using-superpowers
   active_owner: obra/superpowers/skills/using-superpowers
@@ -1272,43 +1592,79 @@ deployments:
   target: agent-skills
   value: .agents/skills/writing-plans
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/writing-plans
   active_owner: obra/superpowers/skills/writing-plans
   content_hash: null
 - kind: project-relative
   target: agent-skills
+  value: .agents/skills/writing-plans/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/writing-plans
+  active_owner: obra/superpowers/skills/writing-plans
+  content_hash: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
+- kind: project-relative
+  target: agent-skills
   value: .agents/skills/writing-plans/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/writing-plans
   active_owner: obra/superpowers/skills/writing-plans
   content_hash: sha256:a6c67c1900064347c2a329990dd3c555657c51c3ec53b259a08aa01a2c26139a
 - kind: project-relative
   target: claude
-  value: .claude/hooks/contributing/hooks/session-start.sh
+  value: .claude/skills/agent-browser
   runtime: null
-  scope: project
+  scope: user
   owners:
-  - vocdoni/skills/plugins/vocdoni-contributing
-  active_owner: vocdoni/skills/plugins/vocdoni-contributing
-  content_hash: sha256:df0e337223b60d4d4bf3fdb4fa6990eb819c913e2ec3f905db110121142dc3dd
+  - vercel-labs/agent-browser/skills/agent-browser
+  active_owner: vercel-labs/agent-browser/skills/agent-browser
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/agent-browser/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - vercel-labs/agent-browser/skills/agent-browser
+  active_owner: vercel-labs/agent-browser/skills/agent-browser
+  content_hash: sha256:014bb31e83d5c2e76aea1cc6e82217346ab41362f32cb355ad0f5c10aa0aeaff
+- kind: project-relative
+  target: claude
+  value: .claude/skills/agent-browser/SKILL.md
+  runtime: null
+  scope: user
+  owners:
+  - vercel-labs/agent-browser/skills/agent-browser
+  active_owner: vercel-labs/agent-browser/skills/agent-browser
+  content_hash: sha256:7d46deeb0101e84f8d70fd2e5cd18e3b6017edfb973607ff23e95e22c92ce73e
 - kind: project-relative
   target: claude
   value: .claude/skills/brainstorming
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/brainstorming
   active_owner: obra/superpowers/skills/brainstorming
   content_hash: null
 - kind: project-relative
   target: claude
+  value: .claude/skills/brainstorming/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/brainstorming
+  active_owner: obra/superpowers/skills/brainstorming
+  content_hash: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
+- kind: project-relative
+  target: claude
   value: .claude/skills/brainstorming/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/brainstorming
   active_owner: obra/superpowers/skills/brainstorming
@@ -1317,7 +1673,7 @@ deployments:
   target: claude
   value: .claude/skills/brainstorming/builder-check-prompt.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/brainstorming
   active_owner: obra/superpowers/skills/brainstorming
@@ -1326,7 +1682,7 @@ deployments:
   target: claude
   value: .claude/skills/brainstorming/scripts/frame-template.html
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/brainstorming
   active_owner: obra/superpowers/skills/brainstorming
@@ -1335,7 +1691,7 @@ deployments:
   target: claude
   value: .claude/skills/brainstorming/scripts/helper.js
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/brainstorming
   active_owner: obra/superpowers/skills/brainstorming
@@ -1344,7 +1700,7 @@ deployments:
   target: claude
   value: .claude/skills/brainstorming/scripts/server.cjs
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/brainstorming
   active_owner: obra/superpowers/skills/brainstorming
@@ -1353,7 +1709,7 @@ deployments:
   target: claude
   value: .claude/skills/brainstorming/scripts/start-server.sh
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/brainstorming
   active_owner: obra/superpowers/skills/brainstorming
@@ -1362,7 +1718,7 @@ deployments:
   target: claude
   value: .claude/skills/brainstorming/scripts/stop-server.sh
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/brainstorming
   active_owner: obra/superpowers/skills/brainstorming
@@ -1371,7 +1727,7 @@ deployments:
   target: claude
   value: .claude/skills/brainstorming/visual-companion.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/brainstorming
   active_owner: obra/superpowers/skills/brainstorming
@@ -1380,16 +1736,25 @@ deployments:
   target: claude
   value: .claude/skills/comments
   runtime: null
-  scope: project
+  scope: user
   owners:
   - vocdoni/skills/plugins/vocdoni-comments/skills/comments
   active_owner: vocdoni/skills/plugins/vocdoni-comments/skills/comments
   content_hash: null
 - kind: project-relative
   target: claude
+  value: .claude/skills/comments/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - vocdoni/skills/plugins/vocdoni-comments/skills/comments
+  active_owner: vocdoni/skills/plugins/vocdoni-comments/skills/comments
+  content_hash: sha256:8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef
+- kind: project-relative
+  target: claude
   value: .claude/skills/comments/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - vocdoni/skills/plugins/vocdoni-comments/skills/comments
   active_owner: vocdoni/skills/plugins/vocdoni-comments/skills/comments
@@ -1398,7 +1763,7 @@ deployments:
   target: claude
   value: .claude/skills/comments/trim.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - vocdoni/skills/plugins/vocdoni-comments/skills/comments
   active_owner: vocdoni/skills/plugins/vocdoni-comments/skills/comments
@@ -1407,16 +1772,25 @@ deployments:
   target: claude
   value: .claude/skills/context7
   runtime: null
-  scope: project
+  scope: user
   owners:
   - intellectronica/agent-skills/skills/context7
   active_owner: intellectronica/agent-skills/skills/context7
   content_hash: null
 - kind: project-relative
   target: claude
+  value: .claude/skills/context7/LICENSE.txt
+  runtime: null
+  scope: user
+  owners:
+  - intellectronica/agent-skills/skills/context7
+  active_owner: intellectronica/agent-skills/skills/context7
+  content_hash: sha256:8086d35fe85c31edba067005aa982a702faef484f2c77cd0b58c926975eba2a9
+- kind: project-relative
+  target: claude
   value: .claude/skills/context7/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - intellectronica/agent-skills/skills/context7
   active_owner: intellectronica/agent-skills/skills/context7
@@ -1425,34 +1799,79 @@ deployments:
   target: claude
   value: .claude/skills/contributing
   runtime: null
-  scope: project
+  scope: user
   owners:
-  - vocdoni/skills/plugins/vocdoni-contributing
-  active_owner: vocdoni/skills/plugins/vocdoni-contributing
+  - vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  active_owner: vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
   content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/contributing/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  active_owner: vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  content_hash: sha256:8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef
 - kind: project-relative
   target: claude
   value: .claude/skills/contributing/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
-  - vocdoni/skills/plugins/vocdoni-contributing
-  active_owner: vocdoni/skills/plugins/vocdoni-contributing
+  - vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
+  active_owner: vocdoni/skills/plugins/vocdoni-contributing/skills/contributing
   content_hash: sha256:1fcf63770e74c8c6c1473bfd161cb3b644c914342bad7863e1b6bc7b9732369a
+- kind: project-relative
+  target: claude
+  value: .claude/skills/create-readme
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/create-readme
+  active_owner: github/awesome-copilot/skills/create-readme
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/create-readme/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/create-readme
+  active_owner: github/awesome-copilot/skills/create-readme
+  content_hash: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
+- kind: project-relative
+  target: claude
+  value: .claude/skills/create-readme/SKILL.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/create-readme
+  active_owner: github/awesome-copilot/skills/create-readme
+  content_hash: sha256:a93f9161bef324e3a1550fc79d4f01b660a3fb7eadc4455677d9ace4da2965ac
 - kind: project-relative
   target: claude
   value: .claude/skills/executing-plans
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/executing-plans
   active_owner: obra/superpowers/skills/executing-plans
   content_hash: null
 - kind: project-relative
   target: claude
+  value: .claude/skills/executing-plans/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/executing-plans
+  active_owner: obra/superpowers/skills/executing-plans
+  content_hash: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
+- kind: project-relative
+  target: claude
   value: .claude/skills/executing-plans/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/executing-plans
   active_owner: obra/superpowers/skills/executing-plans
@@ -1461,7 +1880,7 @@ deployments:
   target: claude
   value: .claude/skills/executing-plans/scripts/task-done
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/executing-plans
   active_owner: obra/superpowers/skills/executing-plans
@@ -1470,7 +1889,7 @@ deployments:
   target: claude
   value: .claude/skills/executing-plans/scripts/task-start
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/executing-plans
   active_owner: obra/superpowers/skills/executing-plans
@@ -1479,16 +1898,25 @@ deployments:
   target: claude
   value: .claude/skills/find-skills
   runtime: null
-  scope: project
+  scope: user
   owners:
   - vercel-labs/skills/skills/find-skills
   active_owner: vercel-labs/skills/skills/find-skills
   content_hash: null
 - kind: project-relative
   target: claude
+  value: .claude/skills/find-skills/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - vercel-labs/skills/skills/find-skills
+  active_owner: vercel-labs/skills/skills/find-skills
+  content_hash: sha256:661142e53c313d2bb5e1b055f5c0a39001450ff1b5e27b89dc4bc7de9a6352ca
+- kind: project-relative
+  target: claude
   value: .claude/skills/find-skills/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - vercel-labs/skills/skills/find-skills
   active_owner: vercel-labs/skills/skills/find-skills
@@ -1497,16 +1925,25 @@ deployments:
   target: claude
   value: .claude/skills/git-commit
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/git-commit
   active_owner: github/awesome-copilot/skills/git-commit
   content_hash: null
 - kind: project-relative
   target: claude
+  value: .claude/skills/git-commit/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/git-commit
+  active_owner: github/awesome-copilot/skills/git-commit
+  content_hash: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
+- kind: project-relative
+  target: claude
   value: .claude/skills/git-commit/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/git-commit
   active_owner: github/awesome-copilot/skills/git-commit
@@ -1515,16 +1952,25 @@ deployments:
   target: claude
   value: .claude/skills/github-issues
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
   content_hash: null
 - kind: project-relative
   target: claude
+  value: .claude/skills/github-issues/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
+- kind: project-relative
+  target: claude
   value: .claude/skills/github-issues/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
@@ -1533,7 +1979,7 @@ deployments:
   target: claude
   value: .claude/skills/github-issues/references/dependencies.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
@@ -1542,7 +1988,7 @@ deployments:
   target: claude
   value: .claude/skills/github-issues/references/images.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
@@ -1551,7 +1997,7 @@ deployments:
   target: claude
   value: .claude/skills/github-issues/references/issue-fields.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
@@ -1560,7 +2006,7 @@ deployments:
   target: claude
   value: .claude/skills/github-issues/references/issue-types.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
@@ -1569,7 +2015,7 @@ deployments:
   target: claude
   value: .claude/skills/github-issues/references/labels.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
@@ -1578,7 +2024,7 @@ deployments:
   target: claude
   value: .claude/skills/github-issues/references/milestones.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
@@ -1587,7 +2033,7 @@ deployments:
   target: claude
   value: .claude/skills/github-issues/references/projects.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
@@ -1596,7 +2042,7 @@ deployments:
   target: claude
   value: .claude/skills/github-issues/references/search.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
@@ -1605,7 +2051,7 @@ deployments:
   target: claude
   value: .claude/skills/github-issues/references/sub-issues.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
@@ -1614,7 +2060,7 @@ deployments:
   target: claude
   value: .claude/skills/github-issues/references/templates.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - github/awesome-copilot/skills/github-issues
   active_owner: github/awesome-copilot/skills/github-issues
@@ -1623,16 +2069,25 @@ deployments:
   target: claude
   value: .claude/skills/herdr
   runtime: null
-  scope: project
+  scope: user
   owners:
   - herdrdev/herdr/skills/herdr
   active_owner: herdrdev/herdr/skills/herdr
   content_hash: null
 - kind: project-relative
   target: claude
+  value: .claude/skills/herdr/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - herdrdev/herdr/skills/herdr
+  active_owner: herdrdev/herdr/skills/herdr
+  content_hash: sha256:c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4
+- kind: project-relative
+  target: claude
   value: .claude/skills/herdr/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - herdrdev/herdr/skills/herdr
   active_owner: herdrdev/herdr/skills/herdr
@@ -1641,7 +2096,7 @@ deployments:
   target: claude
   value: .claude/skills/obscura-browser
   runtime: null
-  scope: project
+  scope: user
   owners:
   - mangmax/obscura-browser-skill
   active_owner: mangmax/obscura-browser-skill
@@ -1650,7 +2105,7 @@ deployments:
   target: claude
   value: .claude/skills/obscura-browser/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - mangmax/obscura-browser-skill
   active_owner: mangmax/obscura-browser-skill
@@ -1659,7 +2114,7 @@ deployments:
   target: claude
   value: .claude/skills/obscura-browser/agents/openai.yaml
   runtime: null
-  scope: project
+  scope: user
   owners:
   - mangmax/obscura-browser-skill
   active_owner: mangmax/obscura-browser-skill
@@ -1668,7 +2123,7 @@ deployments:
   target: claude
   value: .claude/skills/obscura-browser/references/cdp-integration.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - mangmax/obscura-browser-skill
   active_owner: mangmax/obscura-browser-skill
@@ -1677,7 +2132,7 @@ deployments:
   target: claude
   value: .claude/skills/obscura-browser/references/cli-cheatsheet.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - mangmax/obscura-browser-skill
   active_owner: mangmax/obscura-browser-skill
@@ -1686,7 +2141,7 @@ deployments:
   target: claude
   value: .claude/skills/obscura-browser/references/local-dev-tunnels.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - mangmax/obscura-browser-skill
   active_owner: mangmax/obscura-browser-skill
@@ -1695,7 +2150,7 @@ deployments:
   target: claude
   value: .claude/skills/obscura-browser/scripts/command_templates.py
   runtime: null
-  scope: project
+  scope: user
   owners:
   - mangmax/obscura-browser-skill
   active_owner: mangmax/obscura-browser-skill
@@ -1704,7 +2159,7 @@ deployments:
   target: claude
   value: .claude/skills/obscura-browser/scripts/detect_obscura.py
   runtime: null
-  scope: project
+  scope: user
   owners:
   - mangmax/obscura-browser-skill
   active_owner: mangmax/obscura-browser-skill
@@ -1713,7 +2168,7 @@ deployments:
   target: claude
   value: .claude/skills/skill-creator
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1722,7 +2177,7 @@ deployments:
   target: claude
   value: .claude/skills/skill-creator/LICENSE.txt
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1731,7 +2186,7 @@ deployments:
   target: claude
   value: .claude/skills/skill-creator/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1740,7 +2195,7 @@ deployments:
   target: claude
   value: .claude/skills/skill-creator/agents/analyzer.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1749,7 +2204,7 @@ deployments:
   target: claude
   value: .claude/skills/skill-creator/agents/comparator.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1758,7 +2213,7 @@ deployments:
   target: claude
   value: .claude/skills/skill-creator/agents/grader.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1767,7 +2222,7 @@ deployments:
   target: claude
   value: .claude/skills/skill-creator/assets/eval_review.html
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1776,7 +2231,7 @@ deployments:
   target: claude
   value: .claude/skills/skill-creator/eval-viewer/generate_review.py
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1785,7 +2240,7 @@ deployments:
   target: claude
   value: .claude/skills/skill-creator/eval-viewer/viewer.html
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1794,7 +2249,7 @@ deployments:
   target: claude
   value: .claude/skills/skill-creator/references/schemas.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1803,7 +2258,7 @@ deployments:
   target: claude
   value: .claude/skills/skill-creator/scripts/__init__.py
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1812,7 +2267,7 @@ deployments:
   target: claude
   value: .claude/skills/skill-creator/scripts/aggregate_benchmark.py
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1821,7 +2276,7 @@ deployments:
   target: claude
   value: .claude/skills/skill-creator/scripts/generate_report.py
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1830,7 +2285,7 @@ deployments:
   target: claude
   value: .claude/skills/skill-creator/scripts/improve_description.py
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1839,7 +2294,7 @@ deployments:
   target: claude
   value: .claude/skills/skill-creator/scripts/package_skill.py
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1848,7 +2303,7 @@ deployments:
   target: claude
   value: .claude/skills/skill-creator/scripts/quick_validate.py
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1857,7 +2312,7 @@ deployments:
   target: claude
   value: .claude/skills/skill-creator/scripts/run_eval.py
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1866,7 +2321,7 @@ deployments:
   target: claude
   value: .claude/skills/skill-creator/scripts/run_loop.py
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1875,7 +2330,7 @@ deployments:
   target: claude
   value: .claude/skills/skill-creator/scripts/utils.py
   runtime: null
-  scope: project
+  scope: user
   owners:
   - anthropics/skills/skills/skill-creator
   active_owner: anthropics/skills/skills/skill-creator
@@ -1884,16 +2339,25 @@ deployments:
   target: claude
   value: .claude/skills/systematic-debugging
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/systematic-debugging
   active_owner: obra/superpowers/skills/systematic-debugging
   content_hash: null
 - kind: project-relative
   target: claude
+  value: .claude/skills/systematic-debugging/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/systematic-debugging
+  active_owner: obra/superpowers/skills/systematic-debugging
+  content_hash: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
+- kind: project-relative
+  target: claude
   value: .claude/skills/systematic-debugging/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/systematic-debugging
   active_owner: obra/superpowers/skills/systematic-debugging
@@ -1902,7 +2366,7 @@ deployments:
   target: claude
   value: .claude/skills/systematic-debugging/condition-based-waiting-example.ts
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/systematic-debugging
   active_owner: obra/superpowers/skills/systematic-debugging
@@ -1911,7 +2375,7 @@ deployments:
   target: claude
   value: .claude/skills/systematic-debugging/condition-based-waiting.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/systematic-debugging
   active_owner: obra/superpowers/skills/systematic-debugging
@@ -1920,7 +2384,7 @@ deployments:
   target: claude
   value: .claude/skills/systematic-debugging/defense-in-depth.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/systematic-debugging
   active_owner: obra/superpowers/skills/systematic-debugging
@@ -1929,7 +2393,7 @@ deployments:
   target: claude
   value: .claude/skills/systematic-debugging/find-polluter.sh
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/systematic-debugging
   active_owner: obra/superpowers/skills/systematic-debugging
@@ -1938,7 +2402,7 @@ deployments:
   target: claude
   value: .claude/skills/systematic-debugging/root-cause-tracing.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/systematic-debugging
   active_owner: obra/superpowers/skills/systematic-debugging
@@ -1947,16 +2411,25 @@ deployments:
   target: claude
   value: .claude/skills/test-driven-development
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/test-driven-development
   active_owner: obra/superpowers/skills/test-driven-development
   content_hash: null
 - kind: project-relative
   target: claude
+  value: .claude/skills/test-driven-development/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/test-driven-development
+  active_owner: obra/superpowers/skills/test-driven-development
+  content_hash: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
+- kind: project-relative
+  target: claude
   value: .claude/skills/test-driven-development/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/test-driven-development
   active_owner: obra/superpowers/skills/test-driven-development
@@ -1965,7 +2438,7 @@ deployments:
   target: claude
   value: .claude/skills/test-driven-development/writing-good-tests.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/test-driven-development
   active_owner: obra/superpowers/skills/test-driven-development
@@ -1974,16 +2447,25 @@ deployments:
   target: claude
   value: .claude/skills/using-superpowers
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/using-superpowers
   active_owner: obra/superpowers/skills/using-superpowers
   content_hash: null
 - kind: project-relative
   target: claude
+  value: .claude/skills/using-superpowers/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/using-superpowers
+  active_owner: obra/superpowers/skills/using-superpowers
+  content_hash: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
+- kind: project-relative
+  target: claude
   value: .claude/skills/using-superpowers/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/using-superpowers
   active_owner: obra/superpowers/skills/using-superpowers
@@ -1992,7 +2474,7 @@ deployments:
   target: claude
   value: .claude/skills/using-superpowers/references/antigravity-tools.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/using-superpowers
   active_owner: obra/superpowers/skills/using-superpowers
@@ -2001,7 +2483,7 @@ deployments:
   target: claude
   value: .claude/skills/using-superpowers/references/claude-code-tools.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/using-superpowers
   active_owner: obra/superpowers/skills/using-superpowers
@@ -2010,7 +2492,7 @@ deployments:
   target: claude
   value: .claude/skills/using-superpowers/references/codex-tools.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/using-superpowers
   active_owner: obra/superpowers/skills/using-superpowers
@@ -2019,7 +2501,7 @@ deployments:
   target: claude
   value: .claude/skills/using-superpowers/references/gemini-tools.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/using-superpowers
   active_owner: obra/superpowers/skills/using-superpowers
@@ -2028,7 +2510,7 @@ deployments:
   target: claude
   value: .claude/skills/using-superpowers/references/hermes-tools.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/using-superpowers
   active_owner: obra/superpowers/skills/using-superpowers
@@ -2037,7 +2519,7 @@ deployments:
   target: claude
   value: .claude/skills/using-superpowers/references/muse-tools.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/using-superpowers
   active_owner: obra/superpowers/skills/using-superpowers
@@ -2046,7 +2528,7 @@ deployments:
   target: claude
   value: .claude/skills/using-superpowers/references/pi-tools.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/using-superpowers
   active_owner: obra/superpowers/skills/using-superpowers
@@ -2055,16 +2537,25 @@ deployments:
   target: claude
   value: .claude/skills/writing-plans
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/writing-plans
   active_owner: obra/superpowers/skills/writing-plans
   content_hash: null
 - kind: project-relative
   target: claude
+  value: .claude/skills/writing-plans/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/writing-plans
+  active_owner: obra/superpowers/skills/writing-plans
+  content_hash: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
+- kind: project-relative
+  target: claude
   value: .claude/skills/writing-plans/SKILL.md
   runtime: null
-  scope: project
+  scope: user
   owners:
   - obra/superpowers/skills/writing-plans
   active_owner: obra/superpowers/skills/writing-plans
