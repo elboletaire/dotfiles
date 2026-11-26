@@ -118,7 +118,9 @@ Octopilot's agents, in two front ends:
   (`ai/taller/herdr`). Octopilot's plugin (`elboletaire.octopilot`) is linked by
   its own `install.sh`, see [External modules](#external-modules).
 - **GUI**: `herdr-app` runs the terminals in herdr-core (`hc`). Octopilot's
-  mods are installed by its own `install.sh` too.
+  mods are installed by its own `install.sh` too. Moll's mods (outside the
+  dotfiles, in `~/docker/moll`) are linked when that checkout exists, else
+  copied from the host named in `MOLL_HOST` or `~/.config/moll/host`.
 
 ## Per-project docs
 

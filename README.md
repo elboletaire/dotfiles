@@ -40,7 +40,8 @@ The herdr pieces are installed and kept current by `install` and `update`
   `releases.herdr.dev/app/latest.json` names a different version than
   `herdr-app --version`. On macOS it also waits while Herdr is running, and it
   skips with a note when offline. `install` skips the app when it is present.
-  macOS installs `~/Applications/Herdr.app` (Apple Silicon only).
+  macOS installs `~/Applications/Herdr.app` (Apple Silicon only). Moll's mods are
+  linked when `~/docker/moll` exists, else copied from the host in `MOLL_HOST` or `~/.config/moll/host`.
 - **Legacy session managers**: `install`, `update`, `ai` and `ai-config` remove
   agent-deck and agent-of-empires (`aoe`) left over from before herdr: their
   packages (Homebrew or pacman), binaries, hooks in `~/.claude/settings.json`,
