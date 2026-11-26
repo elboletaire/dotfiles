@@ -91,6 +91,105 @@ dependencies:
     .claude/skills/skill-creator/scripts/run_loop.py: sha256:7bd6f674203168520517eec94c55f493c0d154339b061b4d7c0f0dad187d0f21
     .claude/skills/skill-creator/scripts/utils.py: sha256:3af8ae62c40c73ab712207436a0d9a981e845f25c5a7040229eb189cc8e45bb1
   content_hash: sha256:412558e2d4103a965f8bd319273797a4787f1d4635c2b16f1df0d77d7e0680f4
+- repo_url: elboletaire/skills
+  alias: elboletaire-skills
+  name: skills
+  host: github.com
+  resolved_commit: 91e0cdb762307cd58bff47e277dbff5991b6b864
+  resolved_ref: main
+  version: 1.0.0
+  package_type: skill_bundle
+  deployed_files:
+  - .agents/skills/dream
+  - .agents/skills/dream/LICENSE
+  - .agents/skills/dream/SKILL.md
+  - .agents/skills/herdr-orchestrator
+  - .agents/skills/herdr-orchestrator/LICENSE
+  - .agents/skills/herdr-orchestrator/SKILL.md
+  - .agents/skills/init-agents
+  - .agents/skills/init-agents/LICENSE
+  - .agents/skills/init-agents/SKILL.md
+  - .agents/skills/review
+  - .agents/skills/review/LICENSE
+  - .agents/skills/review/SKILL.md
+  - .agents/skills/review/references/cross-review.md
+  - .agents/skills/review/references/diff-review.md
+  - .agents/skills/review/references/github-review.md
+  - .agents/skills/version
+  - .agents/skills/version/LICENSE
+  - .agents/skills/version/SKILL.md
+  - .claude/agents/integrator.md
+  - .claude/agents/reviewer.md
+  - .claude/agents/worker.md
+  - .claude/hooks/elboletaire-skills/scripts/contributing-rules.sh
+  - .claude/hooks/elboletaire-skills/scripts/gh-hygiene.py
+  - .claude/skills/dream
+  - .claude/skills/dream/LICENSE
+  - .claude/skills/dream/SKILL.md
+  - .claude/skills/herdr-orchestrator
+  - .claude/skills/herdr-orchestrator/LICENSE
+  - .claude/skills/herdr-orchestrator/SKILL.md
+  - .claude/skills/init-agents
+  - .claude/skills/init-agents/LICENSE
+  - .claude/skills/init-agents/SKILL.md
+  - .claude/skills/review
+  - .claude/skills/review/LICENSE
+  - .claude/skills/review/SKILL.md
+  - .claude/skills/review/references/cross-review.md
+  - .claude/skills/review/references/diff-review.md
+  - .claude/skills/review/references/github-review.md
+  - .claude/skills/version
+  - .claude/skills/version/LICENSE
+  - .claude/skills/version/SKILL.md
+  deployed_file_hashes:
+    .agents/skills/dream/LICENSE: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
+    .agents/skills/dream/SKILL.md: sha256:f75fe5253d240664a06d724d700d87d7e49327b118376c4c99ae10dcc197f7c0
+    .agents/skills/herdr-orchestrator/LICENSE: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
+    .agents/skills/herdr-orchestrator/SKILL.md: sha256:4ffbdb3e6950640b6fa202362712396654c8897766dd77900b792f82ef015fb2
+    .agents/skills/init-agents/LICENSE: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
+    .agents/skills/init-agents/SKILL.md: sha256:edc8e7c9730418bf6e39f36a502032a96d30713e6727df615e496f669d0b697f
+    .agents/skills/review/LICENSE: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
+    .agents/skills/review/SKILL.md: sha256:dabf10de4ffc5e2d3d5cd4f79d096254c6a86a88c0e4f09c5d66923779323e32
+    .agents/skills/review/references/cross-review.md: sha256:445315fc951d6636841d43d0766280e81405a3bf65b98d41ff54b1e8a4820791
+    .agents/skills/review/references/diff-review.md: sha256:76f302eb8ce15efa0caaaee9f37bd318c912192383baa59f0db9f2dcf808fc16
+    .agents/skills/review/references/github-review.md: sha256:f0535703289cadf9a8dc971afc190ebe6b1a4da8981f13e3d0b29b03209be379
+    .agents/skills/version/LICENSE: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
+    .agents/skills/version/SKILL.md: sha256:b451d0dc71fd74859968707a594b217e6be48a2d81e65b6e82f131cdd6f3bc84
+    .claude/agents/integrator.md: sha256:3abe04f0f752563b04208bae3045ce66a1ae37a62e790235345d91f723a8f27f
+    .claude/agents/reviewer.md: sha256:2740799f9ad0fe8dc5ce72b8dbc6a83b9b466d2aa55d481471355eb7335016fb
+    .claude/agents/worker.md: sha256:654d27ecd5e0323f81ab179d8740b043ee97949bdac50b5147e9f4647b02e745
+    .claude/hooks/elboletaire-skills/scripts/contributing-rules.sh: sha256:2b9c51a8202eebe9ce477daeab2843275ac6c0ad919142e8a2a0c0040555f278
+    .claude/hooks/elboletaire-skills/scripts/gh-hygiene.py: sha256:e2ebfe63b0295e1d31648de615bee3e82f0b4bee93390720c9bf93fbd77adcb6
+    .claude/skills/dream/LICENSE: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
+    .claude/skills/dream/SKILL.md: sha256:f75fe5253d240664a06d724d700d87d7e49327b118376c4c99ae10dcc197f7c0
+    .claude/skills/herdr-orchestrator/LICENSE: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
+    .claude/skills/herdr-orchestrator/SKILL.md: sha256:4ffbdb3e6950640b6fa202362712396654c8897766dd77900b792f82ef015fb2
+    .claude/skills/init-agents/LICENSE: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
+    .claude/skills/init-agents/SKILL.md: sha256:edc8e7c9730418bf6e39f36a502032a96d30713e6727df615e496f669d0b697f
+    .claude/skills/review/LICENSE: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
+    .claude/skills/review/SKILL.md: sha256:dabf10de4ffc5e2d3d5cd4f79d096254c6a86a88c0e4f09c5d66923779323e32
+    .claude/skills/review/references/cross-review.md: sha256:445315fc951d6636841d43d0766280e81405a3bf65b98d41ff54b1e8a4820791
+    .claude/skills/review/references/diff-review.md: sha256:76f302eb8ce15efa0caaaee9f37bd318c912192383baa59f0db9f2dcf808fc16
+    .claude/skills/review/references/github-review.md: sha256:f0535703289cadf9a8dc971afc190ebe6b1a4da8981f13e3d0b29b03209be379
+    .claude/skills/version/LICENSE: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
+    .claude/skills/version/SKILL.md: sha256:b451d0dc71fd74859968707a594b217e6be48a2d81e65b6e82f131cdd6f3bc84
+  content_hash: sha256:842614956833570c0730ff58738ed313d3877d81f1cac2b73ca1ca51ce4bfe88
+  carried_licenses:
+  - path: skills/dream/LICENSE
+    source: LICENSE
+    hash: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
+  - path: skills/herdr-orchestrator/LICENSE
+    source: LICENSE
+    hash: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
+  - path: skills/init-agents/LICENSE
+    source: LICENSE
+    hash: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
+  - path: skills/review/LICENSE
+    source: LICENSE
+    hash: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
+  - path: skills/version/LICENSE
+    source: LICENSE
+    hash: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
 - repo_url: github/awesome-copilot
   alias: create-readme
   name: create-readme
@@ -906,6 +1005,33 @@ deployments:
   content_hash: sha256:a93f9161bef324e3a1550fc79d4f01b660a3fb7eadc4455677d9ace4da2965ac
 - kind: project-relative
   target: agent-skills
+  value: .agents/skills/dream
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: null
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/dream/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/dream/SKILL.md
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:f75fe5253d240664a06d724d700d87d7e49327b118376c4c99ae10dcc197f7c0
+- kind: project-relative
+  target: agent-skills
   value: .agents/skills/executing-plans
   runtime: null
   scope: user
@@ -1131,6 +1257,33 @@ deployments:
   content_hash: null
 - kind: project-relative
   target: agent-skills
+  value: .agents/skills/herdr-orchestrator
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: null
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/herdr-orchestrator/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/herdr-orchestrator/SKILL.md
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:4ffbdb3e6950640b6fa202362712396654c8897766dd77900b792f82ef015fb2
+- kind: project-relative
+  target: agent-skills
   value: .agents/skills/herdr/LICENSE
   runtime: null
   scope: user
@@ -1147,6 +1300,33 @@ deployments:
   - herdrdev/herdr/skills/herdr
   active_owner: herdrdev/herdr/skills/herdr
   content_hash: sha256:fbd9d502767f7dff29c211505a0bd9ba34e980ed4cc456247e2adc1642883984
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/init-agents
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: null
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/init-agents/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/init-agents/SKILL.md
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:edc8e7c9730418bf6e39f36a502032a96d30713e6727df615e496f669d0b697f
 - kind: project-relative
   target: agent-skills
   value: .agents/skills/obscura-browser
@@ -1219,6 +1399,60 @@ deployments:
   - mangmax/obscura-browser-skill
   active_owner: mangmax/obscura-browser-skill
   content_hash: sha256:ac3dca9b1a76edd1d09d9e410dfa403f6e3ecd3c96656313fd8ccf72c85955af
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/review
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: null
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/review/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/review/SKILL.md
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:dabf10de4ffc5e2d3d5cd4f79d096254c6a86a88c0e4f09c5d66923779323e32
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/review/references/cross-review.md
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:445315fc951d6636841d43d0766280e81405a3bf65b98d41ff54b1e8a4820791
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/review/references/diff-review.md
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:76f302eb8ce15efa0caaaee9f37bd318c912192383baa59f0db9f2dcf808fc16
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/review/references/github-review.md
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:f0535703289cadf9a8dc971afc190ebe6b1a4da8981f13e3d0b29b03209be379
 - kind: project-relative
   target: agent-skills
   value: .agents/skills/skill-creator
@@ -1590,6 +1824,33 @@ deployments:
   content_hash: sha256:703dbc83d23ecab9c6f388460c38abc482e9dee2fe6772a8c7a255152ad3a4d5
 - kind: project-relative
   target: agent-skills
+  value: .agents/skills/version
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: null
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/version/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/version/SKILL.md
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:b451d0dc71fd74859968707a594b217e6be48a2d81e65b6e82f131cdd6f3bc84
+- kind: project-relative
+  target: agent-skills
   value: .agents/skills/writing-plans
   runtime: null
   scope: user
@@ -1615,6 +1876,51 @@ deployments:
   - obra/superpowers/skills/writing-plans
   active_owner: obra/superpowers/skills/writing-plans
   content_hash: sha256:a6c67c1900064347c2a329990dd3c555657c51c3ec53b259a08aa01a2c26139a
+- kind: project-relative
+  target: claude
+  value: .claude/agents/integrator.md
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:3abe04f0f752563b04208bae3045ce66a1ae37a62e790235345d91f723a8f27f
+- kind: project-relative
+  target: claude
+  value: .claude/agents/reviewer.md
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:2740799f9ad0fe8dc5ce72b8dbc6a83b9b466d2aa55d481471355eb7335016fb
+- kind: project-relative
+  target: claude
+  value: .claude/agents/worker.md
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:654d27ecd5e0323f81ab179d8740b043ee97949bdac50b5147e9f4647b02e745
+- kind: project-relative
+  target: claude
+  value: .claude/hooks/elboletaire-skills/scripts/contributing-rules.sh
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:2b9c51a8202eebe9ce477daeab2843275ac6c0ad919142e8a2a0c0040555f278
+- kind: project-relative
+  target: claude
+  value: .claude/hooks/elboletaire-skills/scripts/gh-hygiene.py
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:e2ebfe63b0295e1d31648de615bee3e82f0b4bee93390720c9bf93fbd77adcb6
 - kind: project-relative
   target: claude
   value: .claude/skills/agent-browser
@@ -1851,6 +2157,33 @@ deployments:
   content_hash: sha256:a93f9161bef324e3a1550fc79d4f01b660a3fb7eadc4455677d9ace4da2965ac
 - kind: project-relative
   target: claude
+  value: .claude/skills/dream
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/dream/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
+- kind: project-relative
+  target: claude
+  value: .claude/skills/dream/SKILL.md
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:f75fe5253d240664a06d724d700d87d7e49327b118376c4c99ae10dcc197f7c0
+- kind: project-relative
+  target: claude
   value: .claude/skills/executing-plans
   runtime: null
   scope: user
@@ -2076,6 +2409,33 @@ deployments:
   content_hash: null
 - kind: project-relative
   target: claude
+  value: .claude/skills/herdr-orchestrator
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/herdr-orchestrator/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
+- kind: project-relative
+  target: claude
+  value: .claude/skills/herdr-orchestrator/SKILL.md
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:4ffbdb3e6950640b6fa202362712396654c8897766dd77900b792f82ef015fb2
+- kind: project-relative
+  target: claude
   value: .claude/skills/herdr/LICENSE
   runtime: null
   scope: user
@@ -2092,6 +2452,33 @@ deployments:
   - herdrdev/herdr/skills/herdr
   active_owner: herdrdev/herdr/skills/herdr
   content_hash: sha256:fbd9d502767f7dff29c211505a0bd9ba34e980ed4cc456247e2adc1642883984
+- kind: project-relative
+  target: claude
+  value: .claude/skills/init-agents
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/init-agents/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
+- kind: project-relative
+  target: claude
+  value: .claude/skills/init-agents/SKILL.md
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:edc8e7c9730418bf6e39f36a502032a96d30713e6727df615e496f669d0b697f
 - kind: project-relative
   target: claude
   value: .claude/skills/obscura-browser
@@ -2164,6 +2551,60 @@ deployments:
   - mangmax/obscura-browser-skill
   active_owner: mangmax/obscura-browser-skill
   content_hash: sha256:ac3dca9b1a76edd1d09d9e410dfa403f6e3ecd3c96656313fd8ccf72c85955af
+- kind: project-relative
+  target: claude
+  value: .claude/skills/review
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/review/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
+- kind: project-relative
+  target: claude
+  value: .claude/skills/review/SKILL.md
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:dabf10de4ffc5e2d3d5cd4f79d096254c6a86a88c0e4f09c5d66923779323e32
+- kind: project-relative
+  target: claude
+  value: .claude/skills/review/references/cross-review.md
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:445315fc951d6636841d43d0766280e81405a3bf65b98d41ff54b1e8a4820791
+- kind: project-relative
+  target: claude
+  value: .claude/skills/review/references/diff-review.md
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:76f302eb8ce15efa0caaaee9f37bd318c912192383baa59f0db9f2dcf808fc16
+- kind: project-relative
+  target: claude
+  value: .claude/skills/review/references/github-review.md
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:f0535703289cadf9a8dc971afc190ebe6b1a4da8981f13e3d0b29b03209be379
 - kind: project-relative
   target: claude
   value: .claude/skills/skill-creator
@@ -2533,6 +2974,33 @@ deployments:
   - obra/superpowers/skills/using-superpowers
   active_owner: obra/superpowers/skills/using-superpowers
   content_hash: sha256:703dbc83d23ecab9c6f388460c38abc482e9dee2fe6772a8c7a255152ad3a4d5
+- kind: project-relative
+  target: claude
+  value: .claude/skills/version
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/version/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
+- kind: project-relative
+  target: claude
+  value: .claude/skills/version/SKILL.md
+  runtime: null
+  scope: user
+  owners:
+  - elboletaire/skills
+  active_owner: elboletaire/skills
+  content_hash: sha256:b451d0dc71fd74859968707a594b217e6be48a2d81e65b6e82f131cdd6f3bc84
 - kind: project-relative
   target: claude
   value: .claude/skills/writing-plans

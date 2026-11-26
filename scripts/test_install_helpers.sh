@@ -86,7 +86,7 @@ sed "s|declare -r dotfiles=~/.dotfiles|declare -r dotfiles=$DOTFILES|" \
 
 source "$TESTDIR/install_patched.sh"
 REAL_OS=$OS
-# Test 24b reassigns MODULES, so keep the sourced default for Test 27c.
+# Test 24b reassigns MODULES, so keep the sourced default for Test 27d.
 DEFAULT_MODULE_ENTRY="${MODULES[0]}"
 
 # Writes the tracked manifest and lock that install_skills and skills_bump read.
@@ -304,6 +304,7 @@ reset_global_apm
   install_uv() { :; }
   install_rtk() { :; }
   symlink_ai() { :; }
+  link_pi_agents() { :; }
   merge_claude_settings() { :; }
   install_modules() { :; }
   link_herdr_config() { :; }
@@ -694,8 +695,9 @@ else
 fi
 
 out=$(install_module new "$MOD_REMOTE" "$MOD/never" relink 2>&1) && rc=0 || rc=$?
-if [ "$rc" -eq 0 ] && [ ! -e "$MOD/never" ]; then
-  pass "relink mode never clones a missing module"
+if [ "$rc" -eq 0 ] && [ ! -e "$MOD/never" ] &&
+   [[ "$out" == *"new is not cloned at $MOD/never; run 'install.sh ai' or 'install.sh herdr' to clone it"* ]]; then
+  pass "relink mode never clones a missing module and says how to clone it"
 else
   fail "relink cloned a module: rc=$rc $out"
 fi
@@ -808,13 +810,13 @@ unset -f command getent dscl
 
 echo ""
 echo "=== Test: link_ai skips ~/old_dotfiles when no_backup is set ==="
-mkdir -p "$DOTFILES/ai/prompts" "$HOME/.nobackup/commands"
+mkdir -p "$DOTFILES/ai/sample" "$HOME/.nobackup/commands"
 echo stale > "$HOME/.nobackup/commands/old.md"
 rm -rf "$oldfiles"
 no_backup=1
-link_ai "$DOTFILES/ai/prompts" "$HOME/.nobackup/commands"
+link_ai "$DOTFILES/ai/sample" "$HOME/.nobackup/commands"
 no_backup=0
-[ "$(readlink "$HOME/.nobackup/commands")" = "$DOTFILES/ai/prompts" ] \
+[ "$(readlink "$HOME/.nobackup/commands")" = "$DOTFILES/ai/sample" ] \
   && pass "replaces the existing directory with the symlink" \
   || fail "did not link $HOME/.nobackup/commands"
 [ ! -e "$oldfiles" ] \
@@ -822,7 +824,7 @@ no_backup=0
   || fail "created $oldfiles despite no_backup"
 
 mkdir -p "$HOME/.backup/commands"
-link_ai "$DOTFILES/ai/prompts" "$HOME/.backup/commands"
+link_ai "$DOTFILES/ai/sample" "$HOME/.backup/commands"
 [ -d "$oldfiles/commands" ] \
   && pass "still backs up to ~/old_dotfiles by default" \
   || fail "default link_ai no longer backs up"
@@ -920,7 +922,7 @@ rm -rf "$HOME/.claude"
 merge_claude_settings >/dev/null
 got=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["env"]["CLAUDE_CODE_PLUGIN_DIRS"])' "$HOME/.claude/settings.json")
 if [ "$got" = "~/src/octopilot/plugin:~/x/y" ] &&
-   [ "$DEFAULT_MODULE_ENTRY" = "octopilot|git@github.com:elboletaire/octopilot.git|$FAKE_HOME/src/octopilot" ]; then
+   [ "$DEFAULT_MODULE_ENTRY" = "octopilot|https://github.com/elboletaire/octopilot.git|$FAKE_HOME/src/octopilot" ]; then
   pass "the default dir keeps ~/src/octopilot/plugin and the default MODULES entry"
 else
   fail "default OCTOPILOT_DIR changed the settings: $got $DEFAULT_MODULE_ENTRY"
@@ -1428,6 +1430,125 @@ fi
 rm -f "$DOTFILES/AGENTS.md" "$DOTFILES/CLAUDE.md" "$DOTFILES/zz-probe" \
   "$FAKE_HOME/.zz-probe"
 rm -rf "$FAKE_HOME/old_dotfiles"
+
+echo ""
+echo "=== Test 43: _retire_ai_links removes old links into ai/ and dangling ones only ==="
+rm -rf "$HOME/.claude" "$HOME/.pi" "$HOME/elsewhere" "$oldfiles"
+mkdir -p "$HOME/.claude/agents" "$HOME/.pi/agent" "$HOME/elsewhere/agents" "$DOTFILES/ai/live"
+ln -s "$DOTFILES/ai/prompts" "$HOME/.claude/commands"        # dangling
+ln -s "$DOTFILES/ai/live" "$HOME/.pi/agent/prompts"          # into ai/, exists
+ln -s "$HOME/elsewhere/agents" "$HOME/.pi/agent/agents"      # other link, exists
+_retire_ai_links > "$TESTDIR/retire-ai.log"
+if [ -d "$HOME/.claude/agents" ] && [ ! -L "$HOME/.claude/agents" ] &&
+   [ ! -e "$HOME/.claude/commands" ] && [ ! -L "$HOME/.claude/commands" ] &&
+   [ ! -L "$HOME/.pi/agent/prompts" ] &&
+   [ "$(readlink "$HOME/.pi/agent/agents")" = "$HOME/elsewhere/agents" ] &&
+   [ -d "$DOTFILES/ai/live" ]; then
+  pass "removes the dangling and in-ai links, keeps a user dir and a link elsewhere"
+else
+  fail "_retire_ai_links removed the wrong paths: $(cat "$TESTDIR/retire-ai.log")"
+fi
+_retire_ai_links >/dev/null
+[ -d "$HOME/.claude/agents" ] && [ "$(readlink "$HOME/.pi/agent/agents")" = "$HOME/elsewhere/agents" ] \
+  && pass "a second run changes nothing" \
+  || fail "_retire_ai_links was not a no-op on the second run"
+rm -rf "$HOME/.claude" "$HOME/.pi" "$HOME/elsewhere" "$DOTFILES/ai/live"
+
+echo ""
+echo "=== Test 43b: install_skills retires the old links before apm runs ==="
+reset_global_apm
+rm -rf "$HOME/.claude"
+mkdir -p "$HOME/.claude" "$DOTFILES/ai/claude/agents"
+ln -s "$DOTFILES/ai/claude/agents" "$HOME/.claude/agents"
+seed_ai "manifest-v1" "lock-v1"
+: > "$TESTDIR/order.log"
+apm() { echo "apm sees agents link: $([ -L "$HOME/.claude/agents" ] && echo yes || echo no)" >> "$TESTDIR/order.log"; }
+install_skills >/dev/null 2>&1 || true
+unset -f apm
+if grep -qx "apm sees agents link: no" "$TESTDIR/order.log" && [ ! -L "$HOME/.claude/agents" ]; then
+  pass "the link into ai/ is gone before apm install writes agents"
+else
+  fail "apm ran with the old link in place: $(cat "$TESTDIR/order.log")"
+fi
+rm -rf "$HOME/.claude" "$DOTFILES/ai/claude/agents"
+
+echo ""
+echo "=== Test 44: link_pi_agents links the APM module cache and warns when it is missing ==="
+rm -rf "$HOME/.pi" "$HOME/.apm/apm_modules"
+out=$(link_pi_agents 2>&1) || true
+if [[ "$out" == *"WARNING"* ]] && [ ! -e "$HOME/.pi/agent/agents" ]; then
+  pass "warns and links nothing before the package is installed"
+else
+  fail "no warning or a link without the module: $out"
+fi
+mkdir -p "$HOME/.apm/apm_modules/elboletaire-skills/pi/agents"
+echo "name: worker" > "$HOME/.apm/apm_modules/elboletaire-skills/pi/agents/worker.md"
+link_pi_agents >/dev/null
+[ "$(readlink "$HOME/.pi/agent/agents")" = "$HOME/.apm/apm_modules/elboletaire-skills/pi/agents" ] \
+  && pass "links ~/.pi/agent/agents to the package's pi/agents" \
+  || fail "did not link ~/.pi/agent/agents to the module cache"
+rm -rf "$HOME/.pi" "$HOME/.apm/apm_modules"
+
+echo ""
+echo "=== Test 44b: symlink_ai links only the global instructions ==="
+rm -rf "$HOME/.claude" "$HOME/.pi" "$oldfiles"
+mkdir -p "$DOTFILES/ai/claude" "$DOTFILES/ai/pi"
+touch "$DOTFILES/ai/claude/CLAUDE.md" "$DOTFILES/ai/pi/AGENTS.md"
+symlink_ai
+if [ "$(readlink "$HOME/.claude/CLAUDE.md")" = "$DOTFILES/ai/claude/CLAUDE.md" ] &&
+   [ "$(readlink "$HOME/.pi/agent/AGENTS.md")" = "$DOTFILES/ai/pi/AGENTS.md" ] &&
+   [ ! -e "$HOME/.claude/agents" ] && [ ! -L "$HOME/.claude/agents" ] &&
+   [ ! -L "$HOME/.claude/commands" ] && [ ! -L "$HOME/.pi/agent/prompts" ] &&
+   [ ! -L "$HOME/.pi/agent/agents" ]; then
+  pass "links CLAUDE.md and AGENTS.md; no agents, commands or prompts links"
+else
+  fail "symlink_ai linked a retired path"
+fi
+rm -rf "$HOME/.claude" "$HOME/.pi" "$oldfiles" "$DOTFILES/ai/claude/CLAUDE.md" "$DOTFILES/ai/pi/AGENTS.md"
+
+echo ""
+echo "=== Test 44c: link_pi_agents moves a real agents dir aside even with no_backup ==="
+rm -rf "$HOME/.pi" "$HOME/.apm/apm_modules" "$oldfiles"
+mkdir -p "$HOME/.pi/agent/agents" "$HOME/.apm/apm_modules/elboletaire-skills/pi/agents"
+echo "mine" > "$HOME/.pi/agent/agents/my-agent.md"
+no_backup=1
+link_pi_agents >/dev/null
+no_backup=0
+if [ "$(readlink "$HOME/.pi/agent/agents")" = "$HOME/.apm/apm_modules/elboletaire-skills/pi/agents" ] &&
+   [ -f "$oldfiles/.pi/agent/agents/my-agent.md" ]; then
+  pass "moves the user's dir to ~/old_dotfiles and links the Pi agents"
+else
+  fail "real agents dir was not moved aside under no_backup"
+fi
+rm -rf "$HOME/.pi" "$HOME/.apm/apm_modules" "$oldfiles"
+
+echo ""
+echo "=== Test 45: merge_claude_settings keeps the APM hook and drops the old dotfiles hook ==="
+mkdir -p "$DOTFILES/ai/claude" "$HOME/.claude"
+cat > "$DOTFILES/ai/claude/settings.json" <<'JSON'
+{"env": {"MY_VAR": "kept"}}
+JSON
+cat > "$SETTINGS" <<'JSON'
+{"hooks": {"PreToolUse": [
+  {"matcher": "Bash", "hooks": [{"type": "command", "command": "python3 /home/me/.claude/hooks/elboletaire-skills/scripts/gh-hygiene.py"}]},
+  {"matcher": "Bash", "hooks": [{"type": "command", "command": "python3 ~/.dotfiles/ai/hooks/gh-hygiene.py"}]}
+]}}
+JSON
+merge_claude_settings >/dev/null
+if python3 - "$SETTINGS" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+pre = d["hooks"]["PreToolUse"]
+assert len(pre) == 1, pre
+assert "elboletaire-skills" in pre[0]["hooks"][0]["command"], pre
+assert d["env"]["MY_VAR"] == "kept", d["env"]
+PY
+then
+  pass "keeps the APM gh-hygiene hook, drops the retired ai/hooks one, keeps the env"
+else
+  fail "merge dropped the APM hook or kept the retired one: $(cat "$SETTINGS")"
+fi
+rm -rf "$HOME/.claude" "$DOTFILES/ai/claude/settings.json"
 
 echo ""
 echo "=== ALL TESTS COMPLETE ==="

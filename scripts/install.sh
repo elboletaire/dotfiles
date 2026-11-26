@@ -216,10 +216,25 @@ _retire_local_apm_package() {
   done
 }
 
+# Links the old symlink_ai made into ai/ (prompts, commands, agents). ai/ no longer
+# has them, and APM would write its agents through a link into the repo, so they
+# go first. Only links into ai/ or dangling ones: a user's own dir or link stays.
+_retire_ai_links() {
+  local ai=$dotfiles/ai link target
+  for link in ~/.claude/agents ~/.claude/commands ~/.pi/agent/prompts ~/.pi/agent/agents; do
+    [ -L "$link" ] || continue
+    target=$(readlink "$link")
+    if [[ "$target" == "$ai"/* ]] || [ ! -e "$link" ]; then
+      rm "$link" && echo "Removed retired link $link -> $target"
+    fi
+  done
+}
+
 install_skills() {
   # Installs the skills from ai/apm.yml globally. The locked commits decide what
   # gets installed, so this reproduces ai/apm.lock.yaml; only skills-bump moves them.
   local ai=$dotfiles/ai apm_home=$HOME/.apm
+  _retire_ai_links
   if ! _apm_at_least "$(_apm_version)" "$apm_min_version"; then
     echo "ERROR: apm $apm_min_version or newer is required; run 'install.sh ai' first" >&2
     return 1
@@ -247,6 +262,7 @@ skills_bump() {
   # The only path that moves skill versions: each dependency goes to the latest
   # commit of its ref. ai/ is replaced only after apm update succeeds.
   local ai=$dotfiles/ai apm_home=$HOME/.apm
+  _retire_ai_links
   mkdir -p "$apm_home" || return 1
   _retire_local_apm_package "$apm_home" "$ai/apm.lock.yaml"
   _cleanup_legacy_skills
@@ -550,7 +566,7 @@ install_uv() {
 # (e.g. from a local ~/.zshenv override) or the settings rewrite misses it.
 octopilot_dir=${OCTOPILOT_DIR:-$HOME/src/octopilot}
 MODULES=(
-  "octopilot|git@github.com:elboletaire/octopilot.git|$octopilot_dir"
+  "octopilot|https://github.com/elboletaire/octopilot.git|$octopilot_dir"
 )
 
 install_modules() {
@@ -567,7 +583,10 @@ install_module() {
   # Never aborts the install: a module that fails only warns, and the rest runs.
   local name=$1 url=$2 dir=$3 mode=${4:-install}
   if [ ! -e "$dir" ]; then
-    [ "$mode" = relink ] && return 0
+    if [ "$mode" = relink ]; then
+      echo "$name is not cloned at $dir; run 'install.sh ai' or 'install.sh herdr' to clone it"
+      return 0
+    fi
     echo "Cloning $name into $dir"
     mkdir -p "$(dirname "$dir")"
     if ! _module_git clone --quiet "$url" "$dir"; then
@@ -643,8 +662,8 @@ link_herdr_plugin() {
 }
 
 link_herdr_app() {
-  # Where dotfiles-owned herdr-app setup goes. Octopilot's mods are installed by
-  # its own install.sh, run from install_modules.
+  # Hook point for dotfiles-owned herdr-app setup, empty for now. Octopilot's mods
+  # are installed by its own install.sh, run from install_modules.
   return 0
 }
 
@@ -775,7 +794,8 @@ def drop_retired(d):
 # Hooks these dotfiles used to write: agent-deck and aoe hooks (any event) are
 # gone. So is the old upstream contributing SessionStart hook: elboletaire/skills'
 # contributing-rules hook injects the same rules, so keeping both injects them twice.
-LEGACY_HOOK_MARKERS = ["agent-deck", "AOE_", "# aoe-hooks"]
+# The gh hygiene marker catches hand-added hooks pointing at the removed ai/hooks script.
+LEGACY_HOOK_MARKERS = ["agent-deck", "AOE_", "# aoe-hooks", "ai/hooks/gh-hygiene.py"]
 # The old contributing hook, with $HOME or the expanded home directory.
 LEGACY_CONTRIBUTING_HOOK = re.compile(
     r"""bash ["']?(\$HOME|~|[^"']*)/\.claude/hooks/contributing/hooks/session-start\.sh["']?"""
@@ -879,17 +899,24 @@ link_ai() {
 symlink_ai() {
   local ai=$dotfiles/ai
 
-  # Prompts: single source of truth shared by Pi prompts and Claude commands.
-  link_ai "$ai/prompts" ~/.pi/agent/prompts
-  link_ai "$ai/prompts" ~/.claude/commands
-
-  # Pi subagent definitions and global instructions.
-  link_ai "$ai/pi/agents" ~/.pi/agent/agents
+  # Pi and Claude global instructions. The subagents come from APM, see link_pi_agents.
   link_ai "$ai/pi/AGENTS.md" ~/.pi/agent/AGENTS.md
-
-  # Claude global instructions and subagent definitions.
   link_ai "$ai/claude/CLAUDE.md" ~/.claude/CLAUDE.md
-  link_ai "$ai/claude/agents" ~/.claude/agents
+}
+
+# Pi subagents are not an APM target: they sit in APM's module cache of the
+# elboletaire/skills package (alias elboletaire-skills). Runs after install_skills.
+link_pi_agents() {
+  local src=$HOME/.apm/apm_modules/elboletaire-skills/pi/agents dest=~/.pi/agent/agents
+  if [ ! -d "$src" ]; then
+    echo "WARNING: $src not found; Pi subagents not linked" >&2
+    return 0
+  fi
+  # A real dir here may hold the user's own agents: move it aside even with no_backup.
+  if [ -e "$dest" ] && [ ! -L "$dest" ]; then
+    _move_legacy "$dest" "$oldfiles"
+  fi
+  link_ai "$src" "$dest"
 }
 
 install_packages() {
@@ -964,6 +991,7 @@ do_install() {
   install_rtk               # wires hooks into claude and pi, which must exist first
   symlink_ai || return 1    # config symlinks
   install_skills || return 1
+  link_pi_agents
   merge_claude_settings
   link_herdr_config
   install_modules
@@ -989,6 +1017,7 @@ do_update() {
   install_rtk update
   symlink_ai || return 1
   install_skills || return 1
+  link_pi_agents
   merge_claude_settings
   link_herdr_config
   install_modules update
@@ -1009,6 +1038,7 @@ do_update_ai() {
   install_rtk update
   symlink_ai || return 1
   install_skills || return 1
+  link_pi_agents
   merge_claude_settings
   link_herdr_config
   install_modules update
@@ -1018,13 +1048,15 @@ do_update_ai() {
 }
 
 do_install_ai_config() {
-  # Config-only: relink prompts, instructions and agents from ai/ and install
-  # the pinned skills. No agents, node or tooling installs, no ref bumps, and
-  # no ~/old_dotfiles backups since everything relinked is tracked in git.
+  # Config-only: relink the global instructions, install the locked skills,
+  # subagents and hook, and link the Pi subagents. No node or tooling installs
+  # and no ref bumps. Links replace what is there without ~/old_dotfiles
+  # backups (no_backup), except a real ~/.pi/agent/agents dir, which is moved aside.
   no_backup=1
   cleanup_legacy
   symlink_ai || return 1
   install_skills || return 1
+  link_pi_agents
   merge_claude_settings
   install_modules relink
   link_herdr_plugin
@@ -1035,7 +1067,11 @@ do_install_ai_config() {
 do_skills_bump() {
   # Moves every skill to the latest commit of its ref: the only path that does.
   install_apm || return 1
+  # skills_bump retires the old link, so it is put back even when the bump failed.
   skills_bump
+  local rc=$?
+  link_pi_agents
+  return $rc
 }
 
 do_herdr() {

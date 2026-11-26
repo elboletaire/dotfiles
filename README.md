@@ -13,14 +13,18 @@ git clone https://github.com/elboletaire/dotfiles .dotfiles && cd .dotfiles
 ./scripts/install.sh
 ~~~
 
-To refresh only the AI config (prompts, instructions, agents and the pinned
-skills from `ai/`) without installing agents or tooling, and without backing
-anything up to `~/old_dotfiles` (its legacy cleanup still moves old session
-manager state there, see below):
+To refresh only the AI config (the instructions and the pinned skills from
+`ai/`, with the subagents and hook they bring) without installing agents or
+tooling, run:
 
 ~~~bash
 ./scripts/install.sh ai-config
 ~~~
+
+It moves files to `~/old_dotfiles` only for the legacy cleanup and the APM 0.33
+migration below. A real `~/.pi/agent/agents` dir goes to
+`~/old_dotfiles/.pi/agent/agents`. The settings merge keeps the previous
+`~/.claude/settings.json` as `settings.json.dotfiles-bak`.
 
 The herdr pieces are installed and kept current by `install` and `update`
 (`ai` does the same for the AI stack; `herdr` only repairs herdr's setup):
@@ -40,10 +44,18 @@ The herdr pieces are installed and kept current by `install` and `update`
 - **Legacy session managers**: `install`, `update`, `ai` and `ai-config` remove
   agent-deck and agent-of-empires (`aoe`) left over from before herdr: their
   packages (Homebrew or pacman), binaries, hooks in `~/.claude/settings.json`,
-  and skills. Their config and state, plus `~/.tmux.conf` when it holds only
-  agent-deck's block, move to `~/old_dotfiles/legacy-session-managers-<date>/`.
-  A `~/.tmux.conf` with other lines is kept and a note is printed. Nothing is
-  printed when there is nothing to clean.
+  and the fleet and agent-deck skills. Their config and state, plus
+  `~/.tmux.conf` when it holds only agent-deck's block, move to
+  `~/old_dotfiles/legacy-session-managers-<date>/`. A `~/.tmux.conf` with other
+  lines is kept and a note is printed. Nothing is printed when there is nothing
+  to clean.
+- **Retired skills**: `aoe`, `aoe-fleet`, `impeccable`, `graphic-designer`,
+  `effective-print-design`, `resume-generator`, `brag`, `brag-slim`, `tsdown`,
+  `vocdoni-sdk`, `davinci-sdk`, `vocdoni-ballot-protocol`, `agent-browser` and
+  `create-readme` are removed where APM's lock does not deploy them: symlinks
+  are deleted, real copies move to `~/old_dotfiles/legacy-skills-<date>/`. The
+  one-time APM 0.33 migration moves its deployed skills and hook files there
+  too.
 - **Octopilot** lives in its own repo, [elboletaire/octopilot](https://github.com/elboletaire/octopilot).
   `install` clones it to `${OCTOPILOT_DIR:-~/src/octopilot}` when missing, `update`
   fast-forwards it when clean, and its `install.sh` sets up its herdr plugin and
@@ -68,3 +80,11 @@ dependencies by branch; `ai/apm.lock.yaml` pins each one to a commit.
   there.
 - **Targets**: `agent-skills` (`~/.agents/skills/`) and `claude`
   (`~/.claude/skills/`). Pi reads `~/.agents/skills/` natively.
+- **elboletaire/skills**: the personal skills (`review`, `version`, `init-agents`,
+  `dream`, `herdr-orchestrator`), the Claude subagents in `~/.claude/agents/` and
+  the gh hygiene hook in `~/.claude/settings.json`, all from
+  [elboletaire/skills](https://github.com/elboletaire/skills). APM has no Pi
+  target, so the install links `~/.pi/agent/agents` to the Pi subagents in
+  APM's module cache (`~/.apm/apm_modules/elboletaire-skills/pi/agents`).
+- **Hostnames**: the hook blocks this machine's hostname. Extra names for a
+  machine go in that machine's own environment, never in the repo.
