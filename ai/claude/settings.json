@@ -1,5 +1,9 @@
 {
   "env": {
     "CLAUDE_CODE_PLUGIN_DIRS": "~/src/octopilot/plugin:~/.dotfiles/ai/arxiu/bibliotecaria:~/.dotfiles/ai/taller/plugin"
+  },
+  "attribution": {
+    "commit": "",
+    "pr": ""
   }
 }
