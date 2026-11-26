@@ -95,7 +95,7 @@ dependencies:
   alias: elboletaire-skills
   name: skills
   host: github.com
-  resolved_commit: d3bddf01f1452e587fdbc3247121e68d4c81e30d
+  resolved_commit: 91e0cdb762307cd58bff47e277dbff5991b6b864
   resolved_ref: main
   version: 1.0.0
   package_type: skill_bundle
@@ -123,8 +123,6 @@ dependencies:
   - .claude/agents/worker.md
   - .claude/hooks/elboletaire-skills/scripts/contributing-rules.sh
   - .claude/hooks/elboletaire-skills/scripts/gh-hygiene.py
-  - .claude/hooks/elboletaire-skills/scripts/test-contributing-rules.py
-  - .claude/hooks/elboletaire-skills/scripts/test-gh-hygiene.py
   - .claude/skills/dream
   - .claude/skills/dream/LICENSE
   - .claude/skills/dream/SKILL.md
@@ -162,8 +160,6 @@ dependencies:
     .claude/agents/worker.md: sha256:654d27ecd5e0323f81ab179d8740b043ee97949bdac50b5147e9f4647b02e745
     .claude/hooks/elboletaire-skills/scripts/contributing-rules.sh: sha256:2b9c51a8202eebe9ce477daeab2843275ac6c0ad919142e8a2a0c0040555f278
     .claude/hooks/elboletaire-skills/scripts/gh-hygiene.py: sha256:e2ebfe63b0295e1d31648de615bee3e82f0b4bee93390720c9bf93fbd77adcb6
-    .claude/hooks/elboletaire-skills/scripts/test-contributing-rules.py: sha256:9ce4c84fd5ba0608991cde58f68e46f1e4ca74b08c58e0a9adf6de3b1c488d07
-    .claude/hooks/elboletaire-skills/scripts/test-gh-hygiene.py: sha256:053a69a2355d9b2dd86f17696effaeb03760d4b63ce8278be437f09042183947
     .claude/skills/dream/LICENSE: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
     .claude/skills/dream/SKILL.md: sha256:f75fe5253d240664a06d724d700d87d7e49327b118376c4c99ae10dcc197f7c0
     .claude/skills/herdr-orchestrator/LICENSE: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
@@ -177,7 +173,7 @@ dependencies:
     .claude/skills/review/references/github-review.md: sha256:f0535703289cadf9a8dc971afc190ebe6b1a4da8981f13e3d0b29b03209be379
     .claude/skills/version/LICENSE: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
     .claude/skills/version/SKILL.md: sha256:b451d0dc71fd74859968707a594b217e6be48a2d81e65b6e82f131cdd6f3bc84
-  content_hash: sha256:ffec29277a94ed20098b6d993e1d723e18856083de1881c07a1ba9623066f46d
+  content_hash: sha256:842614956833570c0730ff58738ed313d3877d81f1cac2b73ca1ca51ce4bfe88
   carried_licenses:
   - path: skills/dream/LICENSE
     source: LICENSE
@@ -1925,24 +1921,6 @@ deployments:
   - elboletaire/skills
   active_owner: elboletaire/skills
   content_hash: sha256:e2ebfe63b0295e1d31648de615bee3e82f0b4bee93390720c9bf93fbd77adcb6
-- kind: project-relative
-  target: claude
-  value: .claude/hooks/elboletaire-skills/scripts/test-contributing-rules.py
-  runtime: null
-  scope: user
-  owners:
-  - elboletaire/skills
-  active_owner: elboletaire/skills
-  content_hash: sha256:9ce4c84fd5ba0608991cde58f68e46f1e4ca74b08c58e0a9adf6de3b1c488d07
-- kind: project-relative
-  target: claude
-  value: .claude/hooks/elboletaire-skills/scripts/test-gh-hygiene.py
-  runtime: null
-  scope: user
-  owners:
-  - elboletaire/skills
-  active_owner: elboletaire/skills
-  content_hash: sha256:053a69a2355d9b2dd86f17696effaeb03760d4b63ce8278be437f09042183947
 - kind: project-relative
   target: claude
   value: .claude/skills/agent-browser
