@@ -566,7 +566,7 @@ install_uv() {
 # (e.g. from a local ~/.zshenv override) or the settings rewrite misses it.
 octopilot_dir=${OCTOPILOT_DIR:-$HOME/src/octopilot}
 MODULES=(
-  "octopilot|git@github.com:elboletaire/octopilot.git|$octopilot_dir"
+  "octopilot|https://github.com/elboletaire/octopilot.git|$octopilot_dir"
 )
 
 install_modules() {
@@ -583,7 +583,10 @@ install_module() {
   # Never aborts the install: a module that fails only warns, and the rest runs.
   local name=$1 url=$2 dir=$3 mode=${4:-install}
   if [ ! -e "$dir" ]; then
-    [ "$mode" = relink ] && return 0
+    if [ "$mode" = relink ]; then
+      echo "$name is not cloned at $dir; run 'install.sh ai' or 'install.sh herdr' to clone it"
+      return 0
+    fi
     echo "Cloning $name into $dir"
     mkdir -p "$(dirname "$dir")"
     if ! _module_git clone --quiet "$url" "$dir"; then
@@ -659,8 +662,8 @@ link_herdr_plugin() {
 }
 
 link_herdr_app() {
-  # Where dotfiles-owned herdr-app setup goes. Octopilot's mods are installed by
-  # its own install.sh, run from install_modules.
+  # Hook point for dotfiles-owned herdr-app setup, empty for now. Octopilot's mods
+  # are installed by its own install.sh, run from install_modules.
   return 0
 }
 

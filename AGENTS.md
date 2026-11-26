@@ -50,7 +50,8 @@ AI (`ai/`):
 
 ## How files reach $HOME
 
-Nothing is copied: `scripts/install.sh` creates symlinks.
+Mostly symlinks: `scripts/install.sh` creates them. The exception is the APM
+manifest and lock, copied into `~/.apm/` because APM refuses symlinks.
 
 - `symlink`: every top-level item not in its exclusion list
   (`README.md LICENSE scripts git config ai AGENTS.md CLAUDE.md`) becomes
@@ -74,14 +75,15 @@ Nothing is copied: `scripts/install.sh` creates symlinks.
   `ai/apm.yml`.
 - `link_pi_agents` (after `install_skills`): links `~/.pi/agent/agents` to
   `~/.apm/apm_modules/elboletaire-skills/pi/agents`, APM's module cache of the
-  package. It warns and skips when that folder is missing.
+  package. It warns and skips when that folder is missing. It moves a real
+  `~/.pi/agent/agents` dir to `~/old_dotfiles/.pi/agent/agents` before linking it.
 - `merge_claude_settings`: merges `ai/claude/settings.json` into
   `~/.claude/settings.json`, keeping keys other tools wrote (APM's hook included).
   It sets `CLAUDE_CODE_PLUGIN_DIRS`, which loads the Claude plugins of
   `~/src/octopilot/plugin` (Octopilot's repo, see
   [External modules](#external-modules)), `ai/arxiu/bibliotecaria` and
-  `ai/taller/plugin`, and `GH_HYGIENE_HOSTNAMES`, the machine names the gh hygiene
-  hook also blocks besides the local hostname.
+  `ai/taller/plugin`. The gh hygiene hook blocks the local hostname on its own;
+  extra names for a machine go in that machine's own environment, never here.
 
 ## Commands
 
@@ -92,11 +94,18 @@ Nothing is copied: `scripts/install.sh` creates symlinks.
 | `install` | Full setup of a new machine: system packages, nvm, Claude Code and Pi, APM, herdr with herdr-app and herdr-core, uv, submodules, symlinks, AI config, herdr links, external modules, login shell, vim plugins. Files it replaces go to `~/old_dotfiles`. |
 | `update` | Refreshes the same pieces without system packages or submodule ref bumps, and fast-forwards the external modules. Reinstalls herdr-app only when its version changed. |
 | `ai` | Refreshes only the AI stack: agents, herdr, rtk, skills, AI links, settings, herdr links, and fast-forwards the external modules. |
-| `ai-config` | Relinks the global instructions, installs the locked skills, subagents and hook, and runs the external modules' `install.sh` when already cloned. Installs no agents or tooling, clones and pulls nothing, and makes no backups, except the legacy cleanup below. |
+| `ai-config` | Relinks the global instructions, installs the locked skills, subagents and hook, and runs the external modules' `install.sh` when already cloned. Installs no agents or tooling, clones and pulls nothing, and makes no backups beyond the legacy cleanup below and `settings.json.dotfiles-bak`. |
 | `skills-bump` | Moves every skill to the latest commit of its branch (`apm update -g`), copies `ai/apm.yml` and `ai/apm.lock.yaml` back and shows `git diff --stat -- ai/`. The only command that changes skill versions; `install`, `update`, `ai` and `ai-config` install the locked commits. |
 | `herdr` | Repairs the herdr setup: installs herdr if missing, its agent integrations, config and plugin links, and clones missing external modules and runs their `install.sh`. Does not pull modules, upgrade herdr or touch herdr-app (`install`, `update` and `ai` do). |
 
 `install`, `update`, `ai` and `ai-config` all start with the legacy cleanup: agent-deck and aoe are uninstalled (Homebrew or pacman), their binaries, hooks in `~/.claude/settings.json` and skills are removed, and their state moves to `~/old_dotfiles/legacy-session-managers-<date>/`.
+The retired hand-installed skills (`aoe`, `aoe-fleet`, `impeccable`,
+`graphic-designer`, `effective-print-design`, `resume-generator`, `brag`,
+`brag-slim`, `tsdown`, `vocdoni-sdk`, `davinci-sdk`, `vocdoni-ballot-protocol`,
+`agent-browser` and `create-readme`) are removed where APM's lock does not
+deploy them: symlinks are deleted, real copies move to
+`~/old_dotfiles/legacy-skills-<date>/`. The one-time APM 0.33 migration in
+`install_skills` moves that deployment's skills and hook files there too.
 
 ## herdr
 
@@ -116,7 +125,7 @@ Octopilot's agents, in two front ends:
 Each `ai/<project>/` has its own guide. Read it before changing that project, and
 keep project detail there rather than in this file:
 
-- Octopilot is its own repo, `git@github.com:elboletaire/octopilot.git`, cloned to
+- Octopilot is its own repo, `https://github.com/elboletaire/octopilot.git`, cloned to
   `${OCTOPILOT_DIR:-~/src/octopilot}`. Its `AGENTS.md` covers code changes, its
   `herdr/README.md` the TUI layout and its `herdr-app/CONTRACT.md` the GUI contract.
 - `ai/arxiu/README.md`
@@ -128,7 +137,9 @@ Some tools live in their own repos. `MODULES` in `scripts/install.sh` lists them
 as `name|git-url|dir`, and `install_modules` handles each one:
 
 - **Clone**: when `dir` is missing, it is cloned from `git-url` (`install`,
-  `update`, `ai`, `herdr`).
+  `update`, `ai`, `herdr`). The dotfiles' gitconfig rewrites GitHub https URLs to
+  ssh (`url "ssh://git@github.com/"`), so the clone needs the machine's GitHub ssh
+  key, as the dotfiles' own pushes do.
 - **Update**: `update` and `ai` fast-forward a clean checkout on its default
   branch (from `origin/HEAD`, or the upstream when that is main or master). A
   dirty tree, another branch, or an offline or diverged remote is left alone with
@@ -136,7 +147,7 @@ as `name|git-url|dir`, and `install_modules` handles each one:
 - **Run**: its `install.sh`, when executable, runs last. A missing module
   checkout with no `.git` or a non-executable `install.sh` gets a warning.
   `ai-config` runs it only when the module is already cloned, and never clones or
-  pulls.
+  pulls; when it is missing, `ai-config` prints a note saying where it belongs.
 - **Non-interactive**: git runs with `GIT_TERMINAL_PROMPT=0` and an ssh with
   `BatchMode=yes`, so a clone or pull never waits for a password.
 

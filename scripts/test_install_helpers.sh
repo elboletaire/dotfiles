@@ -86,7 +86,7 @@ sed "s|declare -r dotfiles=~/.dotfiles|declare -r dotfiles=$DOTFILES|" \
 
 source "$TESTDIR/install_patched.sh"
 REAL_OS=$OS
-# Test 24b reassigns MODULES, so keep the sourced default for Test 27c.
+# Test 24b reassigns MODULES, so keep the sourced default for Test 27d.
 DEFAULT_MODULE_ENTRY="${MODULES[0]}"
 
 # Writes the tracked manifest and lock that install_skills and skills_bump read.
@@ -695,8 +695,9 @@ else
 fi
 
 out=$(install_module new "$MOD_REMOTE" "$MOD/never" relink 2>&1) && rc=0 || rc=$?
-if [ "$rc" -eq 0 ] && [ ! -e "$MOD/never" ]; then
-  pass "relink mode never clones a missing module"
+if [ "$rc" -eq 0 ] && [ ! -e "$MOD/never" ] &&
+   [[ "$out" == *"new is not cloned at $MOD/never; run 'install.sh ai' or 'install.sh herdr' to clone it"* ]]; then
+  pass "relink mode never clones a missing module and says how to clone it"
 else
   fail "relink cloned a module: rc=$rc $out"
 fi
@@ -921,7 +922,7 @@ rm -rf "$HOME/.claude"
 merge_claude_settings >/dev/null
 got=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["env"]["CLAUDE_CODE_PLUGIN_DIRS"])' "$HOME/.claude/settings.json")
 if [ "$got" = "~/src/octopilot/plugin:~/x/y" ] &&
-   [ "$DEFAULT_MODULE_ENTRY" = "octopilot|git@github.com:elboletaire/octopilot.git|$FAKE_HOME/src/octopilot" ]; then
+   [ "$DEFAULT_MODULE_ENTRY" = "octopilot|https://github.com/elboletaire/octopilot.git|$FAKE_HOME/src/octopilot" ]; then
   pass "the default dir keeps ~/src/octopilot/plugin and the default MODULES entry"
 else
   fail "default OCTOPILOT_DIR changed the settings: $got $DEFAULT_MODULE_ENTRY"
@@ -1489,22 +1490,6 @@ link_pi_agents >/dev/null
 rm -rf "$HOME/.pi" "$HOME/.apm/apm_modules"
 
 echo ""
-echo "=== Test 44c: link_pi_agents moves a real agents dir aside even with no_backup ==="
-rm -rf "$HOME/.pi" "$HOME/.apm/apm_modules" "$oldfiles"
-mkdir -p "$HOME/.pi/agent/agents" "$HOME/.apm/apm_modules/elboletaire-skills/pi/agents"
-echo "mine" > "$HOME/.pi/agent/agents/my-agent.md"
-no_backup=1
-link_pi_agents >/dev/null
-no_backup=0
-if [ "$(readlink "$HOME/.pi/agent/agents")" = "$HOME/.apm/apm_modules/elboletaire-skills/pi/agents" ] &&
-   [ -f "$oldfiles/.pi/agent/agents/my-agent.md" ]; then
-  pass "moves the user's dir to ~/old_dotfiles and links the Pi agents"
-else
-  fail "real agents dir was not moved aside under no_backup"
-fi
-rm -rf "$HOME/.pi" "$HOME/.apm/apm_modules" "$oldfiles"
-
-echo ""
 echo "=== Test 44b: symlink_ai links only the global instructions ==="
 rm -rf "$HOME/.claude" "$HOME/.pi" "$oldfiles"
 mkdir -p "$DOTFILES/ai/claude" "$DOTFILES/ai/pi"
@@ -1522,10 +1507,26 @@ fi
 rm -rf "$HOME/.claude" "$HOME/.pi" "$oldfiles" "$DOTFILES/ai/claude/CLAUDE.md" "$DOTFILES/ai/pi/AGENTS.md"
 
 echo ""
+echo "=== Test 44c: link_pi_agents moves a real agents dir aside even with no_backup ==="
+rm -rf "$HOME/.pi" "$HOME/.apm/apm_modules" "$oldfiles"
+mkdir -p "$HOME/.pi/agent/agents" "$HOME/.apm/apm_modules/elboletaire-skills/pi/agents"
+echo "mine" > "$HOME/.pi/agent/agents/my-agent.md"
+no_backup=1
+link_pi_agents >/dev/null
+no_backup=0
+if [ "$(readlink "$HOME/.pi/agent/agents")" = "$HOME/.apm/apm_modules/elboletaire-skills/pi/agents" ] &&
+   [ -f "$oldfiles/.pi/agent/agents/my-agent.md" ]; then
+  pass "moves the user's dir to ~/old_dotfiles and links the Pi agents"
+else
+  fail "real agents dir was not moved aside under no_backup"
+fi
+rm -rf "$HOME/.pi" "$HOME/.apm/apm_modules" "$oldfiles"
+
+echo ""
 echo "=== Test 45: merge_claude_settings keeps the APM hook and drops the old dotfiles hook ==="
 mkdir -p "$DOTFILES/ai/claude" "$HOME/.claude"
 cat > "$DOTFILES/ai/claude/settings.json" <<'JSON'
-{"env": {"GH_HYGIENE_HOSTNAMES": "caprica"}}
+{"env": {"MY_VAR": "kept"}}
 JSON
 cat > "$SETTINGS" <<'JSON'
 {"hooks": {"PreToolUse": [
@@ -1540,10 +1541,10 @@ d = json.load(open(sys.argv[1]))
 pre = d["hooks"]["PreToolUse"]
 assert len(pre) == 1, pre
 assert "elboletaire-skills" in pre[0]["hooks"][0]["command"], pre
-assert d["env"]["GH_HYGIENE_HOSTNAMES"] == "caprica", d["env"]
+assert d["env"]["MY_VAR"] == "kept", d["env"]
 PY
 then
-  pass "keeps the APM gh-hygiene hook, drops the retired ai/hooks one, sets the hostnames"
+  pass "keeps the APM gh-hygiene hook, drops the retired ai/hooks one, keeps the env"
 else
   fail "merge dropped the APM hook or kept the retired one: $(cat "$SETTINGS")"
 fi
