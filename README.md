@@ -44,6 +44,10 @@ The herdr pieces are installed and kept current by `install` and `update`
   agent-deck's block, move to `~/old_dotfiles/legacy-session-managers-<date>/`.
   A `~/.tmux.conf` with other lines is kept and a note is printed. Nothing is
   printed when there is nothing to clean.
+- **Octopilot** lives in its own repo, [elboletaire/octopilot](https://github.com/elboletaire/octopilot).
+  `install` clones it to `${OCTOPILOT_DIR:-~/src/octopilot}` when missing, `update`
+  fast-forwards it when clean, and its `install.sh` sets up its herdr plugin and
+  herdr-app mods. Details in `AGENTS.md` (External modules).
 
 ## AI skills
 

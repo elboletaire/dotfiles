@@ -545,31 +545,107 @@ install_uv() {
   fi
 }
 
+# External modules: separate repos with their own install.sh. Each entry is
+# "name|git-url|dir". OCTOPILOT_DIR must be exported in the shell that runs this
+# (e.g. from a local ~/.zshenv override) or the settings rewrite misses it.
+octopilot_dir=${OCTOPILOT_DIR:-$HOME/src/octopilot}
+MODULES=(
+  "octopilot|git@github.com:elboletaire/octopilot.git|$octopilot_dir"
+)
+
+install_modules() {
+  # Mode is install (clone when missing), update (also fast-forward) or relink
+  # (run install.sh only when present, for ai-config, which installs nothing).
+  local mode=${1:-install} entry name url dir
+  for entry in "${MODULES[@]}"; do
+    IFS='|' read -r name url dir <<< "$entry"
+    install_module "$name" "$url" "$dir" "$mode"
+  done
+}
+
+install_module() {
+  # Never aborts the install: a module that fails only warns, and the rest runs.
+  local name=$1 url=$2 dir=$3 mode=${4:-install}
+  if [ ! -e "$dir" ]; then
+    [ "$mode" = relink ] && return 0
+    echo "Cloning $name into $dir"
+    mkdir -p "$(dirname "$dir")"
+    if ! _module_git clone --quiet "$url" "$dir"; then
+      echo "WARNING: could not clone $name from $url" >&2
+      return 0
+    fi
+  elif [ ! -e "$dir/.git" ]; then
+    echo "WARNING: $dir is not a git checkout; $name is not updated" >&2
+  elif [ "$mode" = update ]; then
+    _pull_module "$name" "$dir"
+  fi
+  if [ -x "$dir/install.sh" ]; then
+    "$dir/install.sh" || echo "WARNING: $name's install.sh failed (see above)" >&2
+  elif [ -e "$dir/install.sh" ]; then
+    echo "WARNING: $name's install.sh is not executable; not running it" >&2
+  fi
+  return 0
+}
+
+_module_git() {
+  # Never prompts: a clone or pull that needs a password or a host key fails at once.
+  env GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-ssh -o BatchMode=yes -o ConnectTimeout=10}" git "$@"
+}
+
+_pull_module() {
+  # Fast-forwards only a clean checkout on its default branch, so local work is
+  # never touched. Offline or diverged just keeps the current checkout.
+  local name=$1 dir=$2 branch default
+  branch=$(git -C "$dir" symbolic-ref --short -q HEAD 2>/dev/null || true)
+  default=$(_module_default_branch "$dir")
+  if [ -z "$branch" ] || [ "$branch" != "$default" ]; then
+    echo "$name: not on its default branch; not updating it"
+    return 0
+  fi
+  if [ -n "$(git -C "$dir" status --porcelain 2>/dev/null)" ]; then
+    echo "$name: uncommitted changes; not updating it"
+    return 0
+  fi
+  _module_git -C "$dir" pull --ff-only --quiet ||
+    echo "$name: could not fast-forward (offline or diverged); keeping this checkout"
+  return 0
+}
+
+_module_default_branch() {
+  # A checkout made with init and remote add has no origin/HEAD: ask the remote for
+  # it, else take the current branch's upstream when that is main or master.
+  local dir=$1 head upstream
+  head=$(git -C "$dir" symbolic-ref --short -q refs/remotes/origin/HEAD 2>/dev/null || true)
+  if [ -z "$head" ]; then
+    _module_git -C "$dir" remote set-head origin --auto >/dev/null 2>&1 || true
+    head=$(git -C "$dir" symbolic-ref --short -q refs/remotes/origin/HEAD 2>/dev/null || true)
+  fi
+  if [ -z "$head" ]; then
+    upstream=$(git -C "$dir" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)
+    case "$upstream" in origin/main|origin/master) head=$upstream ;; esac
+  fi
+  head=${head#origin/}
+  echo "$head"
+}
+
 link_herdr_plugin() {
-  # The dotfiles' herdr plugins: Octopilot (Octopilot workspace + live
-  # dashboard), Arxiu (genealogy board) and Taller (projects board). Only
-  # linked when herdr is installed (install_herdr).
+  # The dotfiles' herdr plugins: Arxiu (genealogy board) and Taller (projects
+  # board). Only linked when herdr is installed (install_herdr). Octopilot's
+  # plugin is linked by its own install.sh.
   command -v herdr &>/dev/null || return 0
   # Plugin commands need a live server and exit 0 even when there is none.
   if herdr status server 2>/dev/null | grep -q "not running"; then
     echo "herdr server not running; skipping the herdr plugin links"
     return 0
   fi
-  # Octopilot's id before the rename from PR Autopilot.
-  if [[ -n "$(_herdr_plugin_root elboletaire.autopilot)" ]]; then
-    herdr plugin unlink elboletaire.autopilot >/dev/null || true
-  fi
-  _link_herdr_plugin elboletaire.octopilot "$dotfiles/ai/octopilot/herdr"
   _link_herdr_plugin elboletaire.arxiu "$dotfiles/ai/arxiu/herdr"
   _link_herdr_plugin elboletaire.taller "$dotfiles/ai/taller/herdr"
 }
 
 link_herdr_app() {
-  # Octopilot's herdr-app mods and its key (herdr-app/install.sh). Only when
-  # herdr-app is installed; a refusal there does not stop the rest.
-  command -v herdr-app &>/dev/null || return 0
-  bash "$dotfiles/ai/octopilot/herdr-app/install.sh" ||
-    echo "WARNING: Octopilot's herdr-app setup failed (see above)" >&2
+  # Where dotfiles-owned herdr-app setup goes. Octopilot's mods are installed by
+  # its own install.sh, run from install_modules.
+  return 0
 }
 
 _herdr_plugin_root() {
@@ -633,20 +709,6 @@ link_herdr_config() {
   fi
 }
 
-migrate_octopilot_state() {
-  # PR Autopilot was renamed Octopilot: carry its state over once, and point
-  # the recorded orchestrator at the renamed herdr agent.
-  local root=${XDG_STATE_HOME:-$HOME/.local/state}
-  local old=$root/pr-autopilot new=$root/octopilot
-  [[ -d "$old" && ! -e "$new" ]] || return 0
-  mv "$old" "$new" || return 0
-  if [[ -f "$new/state.json" ]]; then
-    sed 's/"herdr:autopilot"/"herdr:octopilot"/' "$new/state.json" > "$new/state.json.tmp" &&
-      mv "$new/state.json.tmp" "$new/state.json"
-  fi
-  echo "Moved Octopilot state: $old -> $new"
-}
-
 merge_claude_settings() {
   # Merges the dotfiles-owned keys into ~/.claude/settings.json (other tools write
   # there too): our values win, the retired keys and hooks below are dropped, and
@@ -654,12 +716,25 @@ merge_claude_settings() {
   local src="$dotfiles/ai/claude/settings.json" dest="$HOME/.claude/settings.json"
   [ -f "$src" ] || return 0
   mkdir -p "$HOME/.claude"
-  python3 - "$src" "$dest" <<'PY'
+  python3 - "$src" "$dest" "$octopilot_dir" <<'PY'
 import json, os, re, shutil, sys
 
-src, dest = sys.argv[1], os.path.realpath(sys.argv[2])
+src, dest, octopilot_dir = sys.argv[1], os.path.realpath(sys.argv[2]), sys.argv[3]
 with open(src) as fh:
     base = json.load(fh)
+
+# OCTOPILOT_DIR elsewhere: point its plugin entry there, written with ~ as the repo has it.
+home = os.path.expanduser("~")
+if os.path.normpath(octopilot_dir) != os.path.join(home, "src", "octopilot"):
+    plugin = os.path.join(octopilot_dir, "plugin")
+    if plugin.startswith(home + os.sep):
+        plugin = "~" + plugin[len(home):]
+    env = base.get("env", {})
+    if "CLAUDE_CODE_PLUGIN_DIRS" in env:
+        entries = env["CLAUDE_CODE_PLUGIN_DIRS"].split(":")
+        env["CLAUDE_CODE_PLUGIN_DIRS"] = ":".join(
+            plugin if e == "~/src/octopilot/plugin" else e for e in entries)
+        base["env"] = env
 try:
     with open(dest) as fh:
         cur = json.load(fh)
@@ -890,8 +965,8 @@ do_install() {
   symlink_ai || return 1    # config symlinks
   install_skills || return 1
   merge_claude_settings
-  migrate_octopilot_state
   link_herdr_config
+  install_modules
   link_herdr_plugin
   link_herdr_app
   set_login_shell
@@ -915,8 +990,8 @@ do_update() {
   symlink_ai || return 1
   install_skills || return 1
   merge_claude_settings
-  migrate_octopilot_state
   link_herdr_config
+  install_modules update
   link_herdr_plugin
   link_herdr_app
   echo "dotfiles update complete"
@@ -935,8 +1010,8 @@ do_update_ai() {
   symlink_ai || return 1
   install_skills || return 1
   merge_claude_settings
-  migrate_octopilot_state
   link_herdr_config
+  install_modules update
   link_herdr_plugin
   link_herdr_app
   echo "AI stack update complete"
@@ -951,7 +1026,7 @@ do_install_ai_config() {
   symlink_ai || return 1
   install_skills || return 1
   merge_claude_settings
-  migrate_octopilot_state
+  install_modules relink
   link_herdr_plugin
   link_herdr_app
   echo "AI config install complete"
@@ -967,6 +1042,7 @@ do_herdr() {
   # Repairs herdr's setup without upgrading herdr or herdr-app: config and plugin links.
   install_herdr
   link_herdr_config
+  install_modules
   link_herdr_plugin
   link_herdr_app
   echo "herdr setup complete"

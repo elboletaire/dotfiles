@@ -11,7 +11,7 @@ command = "exec \"${SHELL:-zsh}\" -l"
 width = "92%"
 height = "88%"
 
-# Octopilot (~/.dotfiles/ai/octopilot/herdr)
+# Octopilot (its repo's herdr/, linked by its install.sh)
 [[keys.command]]
 key = "prefix+shift+a"          # build or focus the Octopilot workspace
 type = "plugin_action"
