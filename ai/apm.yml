@@ -30,6 +30,26 @@ dependencies:
       path: skills/agent-browser
       alias: agent-browser
       ref: main
+    - git: https://github.com/github/awesome-copilot.git
+      path: skills/github-issues
+      alias: github-issues
+      ref: main
+    - git: https://github.com/github/awesome-copilot.git
+      path: skills/git-commit
+      alias: git-commit
+      ref: main
+    - git: https://github.com/obra/superpowers.git
+      path: skills/systematic-debugging
+      alias: systematic-debugging
+      ref: main
+    - git: https://github.com/obra/superpowers.git
+      path: skills/test-driven-development
+      alias: test-driven-development
+      ref: main
+    - git: https://github.com/github/awesome-copilot.git
+      path: skills/create-readme
+      alias: create-readme
+      ref: main
     - git: https://github.com/elboletaire/skills.git
       alias: elboletaire-skills
       ref: main

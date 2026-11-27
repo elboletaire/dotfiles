@@ -103,6 +103,127 @@ dependencies:
   - path: skills/version/LICENSE
     source: LICENSE
     hash: sha256:cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14
+- repo_url: github/awesome-copilot
+  alias: create-readme
+  name: create-readme
+  host: github.com
+  resolved_commit: 93fc8b9ee3ef56b9b5e7261e6ce92d314cb2c1cf
+  resolved_ref: main
+  version: unknown
+  virtual_path: skills/create-readme
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/create-readme
+  - .agents/skills/create-readme/LICENSE
+  - .agents/skills/create-readme/SKILL.md
+  - .claude/skills/create-readme
+  - .claude/skills/create-readme/LICENSE
+  - .claude/skills/create-readme/SKILL.md
+  deployed_file_hashes:
+    .agents/skills/create-readme/LICENSE: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
+    .agents/skills/create-readme/SKILL.md: sha256:a93f9161bef324e3a1550fc79d4f01b660a3fb7eadc4455677d9ace4da2965ac
+    .claude/skills/create-readme/LICENSE: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
+    .claude/skills/create-readme/SKILL.md: sha256:a93f9161bef324e3a1550fc79d4f01b660a3fb7eadc4455677d9ace4da2965ac
+  content_hash: sha256:8cf0a4c359d1cfe2a1a478ea7fd67d9c133083f2e408f6f742389d6e6448981d
+  carried_licenses:
+  - path: LICENSE
+    source: LICENSE
+    hash: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
+- repo_url: github/awesome-copilot
+  alias: git-commit
+  name: git-commit
+  host: github.com
+  resolved_commit: 93fc8b9ee3ef56b9b5e7261e6ce92d314cb2c1cf
+  resolved_ref: main
+  version: unknown
+  virtual_path: skills/git-commit
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/git-commit
+  - .agents/skills/git-commit/LICENSE
+  - .agents/skills/git-commit/SKILL.md
+  - .claude/skills/git-commit
+  - .claude/skills/git-commit/LICENSE
+  - .claude/skills/git-commit/SKILL.md
+  deployed_file_hashes:
+    .agents/skills/git-commit/LICENSE: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
+    .agents/skills/git-commit/SKILL.md: sha256:a95bb7e996516a1c73df745b0598ba650d7161eb1da559712e8fabb5dacb7c5c
+    .claude/skills/git-commit/LICENSE: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
+    .claude/skills/git-commit/SKILL.md: sha256:a95bb7e996516a1c73df745b0598ba650d7161eb1da559712e8fabb5dacb7c5c
+  content_hash: sha256:4dd3e1b182db4b2313a255c68bc07abb93a6398c10f3a8b8a75758f77cff99b8
+  carried_licenses:
+  - path: LICENSE
+    source: LICENSE
+    hash: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
+- repo_url: github/awesome-copilot
+  alias: github-issues
+  name: github-issues
+  host: github.com
+  resolved_commit: 93fc8b9ee3ef56b9b5e7261e6ce92d314cb2c1cf
+  resolved_ref: main
+  version: unknown
+  virtual_path: skills/github-issues
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/github-issues
+  - .agents/skills/github-issues/LICENSE
+  - .agents/skills/github-issues/SKILL.md
+  - .agents/skills/github-issues/references/dependencies.md
+  - .agents/skills/github-issues/references/images.md
+  - .agents/skills/github-issues/references/issue-fields.md
+  - .agents/skills/github-issues/references/issue-types.md
+  - .agents/skills/github-issues/references/labels.md
+  - .agents/skills/github-issues/references/milestones.md
+  - .agents/skills/github-issues/references/projects.md
+  - .agents/skills/github-issues/references/search.md
+  - .agents/skills/github-issues/references/sub-issues.md
+  - .agents/skills/github-issues/references/templates.md
+  - .claude/skills/github-issues
+  - .claude/skills/github-issues/LICENSE
+  - .claude/skills/github-issues/SKILL.md
+  - .claude/skills/github-issues/references/dependencies.md
+  - .claude/skills/github-issues/references/images.md
+  - .claude/skills/github-issues/references/issue-fields.md
+  - .claude/skills/github-issues/references/issue-types.md
+  - .claude/skills/github-issues/references/labels.md
+  - .claude/skills/github-issues/references/milestones.md
+  - .claude/skills/github-issues/references/projects.md
+  - .claude/skills/github-issues/references/search.md
+  - .claude/skills/github-issues/references/sub-issues.md
+  - .claude/skills/github-issues/references/templates.md
+  deployed_file_hashes:
+    .agents/skills/github-issues/LICENSE: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
+    .agents/skills/github-issues/SKILL.md: sha256:c7859f993a8c8cfbff117830be1532e82e8b8e913297a40f8e685a662eaf3183
+    .agents/skills/github-issues/references/dependencies.md: sha256:9503d23ba104de1aae51176e4f29d3cf6b85c83e3421252a4808140d60eba571
+    .agents/skills/github-issues/references/images.md: sha256:585c89a02e1b79e702b4b88f2771cb8dadca9fdf98798ca72a83deb76623b219
+    .agents/skills/github-issues/references/issue-fields.md: sha256:ebc49ce1c436213a2c2c9ffef770ff46bc8b4f4ef1ec84460f217b712d1df01c
+    .agents/skills/github-issues/references/issue-types.md: sha256:be0a33a4a4a15ce92c6b589f19943813b69c25cd1f20e9e30df567bab50e5e63
+    .agents/skills/github-issues/references/labels.md: sha256:5c2f7c6bdb7a63fba447435174637b5dadb11b29ca07c136cd33039a5e92e1e3
+    .agents/skills/github-issues/references/milestones.md: sha256:974d492c055297df2efb6631c40ca8ceb821c52188b2719ecfeb69cc8df91c36
+    .agents/skills/github-issues/references/projects.md: sha256:358071bc9915a50e86956b21ba1c0077b489d8981eddc63ea09aa4cfe1043710
+    .agents/skills/github-issues/references/search.md: sha256:e73499b778efaaac7a90fd6a7c0359f30a89a7a62c25b27d994274e7f7ae172e
+    .agents/skills/github-issues/references/sub-issues.md: sha256:333339143e4a4ef0dfeb575cf0f18da2ca78d6388e2b9ba4b77daad7c1ce29a8
+    .agents/skills/github-issues/references/templates.md: sha256:8202c0277a34033acd44ed960a236f31a5b7a74d98769dffac497f2267279fed
+    .claude/skills/github-issues/LICENSE: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
+    .claude/skills/github-issues/SKILL.md: sha256:c7859f993a8c8cfbff117830be1532e82e8b8e913297a40f8e685a662eaf3183
+    .claude/skills/github-issues/references/dependencies.md: sha256:9503d23ba104de1aae51176e4f29d3cf6b85c83e3421252a4808140d60eba571
+    .claude/skills/github-issues/references/images.md: sha256:585c89a02e1b79e702b4b88f2771cb8dadca9fdf98798ca72a83deb76623b219
+    .claude/skills/github-issues/references/issue-fields.md: sha256:ebc49ce1c436213a2c2c9ffef770ff46bc8b4f4ef1ec84460f217b712d1df01c
+    .claude/skills/github-issues/references/issue-types.md: sha256:be0a33a4a4a15ce92c6b589f19943813b69c25cd1f20e9e30df567bab50e5e63
+    .claude/skills/github-issues/references/labels.md: sha256:5c2f7c6bdb7a63fba447435174637b5dadb11b29ca07c136cd33039a5e92e1e3
+    .claude/skills/github-issues/references/milestones.md: sha256:974d492c055297df2efb6631c40ca8ceb821c52188b2719ecfeb69cc8df91c36
+    .claude/skills/github-issues/references/projects.md: sha256:358071bc9915a50e86956b21ba1c0077b489d8981eddc63ea09aa4cfe1043710
+    .claude/skills/github-issues/references/search.md: sha256:e73499b778efaaac7a90fd6a7c0359f30a89a7a62c25b27d994274e7f7ae172e
+    .claude/skills/github-issues/references/sub-issues.md: sha256:333339143e4a4ef0dfeb575cf0f18da2ca78d6388e2b9ba4b77daad7c1ce29a8
+    .claude/skills/github-issues/references/templates.md: sha256:8202c0277a34033acd44ed960a236f31a5b7a74d98769dffac497f2267279fed
+  content_hash: sha256:3996f8c8b02f0303fda0d662c34086594de2b7d749b847b39a1a51ea7edf937e
+  carried_licenses:
+  - path: LICENSE
+    source: LICENSE
+    hash: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
 - repo_url: herdrdev/herdr
   alias: herdr
   name: herdr
@@ -181,6 +302,84 @@ dependencies:
     .claude/skills/brainstorming/scripts/stop-server.sh: sha256:0b5ccbbd57f62d3ed88993f7940b5ee0e5c0fc9b21c550c623da4f6292e47daf
     .claude/skills/brainstorming/visual-companion.md: sha256:6ffcb038b53254bd31debaa15e12dcd4ff24bd63d690e0b644ac6396701cf2e2
   content_hash: sha256:a95ce90f18a892b8c1cb6e5d91cc6948329a2a9b14ae47ce808b7bd383ac8ab7
+  carried_licenses:
+  - path: LICENSE
+    source: LICENSE
+    hash: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
+- repo_url: obra/superpowers
+  alias: systematic-debugging
+  name: systematic-debugging
+  host: github.com
+  resolved_commit: 22f0b463e7a5e579904dd6211a520321035526f7
+  resolved_ref: main
+  version: unknown
+  virtual_path: skills/systematic-debugging
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/systematic-debugging
+  - .agents/skills/systematic-debugging/LICENSE
+  - .agents/skills/systematic-debugging/SKILL.md
+  - .agents/skills/systematic-debugging/condition-based-waiting-example.ts
+  - .agents/skills/systematic-debugging/condition-based-waiting.md
+  - .agents/skills/systematic-debugging/defense-in-depth.md
+  - .agents/skills/systematic-debugging/find-polluter.sh
+  - .agents/skills/systematic-debugging/root-cause-tracing.md
+  - .claude/skills/systematic-debugging
+  - .claude/skills/systematic-debugging/LICENSE
+  - .claude/skills/systematic-debugging/SKILL.md
+  - .claude/skills/systematic-debugging/condition-based-waiting-example.ts
+  - .claude/skills/systematic-debugging/condition-based-waiting.md
+  - .claude/skills/systematic-debugging/defense-in-depth.md
+  - .claude/skills/systematic-debugging/find-polluter.sh
+  - .claude/skills/systematic-debugging/root-cause-tracing.md
+  deployed_file_hashes:
+    .agents/skills/systematic-debugging/LICENSE: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
+    .agents/skills/systematic-debugging/SKILL.md: sha256:51c6435d98c83c42c96ba7c35725a0b2c376cd487fb1a4e6bd0ddbe7e33ef202
+    .agents/skills/systematic-debugging/condition-based-waiting-example.ts: sha256:40ae5ebe497fdf310200e43fe986552546d0a22837c0d39e855db1cfd33eb88e
+    .agents/skills/systematic-debugging/condition-based-waiting.md: sha256:e89fec8400d6cd50f43407cec9fab50976ba4d55d0ec2eb51c0bd68036b54c26
+    .agents/skills/systematic-debugging/defense-in-depth.md: sha256:1e175fb86fc357e58c6aebf5441e481e1b7868b4380c0456b63a17eefbd18ba7
+    .agents/skills/systematic-debugging/find-polluter.sh: sha256:dd7b8f13c4cc2a24b33ff87b18da9248f3e1c80a085c3316224f69ff0fa5c43c
+    .agents/skills/systematic-debugging/root-cause-tracing.md: sha256:75b933b6a8c40bdb2031b10f21654395b56ec6ab6bc7b018c18d3fe57aeb7fb8
+    .claude/skills/systematic-debugging/LICENSE: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
+    .claude/skills/systematic-debugging/SKILL.md: sha256:51c6435d98c83c42c96ba7c35725a0b2c376cd487fb1a4e6bd0ddbe7e33ef202
+    .claude/skills/systematic-debugging/condition-based-waiting-example.ts: sha256:40ae5ebe497fdf310200e43fe986552546d0a22837c0d39e855db1cfd33eb88e
+    .claude/skills/systematic-debugging/condition-based-waiting.md: sha256:e89fec8400d6cd50f43407cec9fab50976ba4d55d0ec2eb51c0bd68036b54c26
+    .claude/skills/systematic-debugging/defense-in-depth.md: sha256:1e175fb86fc357e58c6aebf5441e481e1b7868b4380c0456b63a17eefbd18ba7
+    .claude/skills/systematic-debugging/find-polluter.sh: sha256:dd7b8f13c4cc2a24b33ff87b18da9248f3e1c80a085c3316224f69ff0fa5c43c
+    .claude/skills/systematic-debugging/root-cause-tracing.md: sha256:75b933b6a8c40bdb2031b10f21654395b56ec6ab6bc7b018c18d3fe57aeb7fb8
+  content_hash: sha256:91ba6f70076fba9e8868162fd9b53fd35ef9bfe5a9469d683c4ed2bf82c906e4
+  carried_licenses:
+  - path: LICENSE
+    source: LICENSE
+    hash: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
+- repo_url: obra/superpowers
+  alias: test-driven-development
+  name: test-driven-development
+  host: github.com
+  resolved_commit: 22f0b463e7a5e579904dd6211a520321035526f7
+  resolved_ref: main
+  version: unknown
+  virtual_path: skills/test-driven-development
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .agents/skills/test-driven-development
+  - .agents/skills/test-driven-development/LICENSE
+  - .agents/skills/test-driven-development/SKILL.md
+  - .agents/skills/test-driven-development/writing-good-tests.md
+  - .claude/skills/test-driven-development
+  - .claude/skills/test-driven-development/LICENSE
+  - .claude/skills/test-driven-development/SKILL.md
+  - .claude/skills/test-driven-development/writing-good-tests.md
+  deployed_file_hashes:
+    .agents/skills/test-driven-development/LICENSE: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
+    .agents/skills/test-driven-development/SKILL.md: sha256:64b03fce4aee5a97a93160cea8111f3ba13a17b7c001db4bd5836d67fd10705d
+    .agents/skills/test-driven-development/writing-good-tests.md: sha256:51471c853306ff92ca8bb41dcaea05f31c0e46b03651f8f3c99754b7172f4ae1
+    .claude/skills/test-driven-development/LICENSE: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
+    .claude/skills/test-driven-development/SKILL.md: sha256:64b03fce4aee5a97a93160cea8111f3ba13a17b7c001db4bd5836d67fd10705d
+    .claude/skills/test-driven-development/writing-good-tests.md: sha256:51471c853306ff92ca8bb41dcaea05f31c0e46b03651f8f3c99754b7172f4ae1
+  content_hash: sha256:4ca95bd3f3736de5e5069a7628d2761a5d16afd65c1b7d380e253a978ce6be04
   carried_licenses:
   - path: LICENSE
     source: LICENSE
@@ -480,6 +679,33 @@ deployments:
   content_hash: sha256:1fcf63770e74c8c6c1473bfd161cb3b644c914342bad7863e1b6bc7b9732369a
 - kind: project-relative
   target: agent-skills
+  value: .agents/skills/create-readme
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/create-readme
+  active_owner: github/awesome-copilot/skills/create-readme
+  content_hash: null
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/create-readme/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/create-readme
+  active_owner: github/awesome-copilot/skills/create-readme
+  content_hash: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/create-readme/SKILL.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/create-readme
+  active_owner: github/awesome-copilot/skills/create-readme
+  content_hash: sha256:a93f9161bef324e3a1550fc79d4f01b660a3fb7eadc4455677d9ace4da2965ac
+- kind: project-relative
+  target: agent-skills
   value: .agents/skills/dream
   runtime: null
   scope: user
@@ -505,6 +731,150 @@ deployments:
   - elboletaire/skills
   active_owner: elboletaire/skills
   content_hash: sha256:f75fe5253d240664a06d724d700d87d7e49327b118376c4c99ae10dcc197f7c0
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/git-commit
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/git-commit
+  active_owner: github/awesome-copilot/skills/git-commit
+  content_hash: null
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/git-commit/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/git-commit
+  active_owner: github/awesome-copilot/skills/git-commit
+  content_hash: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/git-commit/SKILL.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/git-commit
+  active_owner: github/awesome-copilot/skills/git-commit
+  content_hash: sha256:a95bb7e996516a1c73df745b0598ba650d7161eb1da559712e8fabb5dacb7c5c
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/github-issues
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: null
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/github-issues/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/github-issues/SKILL.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:c7859f993a8c8cfbff117830be1532e82e8b8e913297a40f8e685a662eaf3183
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/github-issues/references/dependencies.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:9503d23ba104de1aae51176e4f29d3cf6b85c83e3421252a4808140d60eba571
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/github-issues/references/images.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:585c89a02e1b79e702b4b88f2771cb8dadca9fdf98798ca72a83deb76623b219
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/github-issues/references/issue-fields.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:ebc49ce1c436213a2c2c9ffef770ff46bc8b4f4ef1ec84460f217b712d1df01c
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/github-issues/references/issue-types.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:be0a33a4a4a15ce92c6b589f19943813b69c25cd1f20e9e30df567bab50e5e63
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/github-issues/references/labels.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:5c2f7c6bdb7a63fba447435174637b5dadb11b29ca07c136cd33039a5e92e1e3
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/github-issues/references/milestones.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:974d492c055297df2efb6631c40ca8ceb821c52188b2719ecfeb69cc8df91c36
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/github-issues/references/projects.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:358071bc9915a50e86956b21ba1c0077b489d8981eddc63ea09aa4cfe1043710
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/github-issues/references/search.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:e73499b778efaaac7a90fd6a7c0359f30a89a7a62c25b27d994274e7f7ae172e
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/github-issues/references/sub-issues.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:333339143e4a4ef0dfeb575cf0f18da2ca78d6388e2b9ba4b77daad7c1ce29a8
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/github-issues/references/templates.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:8202c0277a34033acd44ed960a236f31a5b7a74d98769dffac497f2267279fed
 - kind: project-relative
   target: agent-skills
   value: .agents/skills/herdr
@@ -640,6 +1010,114 @@ deployments:
   - elboletaire/skills
   active_owner: elboletaire/skills
   content_hash: sha256:f0535703289cadf9a8dc971afc190ebe6b1a4da8981f13e3d0b29b03209be379
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/systematic-debugging
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/systematic-debugging
+  active_owner: obra/superpowers/skills/systematic-debugging
+  content_hash: null
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/systematic-debugging/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/systematic-debugging
+  active_owner: obra/superpowers/skills/systematic-debugging
+  content_hash: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/systematic-debugging/SKILL.md
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/systematic-debugging
+  active_owner: obra/superpowers/skills/systematic-debugging
+  content_hash: sha256:51c6435d98c83c42c96ba7c35725a0b2c376cd487fb1a4e6bd0ddbe7e33ef202
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/systematic-debugging/condition-based-waiting-example.ts
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/systematic-debugging
+  active_owner: obra/superpowers/skills/systematic-debugging
+  content_hash: sha256:40ae5ebe497fdf310200e43fe986552546d0a22837c0d39e855db1cfd33eb88e
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/systematic-debugging/condition-based-waiting.md
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/systematic-debugging
+  active_owner: obra/superpowers/skills/systematic-debugging
+  content_hash: sha256:e89fec8400d6cd50f43407cec9fab50976ba4d55d0ec2eb51c0bd68036b54c26
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/systematic-debugging/defense-in-depth.md
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/systematic-debugging
+  active_owner: obra/superpowers/skills/systematic-debugging
+  content_hash: sha256:1e175fb86fc357e58c6aebf5441e481e1b7868b4380c0456b63a17eefbd18ba7
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/systematic-debugging/find-polluter.sh
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/systematic-debugging
+  active_owner: obra/superpowers/skills/systematic-debugging
+  content_hash: sha256:dd7b8f13c4cc2a24b33ff87b18da9248f3e1c80a085c3316224f69ff0fa5c43c
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/systematic-debugging/root-cause-tracing.md
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/systematic-debugging
+  active_owner: obra/superpowers/skills/systematic-debugging
+  content_hash: sha256:75b933b6a8c40bdb2031b10f21654395b56ec6ab6bc7b018c18d3fe57aeb7fb8
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/test-driven-development
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/test-driven-development
+  active_owner: obra/superpowers/skills/test-driven-development
+  content_hash: null
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/test-driven-development/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/test-driven-development
+  active_owner: obra/superpowers/skills/test-driven-development
+  content_hash: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/test-driven-development/SKILL.md
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/test-driven-development
+  active_owner: obra/superpowers/skills/test-driven-development
+  content_hash: sha256:64b03fce4aee5a97a93160cea8111f3ba13a17b7c001db4bd5836d67fd10705d
+- kind: project-relative
+  target: agent-skills
+  value: .agents/skills/test-driven-development/writing-good-tests.md
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/test-driven-development
+  active_owner: obra/superpowers/skills/test-driven-development
+  content_hash: sha256:51471c853306ff92ca8bb41dcaea05f31c0e46b03651f8f3c99754b7172f4ae1
 - kind: project-relative
   target: agent-skills
   value: .agents/skills/version
@@ -921,6 +1399,33 @@ deployments:
   content_hash: sha256:1fcf63770e74c8c6c1473bfd161cb3b644c914342bad7863e1b6bc7b9732369a
 - kind: project-relative
   target: claude
+  value: .claude/skills/create-readme
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/create-readme
+  active_owner: github/awesome-copilot/skills/create-readme
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/create-readme/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/create-readme
+  active_owner: github/awesome-copilot/skills/create-readme
+  content_hash: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
+- kind: project-relative
+  target: claude
+  value: .claude/skills/create-readme/SKILL.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/create-readme
+  active_owner: github/awesome-copilot/skills/create-readme
+  content_hash: sha256:a93f9161bef324e3a1550fc79d4f01b660a3fb7eadc4455677d9ace4da2965ac
+- kind: project-relative
+  target: claude
   value: .claude/skills/dream
   runtime: null
   scope: user
@@ -946,6 +1451,150 @@ deployments:
   - elboletaire/skills
   active_owner: elboletaire/skills
   content_hash: sha256:f75fe5253d240664a06d724d700d87d7e49327b118376c4c99ae10dcc197f7c0
+- kind: project-relative
+  target: claude
+  value: .claude/skills/git-commit
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/git-commit
+  active_owner: github/awesome-copilot/skills/git-commit
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/git-commit/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/git-commit
+  active_owner: github/awesome-copilot/skills/git-commit
+  content_hash: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
+- kind: project-relative
+  target: claude
+  value: .claude/skills/git-commit/SKILL.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/git-commit
+  active_owner: github/awesome-copilot/skills/git-commit
+  content_hash: sha256:a95bb7e996516a1c73df745b0598ba650d7161eb1da559712e8fabb5dacb7c5c
+- kind: project-relative
+  target: claude
+  value: .claude/skills/github-issues
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/github-issues/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:e32449d23085399adc1222f7a17408b730550258e51627c153cb108ca9955823
+- kind: project-relative
+  target: claude
+  value: .claude/skills/github-issues/SKILL.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:c7859f993a8c8cfbff117830be1532e82e8b8e913297a40f8e685a662eaf3183
+- kind: project-relative
+  target: claude
+  value: .claude/skills/github-issues/references/dependencies.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:9503d23ba104de1aae51176e4f29d3cf6b85c83e3421252a4808140d60eba571
+- kind: project-relative
+  target: claude
+  value: .claude/skills/github-issues/references/images.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:585c89a02e1b79e702b4b88f2771cb8dadca9fdf98798ca72a83deb76623b219
+- kind: project-relative
+  target: claude
+  value: .claude/skills/github-issues/references/issue-fields.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:ebc49ce1c436213a2c2c9ffef770ff46bc8b4f4ef1ec84460f217b712d1df01c
+- kind: project-relative
+  target: claude
+  value: .claude/skills/github-issues/references/issue-types.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:be0a33a4a4a15ce92c6b589f19943813b69c25cd1f20e9e30df567bab50e5e63
+- kind: project-relative
+  target: claude
+  value: .claude/skills/github-issues/references/labels.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:5c2f7c6bdb7a63fba447435174637b5dadb11b29ca07c136cd33039a5e92e1e3
+- kind: project-relative
+  target: claude
+  value: .claude/skills/github-issues/references/milestones.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:974d492c055297df2efb6631c40ca8ceb821c52188b2719ecfeb69cc8df91c36
+- kind: project-relative
+  target: claude
+  value: .claude/skills/github-issues/references/projects.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:358071bc9915a50e86956b21ba1c0077b489d8981eddc63ea09aa4cfe1043710
+- kind: project-relative
+  target: claude
+  value: .claude/skills/github-issues/references/search.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:e73499b778efaaac7a90fd6a7c0359f30a89a7a62c25b27d994274e7f7ae172e
+- kind: project-relative
+  target: claude
+  value: .claude/skills/github-issues/references/sub-issues.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:333339143e4a4ef0dfeb575cf0f18da2ca78d6388e2b9ba4b77daad7c1ce29a8
+- kind: project-relative
+  target: claude
+  value: .claude/skills/github-issues/references/templates.md
+  runtime: null
+  scope: user
+  owners:
+  - github/awesome-copilot/skills/github-issues
+  active_owner: github/awesome-copilot/skills/github-issues
+  content_hash: sha256:8202c0277a34033acd44ed960a236f31a5b7a74d98769dffac497f2267279fed
 - kind: project-relative
   target: claude
   value: .claude/skills/herdr
@@ -1081,6 +1730,114 @@ deployments:
   - elboletaire/skills
   active_owner: elboletaire/skills
   content_hash: sha256:f0535703289cadf9a8dc971afc190ebe6b1a4da8981f13e3d0b29b03209be379
+- kind: project-relative
+  target: claude
+  value: .claude/skills/systematic-debugging
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/systematic-debugging
+  active_owner: obra/superpowers/skills/systematic-debugging
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/systematic-debugging/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/systematic-debugging
+  active_owner: obra/superpowers/skills/systematic-debugging
+  content_hash: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
+- kind: project-relative
+  target: claude
+  value: .claude/skills/systematic-debugging/SKILL.md
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/systematic-debugging
+  active_owner: obra/superpowers/skills/systematic-debugging
+  content_hash: sha256:51c6435d98c83c42c96ba7c35725a0b2c376cd487fb1a4e6bd0ddbe7e33ef202
+- kind: project-relative
+  target: claude
+  value: .claude/skills/systematic-debugging/condition-based-waiting-example.ts
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/systematic-debugging
+  active_owner: obra/superpowers/skills/systematic-debugging
+  content_hash: sha256:40ae5ebe497fdf310200e43fe986552546d0a22837c0d39e855db1cfd33eb88e
+- kind: project-relative
+  target: claude
+  value: .claude/skills/systematic-debugging/condition-based-waiting.md
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/systematic-debugging
+  active_owner: obra/superpowers/skills/systematic-debugging
+  content_hash: sha256:e89fec8400d6cd50f43407cec9fab50976ba4d55d0ec2eb51c0bd68036b54c26
+- kind: project-relative
+  target: claude
+  value: .claude/skills/systematic-debugging/defense-in-depth.md
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/systematic-debugging
+  active_owner: obra/superpowers/skills/systematic-debugging
+  content_hash: sha256:1e175fb86fc357e58c6aebf5441e481e1b7868b4380c0456b63a17eefbd18ba7
+- kind: project-relative
+  target: claude
+  value: .claude/skills/systematic-debugging/find-polluter.sh
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/systematic-debugging
+  active_owner: obra/superpowers/skills/systematic-debugging
+  content_hash: sha256:dd7b8f13c4cc2a24b33ff87b18da9248f3e1c80a085c3316224f69ff0fa5c43c
+- kind: project-relative
+  target: claude
+  value: .claude/skills/systematic-debugging/root-cause-tracing.md
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/systematic-debugging
+  active_owner: obra/superpowers/skills/systematic-debugging
+  content_hash: sha256:75b933b6a8c40bdb2031b10f21654395b56ec6ab6bc7b018c18d3fe57aeb7fb8
+- kind: project-relative
+  target: claude
+  value: .claude/skills/test-driven-development
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/test-driven-development
+  active_owner: obra/superpowers/skills/test-driven-development
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/test-driven-development/LICENSE
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/test-driven-development
+  active_owner: obra/superpowers/skills/test-driven-development
+  content_hash: sha256:a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400
+- kind: project-relative
+  target: claude
+  value: .claude/skills/test-driven-development/SKILL.md
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/test-driven-development
+  active_owner: obra/superpowers/skills/test-driven-development
+  content_hash: sha256:64b03fce4aee5a97a93160cea8111f3ba13a17b7c001db4bd5836d67fd10705d
+- kind: project-relative
+  target: claude
+  value: .claude/skills/test-driven-development/writing-good-tests.md
+  runtime: null
+  scope: user
+  owners:
+  - obra/superpowers/skills/test-driven-development
+  active_owner: obra/superpowers/skills/test-driven-development
+  content_hash: sha256:51471c853306ff92ca8bb41dcaea05f31c0e46b03651f8f3c99754b7172f4ae1
 - kind: project-relative
   target: claude
   value: .claude/skills/version
