@@ -6,6 +6,8 @@ When running subagents, do it async without asking for confirmation. If a defaul
 NEVER commit plans or specs documents, unless I ask for it.
 
 Before writing a pull request, issue, review, review comment or commit message, read the contributing skill and follow it.
+
+Before writing code, read the comments skill and follow it for every comment added or changed, and have subagents that write code do the same.
 </VERY_IMPORTANT>
 
 <STARTING_NEW_PROJECTS>
