@@ -94,7 +94,7 @@ manifest and lock, copied into `~/.apm/` because APM refuses symlinks.
 | `install` | Full setup of a new machine: system packages, nvm, Claude Code and Pi, APM, herdr with herdr-app and herdr-core, uv, submodules, symlinks, AI config, herdr links, external modules, login shell, vim plugins. Files it replaces go to `~/old_dotfiles`. |
 | `update` | Refreshes the same pieces without system packages or submodule ref bumps, and fast-forwards the external modules. Reinstalls herdr-app only when its version changed. |
 | `ai` | Refreshes only the AI stack: agents, herdr, rtk, skills, AI links, settings, herdr links, and fast-forwards the external modules. |
-| `ai-config` | Relinks the global instructions, installs the locked skills, subagents and hook, and runs the external modules' `install.sh` when already cloned. Installs no agents or tooling, clones and pulls nothing, and makes no backups beyond the legacy cleanup below and `settings.json.dotfiles-bak`. |
+| `ai-config` | Relinks the global instructions, installs the locked skills, subagents and hook, and fast-forwards the external modules and runs their `install.sh` when already cloned. Installs no agents or tooling, clones nothing, and makes no backups beyond the legacy cleanup below and `settings.json.dotfiles-bak`. |
 | `skills-bump` | Moves every skill to the latest commit of its branch (`apm update -g`), copies `ai/apm.yml` and `ai/apm.lock.yaml` back and shows `git diff --stat -- ai/`. The only command that changes skill versions; `install`, `update`, `ai` and `ai-config` install the locked commits. |
 | `herdr` | Repairs the herdr setup: installs herdr if missing, its agent integrations, config and plugin links, and clones missing external modules and runs their `install.sh`. Does not pull modules, upgrade herdr or touch herdr-app (`install`, `update` and `ai` do). |
 
@@ -142,14 +142,14 @@ as `name|git-url|dir`, and `install_modules` handles each one:
   `update`, `ai`, `herdr`). The dotfiles' gitconfig rewrites GitHub https URLs to
   ssh (`url "ssh://git@github.com/"`), so the clone needs the machine's GitHub ssh
   key, as the dotfiles' own pushes do.
-- **Update**: `update` and `ai` fast-forward a clean checkout on its default
+- **Update**: `update`, `ai` and `ai-config` fast-forward a clean checkout on its default
   branch (from `origin/HEAD`, or the upstream when that is main or master). A
   dirty tree, another branch, or an offline or diverged remote is left alone with
   a note. `install` and `herdr` do not pull.
 - **Run**: its `install.sh`, when executable, runs last. A missing module
   checkout with no `.git` or a non-executable `install.sh` gets a warning.
-  `ai-config` runs it only when the module is already cloned, and never clones or
-  pulls; when it is missing, `ai-config` prints a note saying where it belongs.
+  `ai-config` runs it only when the module is already cloned, and never clones;
+  when it is missing, `ai-config` prints a note saying where it belongs.
 - **Non-interactive**: git runs with `GIT_TERMINAL_PROMPT=0` and an ssh with
   `BatchMode=yes`, so a clone or pull never waits for a password.
 

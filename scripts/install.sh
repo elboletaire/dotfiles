@@ -571,7 +571,7 @@ MODULES=(
 
 install_modules() {
   # Mode is install (clone when missing), update (also fast-forward) or relink
-  # (run install.sh only when present, for ai-config, which installs nothing).
+  # (fast-forward and run install.sh only when present, for ai-config: no clones).
   local mode=${1:-install} entry name url dir
   for entry in "${MODULES[@]}"; do
     IFS='|' read -r name url dir <<< "$entry"
@@ -595,7 +595,7 @@ install_module() {
     fi
   elif [ ! -e "$dir/.git" ]; then
     echo "WARNING: $dir is not a git checkout; $name is not updated" >&2
-  elif [ "$mode" = update ]; then
+  elif [ "$mode" = update ] || [ "$mode" = relink ]; then
     _pull_module "$name" "$dir"
   fi
   if [ -x "$dir/install.sh" ]; then
